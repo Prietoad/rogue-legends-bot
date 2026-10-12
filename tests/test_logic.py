@@ -1,5 +1,8 @@
 """Pure logic that needs no screenshots."""
 
+import sys
+from pathlib import Path
+
 import pytest
 
 from roguebot import config, labels
@@ -539,4 +542,28 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.0.0"
+    assert roguebot.__version__ == "1.1.0"
+
+
+def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
+    from roguebot import settings
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(tmp_path / "RogueLegendBot.exe"))
+    assert settings.data_dir() == tmp_path / "data"
+
+
+def test_data_dir_is_the_repo_data_folder_from_source():
+    from roguebot import settings
+    assert settings.data_dir() == Path(settings.__file__).parent.parent / "data"
+
+
+def test_seed_data_copies_skills_once(tmp_path):
+    from roguebot import settings
+    bundled = tmp_path / "bundled.json"
+    bundled.write_text('{"a": 1}', encoding="utf-8")
+    target = tmp_path / "data"
+    settings.seed_data(target, bundled)
+    assert (target / "skills.json").read_text(encoding="utf-8") == '{"a": 1}'
+    (target / "skills.json").write_text('{"edited": 1}', encoding="utf-8")
+    settings.seed_data(target, bundled)
+    assert (target / "skills.json").read_text(encoding="utf-8") == '{"edited": 1}'

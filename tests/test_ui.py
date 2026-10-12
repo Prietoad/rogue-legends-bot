@@ -232,3 +232,28 @@ def test_missing_stars_source_builds_a_pending_request(app, monkeypatch):
         app.source.set("latest")
         app._toggle_level()
     assert requests[0].pending_stars and requests[0].level is None
+
+
+def test_window_has_the_game_icon(app):
+    from roguebot.ui import ICON
+    assert ICON.exists()
+    assert (app.icon.width(), app.icon.height()) == (192, 192)
+    assert app.header_icon.width() == 64
+
+
+def test_header_shows_version(app):
+    from roguebot import __version__
+    assert app.header_title.cget("text") == f"Rogue Legend bot v{__version__}"
+
+
+def test_changelog_is_hidden_until_toggled(app):
+    from roguebot import __version__
+    assert not app.changelog.winfo_ismapped() and not app.changelog_shown
+    assert app.changelog_toggle.cget("text") == "▸ Changelog"
+    app._toggle_changelog()
+    assert app.changelog_shown and app.changelog.grid_info()
+    assert f"## {__version__}" in app.changelog.get("1.0", "end")
+    app.set_language("es")
+    assert app.changelog_toggle.cget("text") == "▾ Novedades"
+    app._toggle_changelog()
+    assert not app.changelog_shown and not app.changelog.grid_info()

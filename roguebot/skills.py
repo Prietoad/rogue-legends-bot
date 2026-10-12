@@ -12,11 +12,12 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from roguebot.settings import DATA_DIR
 from roguebot.vision import normalize
 
 log = logging.getLogger(__name__)
 
-CATALOG_PATH = Path(__file__).parent.parent / "data" / "skills.json"
+CATALOG_PATH = DATA_DIR / "skills.json"
 
 DAMAGE_TYPES = ("ice", "lightning", "fire", "shuriken", "venom", "bleed")
 MAGIC_TYPES = ("ice", "lightning", "fire")

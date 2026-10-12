@@ -5,6 +5,7 @@ UI_LANGUAGES = {"es": "Español", "en": "English"}
 TEXTS = {
     "es": {
         "title": "Bot de Rogue Legend",
+        "changelog": "Novedades",
         "info_title": "Info",
         "info": (
             "Al pulsar Iniciar, el bot abre MuMu Player (si está cerrado) y Rogue Legend (si no está en pantalla).\n"
@@ -76,6 +77,7 @@ TEXTS = {
     },
     "en": {
         "title": "Rogue Legend bot",
+        "changelog": "Changelog",
         "info_title": "Info",
         "info": (
             "On Start, the bot opens MuMu Player (if closed) and Rogue Legend (if not on screen).\n"

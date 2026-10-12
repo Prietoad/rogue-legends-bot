@@ -6,9 +6,10 @@ import re
 import sys
 import threading
 from dataclasses import replace
+from pathlib import Path
 from typing import Callable
 
-from roguebot import config
+from roguebot import config, settings
 from roguebot.device import Device, Stopped
 from roguebot.emulator import PERMANENT_ERRORS, Emulator, EmulatorError
 from roguebot.navigation import LevelUnavailable, NavigationError, Navigator
@@ -183,6 +184,8 @@ def main() -> int:
         log.error("tkinter is missing. Re-run the Python installer -> Modify -> tick 'tcl/tk and IDLE'.")
         return 1
 
+    if getattr(sys, "frozen", False):
+        settings.seed_data(settings.DATA_DIR, Path(sys._MEIPASS) / "data" / "skills.json")
     stop = threading.Event()
     App(make_runner(args.dry_run, stop), stop=stop.set).mainloop()
     return 0

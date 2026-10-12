@@ -4,3 +4,5 @@ __pycache__/
 debug/
 captures/
 data/settings.json
+build/
+dist/

@@ -2,12 +2,14 @@
 
 import logging
 import queue
+import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, ttk
+from pathlib import Path
 from typing import Callable
 
-from roguebot import emulator, settings
+from roguebot import __version__, emulator, settings
 from roguebot.build import Build
 from roguebot.i18n import UI_LANGUAGES, tr
 from roguebot.report import Report, render
@@ -16,6 +18,9 @@ from roguebot.screens import Mode
 from roguebot.skills import DAMAGE_TYPES, MAGIC, PHYSICAL
 
 log = logging.getLogger("roguebot")
+ICON = Path(__file__).parent / "assets" / "icon.png"
+CHANGELOG = Path(__file__).parent.parent / "CHANGELOG.md"  # the exe bundles it at its root
+ICON_HEADER_SHRINK = 3  # 192 px icon -> 64 px in the header
 
 
 class _QueueHandler(logging.Handler):
@@ -40,12 +45,30 @@ class App:
         self._status: tuple[str, dict, str] = ("idle", {}, "black")  # i18n key, args, color
         self._texts: list[tuple[ttk.Widget, str]] = []                 # widgets to retranslate
 
+        if sys.platform == "win32":  # own taskbar entry (and icon) instead of python.exe's
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("roguebot.RogueLegendBot")
         self.root = tk.Tk()
+        self.icon = tk.PhotoImage(file=ICON)
+        self.root.iconphoto(True, self.icon)  # title bar and taskbar
         frame = ttk.Frame(self.root, padding=12)
         frame.pack(fill="both", expand=True)
 
-        top = ttk.Frame(frame)
-        top.grid(row=0, column=0, columnspan=4, sticky="e")
+        header = ttk.Frame(frame)
+        header.grid(row=0, column=0, columnspan=4, sticky="ew")
+        header.columnconfigure(1, weight=1)
+        self.header_icon = self.icon.subsample(ICON_HEADER_SHRINK)
+        ttk.Label(header, image=self.header_icon).grid(row=0, column=0, rowspan=2, padx=(0, 10))
+        self.header_title = ttk.Label(header, font=("Segoe UI", 14, "bold"))
+        self.header_title.grid(row=0, column=1, sticky="w")
+        self.changelog_toggle = ttk.Button(header, command=self._toggle_changelog)
+        self.changelog_toggle.grid(row=1, column=1, sticky="w")
+        self.changelog = tk.Text(header, height=10, width=80, wrap="word")
+        self.changelog.insert("1.0", CHANGELOG.read_text(encoding="utf-8") if CHANGELOG.exists() else "")
+        self.changelog.configure(state="disabled")
+        self.changelog_shown = False
+        top = ttk.Frame(header)
+        top.grid(row=0, column=2, sticky="ne")
         self._text(ttk.Label(top), "language").pack(side="left", padx=(0, 6))
         self.ui_lang = tk.StringVar(value=UI_LANGUAGES[lang])
         picker = ttk.Combobox(top, textvariable=self.ui_lang, values=list(UI_LANGUAGES.values()),
@@ -175,12 +198,26 @@ class App:
         self.lang = lang
         self.ui_lang.set(UI_LANGUAGES[lang])
         self.root.title(tr(lang, "title"))
+        self.header_title.configure(text=f"{tr(lang, 'title')} v{__version__}")
+        self._show_changelog_toggle()
         for widget, key in self._texts:
             widget.configure(text=tr(lang, key))
         sel = self.order_list.curselection()
         self._refresh_order(sel[0] if sel else None)
         self._check_folder()
         self._show_status()
+
+    def _toggle_changelog(self) -> None:
+        self.changelog_shown = not self.changelog_shown
+        if self.changelog_shown:
+            self.changelog.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(6, 0))
+        else:
+            self.changelog.grid_remove()
+        self._show_changelog_toggle()
+
+    def _show_changelog_toggle(self) -> None:
+        arrow = "▾" if self.changelog_shown else "▸"
+        self.changelog_toggle.configure(text=f"{arrow} {tr(self.lang, 'changelog')}")
 
     def mainloop(self) -> None:
         self.root.after(200, self._drain_logs)
