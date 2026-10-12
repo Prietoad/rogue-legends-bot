@@ -265,6 +265,7 @@ def test_patrol_claims_then_uses_every_quick_patrol(monkeypatch):
     monkeypatch.setattr(routine, "parse_quick_patrol", _fake_quick)
     r = make([PATROL_LOBBY, PATROL, CLAIM_ES, PATROL, quick(1, 1), CLAIM_ES, quick(0, 1), quick(0, 0)])
     assert r.patrol() == routine.DONE
+    assert r.patrol_wait == routine.config.PATROL_CLAIM_AFTER  # claimed: the counter starts again
     assert r.device.taps == [(720, 1922), (945, 1775), (720, 2320), (495, 1775),  # patrol, claim, reward, quick
                              (530, 1472), (720, 2320), (980, 1475)]               # video, reward, energy
 
@@ -306,6 +307,7 @@ def test_patrol_reward_is_only_claimed_near_the_8_hour_cap(monkeypatch):
     assert r.patrol() == routine.DONE
     assert (945, 1775) not in r.device.taps  # "Reclamar" not pressed
     assert r.device.taps == [(720, 1922), (495, 1775)]  # patrol, then quick patrol only
+    assert r.patrol_wait == 1  # due in 1 s: the next level opens it again
 
 
 def test_a_stale_free_donation_frame_is_never_tapped_again(monkeypatch):

@@ -45,6 +45,8 @@ class Player:
         self._last_offer = None      # names of the last skill pick decided (a repeat = the tap did not land)
         self._speed_tapped = False  # tapped x1 -> x2 and waiting to see the label change
         self._speed_locked = False  # x2 is not unlocked on this account
+        self._auto_held = False     # held the dice for auto-play and not seen it on yet
+        self._auto_missing = False  # a hold brought the red dice back: no auto-play here, tap instead
 
     def play_level(self) -> LevelScreen:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
@@ -68,8 +70,14 @@ class Player:
                 if self._doubles > config.DOUBLE_REWARD_TRIES and proceed:  # the x2 button stays: just continue
                     state = LevelState(LevelScreen.CONTINUE, proceed.center)
 
-            if state.kind is LevelScreen.BOARD_READY and self._ensure_double_speed(texts):
+            if state.kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY) and self._ensure_double_speed(texts):
                 continue
+            if state.kind is LevelScreen.AUTO_PLAY and self._auto_held:
+                log.info("Auto-play on")
+                self._auto_held = False
+            elif state.kind is LevelScreen.BOARD_READY and self._auto_held:
+                log.info("Holding the dice did not start auto-play; rolling by taps")
+                self._auto_held, self._auto_missing = False, True
 
             if state.kind in (LevelScreen.VICTORY, LevelScreen.DEFEAT):
                 log.info("Level finished: %s", state.kind.value)
@@ -90,8 +98,13 @@ class Player:
                 last_tap = (state.kind, state.tap)
                 if repeats > config.MAX_REPEATED_TAPS and time.monotonic() - first_repeat > config.STUCK_TAP_SECONDS:
                     self._fail(f"Tapping {state.tap} on {state.kind.value} has no effect", img)
-                log.info("%s -> tap %s", state.kind.value, state.tap)
-                self.device.tap(*state.tap)
+                if state.kind is LevelScreen.BOARD_READY and not self._auto_missing:
+                    log.info("board_ready -> hold %s for auto-play", state.tap)
+                    self.device.hold(*state.tap, config.AUTO_PLAY_HOLD)
+                    self._auto_held = True
+                else:
+                    log.info("%s -> tap %s", state.kind.value, state.tap)
+                    self.device.tap(*state.tap)
             else:
                 last_tap, repeats = None, 0  # screen changed on its own: the last tap worked
                 time.sleep(config.POLL_INTERVAL)

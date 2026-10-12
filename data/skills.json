@@ -569,6 +569,16 @@
   "description": "Tasa de Combo , obtienes ATQ  con cada Ataque de Combo, dura hasta el final de la batalla.",
   "auto": true
  },
+ "dominiodecont": {
+  "name": "Dominio de Cont",
+  "lang": null,
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Tasa de Contr . obtén DEF  con cada hasta el final de la batalla.",
+  "auto": true
+ },
  "dominiodecontraataque": {
   "name": "Dominio de Contraataque",
   "lang": "es",
@@ -747,6 +757,16 @@
   "nature": "physical",
   "role": "support",
   "description": "Reducciôn de Daño , al ser atacado hay 50% de probabilidad de ganar +20% de Reducción de Daño contra el ataque.",
+  "auto": true
+ },
+ "estrellacele": {
+  "name": "Estrellac Ele",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tus Sh también aplican los efectos de que hayas aprendido.",
   "auto": true
  },
  "estrellaselementales": {
@@ -1917,6 +1937,16 @@
   "nature": "physical",
   "role": "support",
   "description": "Tasa de Evasión",
+  "auto": true
+ },
+ "tasadegolpecriticoaumentadat": {
+  "name": "Tasa de Golpe Critico Aumentadat",
+  "lang": null,
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de Golpe Critico ",
   "auto": true
  },
  "thrillofbattle": {

@@ -542,7 +542,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.1.0"
+    assert roguebot.__version__ == "1.2.0"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -567,3 +567,56 @@ def test_seed_data_copies_skills_once(tmp_path):
     (target / "skills.json").write_text('{"edited": 1}', encoding="utf-8")
     settings.seed_data(target, bundled)
     assert (target / "skills.json").read_text(encoding="utf-8") == '{"edited": 1}'
+
+
+def _play(monkeypatch, kinds):
+    """Run Player.play_level over a list of screen states; returns the device's (action, point) log."""
+    import numpy as np
+    from roguebot import play
+    from roguebot.screens import LevelState
+    monkeypatch.setattr(play.time, "sleep", lambda s: None)
+    states = iter(LevelState(k, t) for k, t in kinds)
+    monkeypatch.setattr(play, "classify_level_screen", lambda img, texts: next(states))
+
+    class Dev:
+        actions = []
+
+        def screenshot(self):
+            return np.zeros((10, 10, 3), np.uint8)
+
+        def tap(self, x, y, settle=0):
+            Dev.actions.append(("tap", (x, y)))
+
+        def hold(self, x, y, seconds, settle=0):
+            Dev.actions.append(("hold", (x, y)))
+
+    class NoOcr:
+        def read(self, img):
+            return []
+    play.Player(Dev(), NoOcr()).play_level()
+    return Dev.actions
+
+
+def test_red_dice_is_held_for_auto_play_then_left_alone(monkeypatch):
+    from roguebot.screens import LevelScreen as S
+    dice = config.DICE_BUTTON
+    actions = _play(monkeypatch, [(S.BOARD_READY, dice), (S.AUTO_PLAY, None), (S.AUTO_PLAY, None),
+                                  (S.SKILL_PICK, (720, 1052)), (S.AUTO_PLAY, None), (S.VICTORY, (720, 2220))])
+    assert actions == [("hold", dice), ("tap", (720, 1052)), ("tap", (720, 2220))]
+
+
+def test_auto_play_stopping_mid_level_is_turned_on_again(monkeypatch):
+    from roguebot.screens import LevelScreen as S
+    dice = config.DICE_BUTTON
+    actions = _play(monkeypatch, [(S.BOARD_READY, dice), (S.AUTO_PLAY, None), (S.BOARD_READY, dice),
+                                  (S.AUTO_PLAY, None), (S.VICTORY, (720, 2220))])
+    assert actions == [("hold", dice), ("hold", dice), ("tap", (720, 2220))]
+
+
+def test_without_auto_play_the_dice_is_tapped(monkeypatch):
+    """Holding brought the red dice back (no auto-play on this game version): roll by taps from then on."""
+    from roguebot.screens import LevelScreen as S
+    dice = config.DICE_BUTTON
+    actions = _play(monkeypatch, [(S.BOARD_READY, dice), (S.BOARD_READY, dice), (S.FIGHT, None),
+                                  (S.BOARD_READY, dice), (S.VICTORY, (720, 2220))])
+    assert actions == [("hold", dice), ("tap", dice), ("tap", dice), ("tap", (720, 2220))]

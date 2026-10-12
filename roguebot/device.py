@@ -81,6 +81,10 @@ class Device:
         self._d.shell(["input", "tap", *map(str, self._px(x, y))], timeout=config.ADB_TIMEOUT)
         time.sleep(settle)
 
+    def hold(self, x: int, y: int, seconds: float, settle: float = config.UI_SETTLE) -> None:
+        """Long press: a swipe that does not move."""
+        self.swipe((x, y), (x, y), duration=seconds, settle=settle)
+
     def swipe(self, start: tuple[int, int], end: tuple[int, int], duration: float = 0.6,
               settle: float = config.SCROLL_SETTLE) -> None:
         self._check_stop()

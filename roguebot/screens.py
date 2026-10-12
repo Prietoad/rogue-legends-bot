@@ -199,6 +199,7 @@ class LevelScreen(Enum):
     REVIVE = "revive"            # "¡Revivir ahora!" on death: free video revive (never the gem button)
     SKILL_PICK = "skill_pick"    # "¡SUBISTE DE NIVEL!" / "¡SUBIDA DE PODER!"
     BOARD_READY = "board_ready"  # red dice button active
+    AUTO_PLAY = "auto_play"      # green dice "Toca para Detener": the game rolls by itself; never tap it (stops it)
     FIGHT = "fight"              # "Ronda N/30", plays by itself
     EVENT = "event"              # tile event with options; we always pick "Salir" (leave)
     SHOP = "shop"                # shop tile; we buy nothing and press "Salir"
@@ -233,6 +234,14 @@ def dice_ready(img: np.ndarray) -> bool:
     roi = img[y1:y2, x1:x2].astype(int)
     b, g, r = roi[..., 0], roi[..., 1], roi[..., 2]
     return float(((r > 170) & (g < 90) & (b < 90)).mean()) > config.DICE_RED_MIN_FRACTION
+
+
+def dice_auto(img: np.ndarray) -> bool:
+    """Auto-play (turned on by holding the dice) shows the dice button lime green."""
+    x1, y1, x2, y2 = config.DICE_REGION
+    roi = img[y1:y2, x1:x2].astype(int)
+    b, g, r = roi[..., 0], roi[..., 1], roi[..., 2]
+    return float(((g > 150) & (r > 120) & (b < 90) & (g > r)).mean()) > config.DICE_GREEN_MIN_FRACTION
 
 
 _SPEED_RE = re.compile(r"x\s*([12])$")
@@ -347,6 +356,9 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
         return LevelState(LevelScreen.UNKNOWN)  # no free revive left: let the countdown run out
     if _counter(texts, L.FIGHT_ROUND) is not None:
         return LevelState(LevelScreen.FIGHT)
+    # Late, like the red dice: lucky wheels and offers can be green there too, but their texts match first.
+    if dice_auto(img):
+        return LevelState(LevelScreen.AUTO_PLAY)
     if dice_ready(img):
         return LevelState(LevelScreen.BOARD_READY, config.DICE_BUTTON)
     return LevelState(LevelScreen.UNKNOWN)

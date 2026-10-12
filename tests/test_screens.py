@@ -81,6 +81,8 @@ def test_star_list(ocr, name, playable, locked):
     ("level_board_ready.png", LevelScreen.BOARD_READY, (720, 2150)),
     ("board.png", LevelScreen.BOARD_READY, (720, 2150)),
     ("level_board_rolling.png", LevelScreen.UNKNOWN, None),
+    ("level_board_auto.png", LevelScreen.AUTO_PLAY, None),          # green dice "Toca para Detener" right after the hold
+    ("level_board_auto_rolling.png", LevelScreen.AUTO_PLAY, None),  # auto-play mid-level: never tap (it would stop it)
     ("level_event_cart.png", LevelScreen.EVENT, (923, 2030)),    # "Salir" option
     ("level_event_rest.png", LevelScreen.EVENT, (510, 2033)),    # no "Salir": leftmost option
     ("en_board_dice_unknown.png", LevelScreen.BOARD_READY, (720, 2150)),  # dark teal board: not a footer

@@ -158,6 +158,7 @@ def test_repeat_without_any_energy_is_an_error(monkeypatch):
 
 class FakeRoutine:
     calls = patrols = 0
+    patrol_wait = None  # unreadable counter: the patrol is opened after every level
 
     def __init__(self, device=None, ocr=None, nav=None):
         self.nav = nav
@@ -456,3 +457,28 @@ def test_pending_stars_falls_back_to_the_last_beaten_level(monkeypatch):
     nav.start_last_beaten = lambda mode: nav.started.append(("beaten", 13)) or 13
     run_with(monkeypatch, nav, [V], RunRequest(Mode.NORMAL, None, last_beaten=True, pending_stars=True))
     assert ("beaten", 13) in nav.started
+
+
+def test_patrol_is_skipped_until_its_reward_is_due(monkeypatch):
+    clock = [1_000_000.0]
+    monkeypatch.setattr(main.time, "time", lambda: clock[0])
+    monkeypatch.setattr(main, "_patrol_next", lambda wait, now: now + wait)
+
+    class R(FakeRoutine):
+        patrol_wait = 3600
+    FakeRoutine.patrols, state = 0, {}
+    main._claim_patrol(R(), state)
+    clock[0] += 1800
+    main._claim_patrol(R(), state)  # 30 min later: still nothing to claim
+    assert FakeRoutine.patrols == 1
+    clock[0] += 1800
+    main._claim_patrol(R(), state)
+    assert FakeRoutine.patrols == 2
+
+
+def test_patrol_next_check_is_the_claim_time_or_midnight():
+    from datetime import datetime
+    evening = datetime(2026, 10, 12, 20, 0).timestamp()
+    assert main._patrol_next(3600, evening) == evening + 3600
+    assert main._patrol_next(6 * 3600, evening) == datetime(2026, 10, 13, 0, 0).timestamp()  # quick patrols reset
+    assert main._patrol_next(None, evening) == evening  # unreadable counter: check after the next level

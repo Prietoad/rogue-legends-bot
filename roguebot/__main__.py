@@ -5,7 +5,9 @@ import logging
 import re
 import sys
 import threading
+import time
 from dataclasses import replace
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
@@ -57,10 +59,23 @@ def _energy(nav: Navigator) -> int:
     raise NavigationError("Could not read the energy counter")
 
 
-def _claim_patrol(routine: Routine) -> None:
-    """After each level: patrol reward and free/energy quick patrols. A problem here never stops the run."""
+def _patrol_next(wait: float | None, now: float) -> float:
+    """When the patrol is worth opening again: its reward reaches PATROL_CLAIM_AFTER, or local midnight
+    (the daily quick patrols come back), whichever is first. Unknown wait: next time."""
+    if wait is None:
+        return now
+    midnight = (datetime.fromtimestamp(now) + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return min(now + wait, midnight.timestamp())
+
+
+def _claim_patrol(routine: Routine, state: dict) -> None:
+    """After each level: patrol reward and free/energy quick patrols. A problem here never stops the run.
+    Skipped while nothing can be there (it costs ~10 s per level otherwise)."""
+    if time.time() < state.get("patrol_next", 0):
+        return
     try:
         routine.patrol()
+        state["patrol_next"] = _patrol_next(routine.patrol_wait, time.time())
     except (NavigationError, PlayError) as e:
         log.error("Patrol failed: %s", e)
         routine.nav.go_to_lobby()
@@ -123,7 +138,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                     request = state["request"] = replace(request, level=played)
                 nav.go_to_lobby()
                 log.info("Level finished: %s (run %d)", results[-1].value, len(results))
-                _claim_patrol(Routine(device, ocr, nav))
+                _claim_patrol(Routine(device, ocr, nav), state)
                 if not request.repeat:
                     return Report(results)
             if not request.loop:

@@ -31,6 +31,7 @@ class Routine:
         self.device = device
         self.ocr = ocr
         self.nav = nav
+        self.patrol_wait: float | None = None  # set by patrol(): seconds until it is worth opening again
 
     def run_parts(self) -> list[tuple[str, str]]:
         """Run every part in order; returns (part, status) pairs."""
@@ -153,9 +154,12 @@ class Routine:
             self._fail("Patrol button not found in the lobby")
         self._tap(button)
         popup = self._wait_for(lambda img, texts: self._claim_or(texts, parse_patrol), "patrol popup")
+        # Seconds until the reward is worth claiming (None: unknown). Quick patrols are used up below.
+        self.patrol_wait = None if popup.elapsed is None else max(0, config.PATROL_CLAIM_AFTER - popup.elapsed)
         if popup.elapsed is not None and popup.elapsed >= config.PATROL_CLAIM_AFTER:
             log.info("Patrol: claiming the reward (%d:%02d)", popup.elapsed // 3600, popup.elapsed % 3600 // 60)
             self._tap(popup.claim)
+            self.patrol_wait = config.PATROL_CLAIM_AFTER  # the counter starts again from 0
             time.sleep(config.UI_SETTLE)
             popup = self._wait_for(lambda img, texts: self._claim_or(texts, parse_patrol), "patrol popup")
         else:

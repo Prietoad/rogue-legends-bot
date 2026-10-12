@@ -22,6 +22,7 @@ Bot that plays the Android game **Rogue Legend** (PocketHaven, `com.pockethaven.
 10. 🚧 **Full routine** (see the section below): modes, guild raid, then repeat levels.
     - **Loop** (UI checkbox, `RunRequest.loop`, implies full): modes → levels until out of energy → idle in the lobby checking energy every `ENERGY_WAIT_POLL` s (`Device.wait`, interrupted by Stop) → whole routine again. A cycle that raises is logged and the next cycle runs; only Stop ends it.
 11. ✅ **Build (skill choice)**: see "Build" below. 12. Later: event choices, black market (not seen yet).
+13. ✅ **Auto-play (2026-10-12)**: **holding** the red dice (`AUTO_PLAY_HOLD` 2 s, `Device.hold` = a swipe that doesn't move) turns on the game's auto-play: the dice turns lime green with "Toca para Detener" (`dice_auto` → `LevelScreen.AUTO_PLAY`, never tapped, since a tap stops it). Seen live: it keeps rolling through skill picks, events, shops, duels and revives until the level ends. `Player` always tries the hold on a red dice. If the red dice comes back without auto-play ever showing, it's unavailable and the bot taps for the rest of the level. If auto-play stops mid-level, it holds again.
 
 ## Environment assumptions
 - MuMu Player 12, ADB serial `127.0.0.1:16384`, MuMu's own adb at `C:\Program Files\Netease\MuMuPlayer\nx_main\adb.exe`.
@@ -55,7 +56,8 @@ Bot that plays the Android game **Rogue Legend** (PocketHaven, `com.pockethaven.
   - Event outcomes: "Toca para continuar".
   - Card flip "Excavar en Busca de Tesoro": 4x3 face-down "?" cards (detected by color); flip them in order.
   - Dice duel "¡Batalla de Dados!": `Yo N / 21`. TIRAR while N < 15, else RESISTIR.
-  - Speed button bottom-left: "» x2" / "» x1" shows the **current** speed (assumed from observation; tap toggles it).
+  - Speed button bottom-left: "» x2" / "» x1" shows the **current** speed (tap toggles x2 ↔ x1, verified 2026-10-12).
+  - The yellow "x4" badge above it opens the **paid** "Tarjeta VIP" offer ("Desbloquea Velocidad de Juego x4"): never tap it. x4 speed is not available.
   - End: "DERROTA" / "¡VICTORIA!" + "Continuar" → "Cargando..." → lobby (and popups).
 
 ## Tech stack
@@ -93,6 +95,7 @@ tests/           pytest on tests/fixtures/*.png (real 1440x2560 screenshots)
 ### Testing rules (mandatory)
 - **Every change must add new tests** that cover it (new screen → fixture screenshot + recognition test; new logic → unit test).
 - **Every change must pass the full suite**: `python -m pytest -q` runs all previous and new tests, and all of them must pass before the change is done. Don't delete or weaken existing tests to make a change pass.
+- **Every code change must rebuild the app** (requested 2026-10-12): after the tests pass, run `.\build.ps1`. It replaces `dist\RogueLegendBot.exe`, which the user runs to test. Then smoke-test it: launch it from an empty folder and check that the window opens. The one-file exe runs the UI in a child process, so close both processes afterwards.
 
 ### Patterns and conventions
 - **Layers**: `device` (I/O) → `vision` (perception) → `screens` (interpretation, pure and testable) → `navigation` / `play` (behavior) → `ui`. Keep game knowledge out of `device`, and keep input out of `screens`.
@@ -115,6 +118,7 @@ python -m roguebot              # UI window: pick mode/level, Start -> navigate,
 python -m roguebot --dry-run -v # navigate (and set the elite cost) but don't start; no energy spent
 python -m pytest -q             # recognition tests (no device needed)
 python -m tools.capture NAME --ocr   # save captures/NAME.png and print OCR boxes
+.\build.ps1                     # rebuild dist\RogueLegendBot.exe (pip install pyinstaller); after every code change
 ```
 Tip when exploring: `--dry-run` doesn't spend energy. A real start costs 5 energy (normal) or 5–15 (elite).
 
@@ -128,7 +132,7 @@ Recognition lives in `mode_screens.py` (pure, like `screens.py`); tests in `test
    - **Arena**: while tickets ≥ 1: Challenge → 5 opponents → fight the strongest whose Power ≤ ours. All stronger → "Free Refresh" only if free, then the weakest.
    - **Tower**: Challenge until the first defeat or no tickets.
    - **Crystal Mines / Pet Kingdom**: challenge the shown (highest) difficulty; after a defeat, "Sweep previous stage" until no tickets. At 0 tickets, watch the free ad ("Dungeon Tickets x1 (k/2)") while offered.
-1b. **Patrol** (`patrol` part after the modes, and after **every** normal/elite level via `__main__._claim_patrol`; requested 2026-10-11): lobby "Patrulla" → popup ("Tiempo de patrulla", "Patrulla Rápida" + "Reclamar"; a "Tarjeta Mensual VIP" offer below is never tapped) → Reclamar **only when the "Tiempo de patrulla" counter is ≥ 7:50:00** (`PATROL_CLAIM_AFTER`; it stops at 8 h; unreadable → no claim) → "Toca … para reclamar" → Patrulla Rápida → popup "Reclama de inmediato las recompensas de 2 h" with a free video ("Gratis"/"Free") and an energy option ("⚡x10", green button: identified by its cyan lightning icon, `QUICK_PATROL_CYAN_MIN`), each with "Cantidad restante: N"/"Remaining: N". Uses the video while N>0, then energy while N>0 **and** energy ≥ cost; never gems. A patrol failure after a level is logged and never stops the run.
+1b. **Patrol** (`patrol` part after the modes, and after **every** normal/elite level via `__main__._claim_patrol`; requested 2026-10-11): lobby "Patrulla" → popup ("Tiempo de patrulla", "Patrulla Rápida" + "Reclamar"; a "Tarjeta Mensual VIP" offer below is never tapped) → Reclamar **only when the "Tiempo de patrulla" counter is ≥ 7:50:00** (`PATROL_CLAIM_AFTER`; it stops at 8 h; unreadable → no claim) → "Toca … para reclamar" → Patrulla Rápida → popup "Reclama de inmediato las recompensas de 2 h" with a free video ("Gratis"/"Free") and an energy option ("⚡x10", green button: identified by its cyan lightning icon, `QUICK_PATROL_CYAN_MIN`), each with "Cantidad restante: N"/"Remaining: N". Uses the video while N>0, then energy while N>0 **and** energy ≥ cost; never gems. A patrol failure after a level is logged and never stops the run. **After-level skip (2026-10-12):** `Routine.patrol_wait` (time until the counter reaches 7:50) → `__main__._patrol_next` → the after-level check is skipped until then or local midnight (the daily quick patrols reset), whichever is first. It used to cost ~6 s per level for nothing.
 - Lobby parts (VIP, patrol, raid, donate) read the lobby through `Routine._lobby_texts`: the game sometimes opens a screen by itself right after the lobby shows ("Fondo del Álbum", events), so it re-reads and goes back.
 2. **Guild raid** (only if the lobby shows the "Gremio"/"Guild" book bottom-left): Guild map → "Raid Boss" → Challenge → 5 skill steps → fight; until "Daily Attempts Left" is 0.
 2b. **Guild donation** (after the raid, requested 2026-10-11; skipped outside a guild): Guild map → castle "Sala de Gremio"/"GuildHall" → bottom "Donar" → popup "Donación de Gremio" with "Intentos restantes hoy: N" and a green "Gratis" button. Only the exact "Gratis"/"Free" is tapped (`free_donation`): after the one free donation per day the button shows a **gem price ("25")** and the bot leaves via ✕. Reward: "Toca en cualquier lugar para reclamar". English "Donate"/"Guild Donation" guessed.
