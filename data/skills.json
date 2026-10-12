@@ -1,0 +1,2162 @@
+{
+ "absolutezero": {
+  "name": "AbsoluteZero",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "When HP <30% for the first time, Freeze yourself for 2 turns, making you invincible, unable to act, and recover HP every turn.",
+  "auto": true
+ },
+ "adeherida": {
+  "name": "ade Herida",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "ahora puede acumularse hasta veces.",
+  "auto": true
+ },
+ "afectoporlaafliccion": {
+  "name": "Afecto porla Aflicción",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Inflige 3% más daño por cada Efecto de Estado único en el enemigo",
+  "auto": true
+ },
+ "afflictionaffection": {
+  "name": "Affliction Affection",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Deal 3% more damage for each unique Status Effect on the enemy",
+  "auto": true
+ },
+ "almaoscura": {
+  "name": "Almaoscura",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando HP <50%, ATQ ↑↑↑+↑",
+  "auto": true
+ },
+ "armadefuego": {
+  "name": "Arma de Fuego",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Tus Ataques de Arma infligen daño de fuego adicional y tienen probabilidad de lanzar Bola de Fuego.",
+  "auto": true
+ },
+ "armadehielo": {
+  "name": "Arma de Hielo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Tus Ataques de Arma infligen daño de hielo adicional y tienen probabilidad de lanzar Carámbano.",
+  "auto": true
+ },
+ "armaderayo": {
+  "name": "Arma de Rayo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Tus Ataques del Arma infligen daño de rayo adicional y tienen probabilidad de lanzar Descarga.",
+  "auto": true
+ },
+ "arremeter": {
+  "name": "Arremeter",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando la HP <40% por primera vez, usa Barrido 2 veces.",
+  "auto": true
+ },
+ "aumentodetasadecombo": {
+  "name": "Aumento de Tasa de Combo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de combo",
+  "auto": true
+ },
+ "aumentodetasadecontraataque": {
+  "name": "Aumento de Tasa de Contraataque",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de Contraataque",
+  "auto": true
+ },
+ "barrido": {
+  "name": "Barrido",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Los Ataques de Arma tienen probabilidad de activar Barrido, infligiendo daño a todos los enemigos.",
+  "auto": true
+ },
+ "barridodefinitivo": {
+  "name": "Barrido-Definitivo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Despuês de usar tu Definitiva, activa Barrido 2 veces.",
+  "auto": true
+ },
+ "bateriacargada": {
+  "name": "Bateria Cargada",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Tus Descargas no infligen daño pero otorgan 1 acumulación de Bateria Cargada. Después de tu Definitiva, lanzas Megadescarga, infligiendo más daño por cada acumulación.",
+  "auto": true
+ },
+ "beefcake": {
+  "name": "Beefcake",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Max HP +↑",
+  "auto": true
+ },
+ "betterwithfriends": {
+  "name": "Better With-Friends",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Pet DMG ",
+  "auto": true
+ },
+ "boladefuegodefinitiva": {
+  "name": "Bola de Fuego Definitiva",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Lanza 2 Bolas de Fuego después de usar tu Definitiva.",
+  "auto": true
+ },
+ "boladefuegomortal": {
+  "name": "Bola de Fuego Mortal",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cuando tus Ataques de Arma golpeen criticamente, lanza una Bola de Fuego.",
+  "auto": true
+ },
+ "brote": {
+  "name": "Brote",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "En la ronda 5, aplica Veneno 10 veces a todos los enemigos.",
+  "auto": true
+ },
+ "cablevivo": {
+  "name": "Cable Vivo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cuando un enemigo te ataca, lanza Descarga.",
+  "auto": true
+ },
+ "canondecristal": {
+  "name": "Cañón de Cristal",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "ATQ , HP máximo",
+  "auto": true
+ },
+ "carambanodecontraataque": {
+  "name": "Carámbano de Contraataque",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada vez que haces un Contraataque, lanza Carámbano.",
+  "auto": true
+ },
+ "carambanodefinitivo": {
+  "name": "Carámbano Definitivo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Lanza 2 Carámbanos al usar tu Definitiva.",
+  "auto": true
+ },
+ "cereabcelute": {
+  "name": "Cere Abcelute",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Cuando por primera vez, te durante 2 turnos, volviéndote sin poder actuar, y recuperas cada turno.",
+  "auto": true
+ },
+ "ceroabsoluto": {
+  "name": "Cero Absoluto",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cuando HP <30% por primera vez, te Congelas durante 2 turnos, volviéndote invencible, sin poder actuar, y recuperas HP cada turno.",
+  "auto": true
+ },
+ "chargedbattery": {
+  "name": "Charged Battery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Your Bolts deal no damage but grant 1 stack of Charged Battery. After your Ultimate, cast Mega Bolt, dealing more damage per stack.",
+  "auto": true
+ },
+ "ciclondeacero": {
+  "name": "Ciclôn de Acero",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Después de usar Barrido 3 veces, usa Ciclón de Acero, infligiendo daño a todos los enemigos.",
+  "auto": true
+ },
+ "cleave": {
+  "name": "Cleave",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Weapon Attacks have a chance to trigger Cleave, dealing damage to all enemies.",
+  "auto": true
+ },
+ "combomastery": {
+  "name": "Combo Mastery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Combo Rate , gain ATK  on every Combo Attack, lasts until end of battle.",
+  "auto": true
+ },
+ "comborateup": {
+  "name": "Combo Rate Up",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Combo Rate",
+  "auto": true
+ },
+ "companerodesombra": {
+  "name": "Compañero-de-Sombra",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Duplica la cantidad de Shurikens lanzados.",
+  "auto": true
+ },
+ "contagio": {
+  "name": "Contagio",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando un enemigo con Veneno muere, todas las acumulaciones se transfieren a todos los demás enemigos.",
+  "auto": true
+ },
+ "corrienteenergizante": {
+  "name": "Corriente-Energizante",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada Descarga te otorga 2 de Carga Definitiva",
+  "auto": true
+ },
+ "countericicle": {
+  "name": "Counter-Icicle",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Whenever you Counter- Attack, cast Icicle.",
+  "auto": true
+ },
+ "countermastery": {
+  "name": "Counter Mastery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Counter Rate , gain DEF on every Counter Attack, lasts until end of battle.",
+  "auto": true
+ },
+ "counterrateup": {
+  "name": "Counter Rate Up",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Counter Rate",
+  "auto": true
+ },
+ "cripplingcloud": {
+  "name": "Crippling Cloud",
+  "lang": null,
+  "rarity": "mythic",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "When taking damage that leaves you below <35% HP for the first time, apply Poison 5 times on all enemies and Stun them for 1 turn.",
+  "auto": true
+ },
+ "criticalhitdamageup": {
+  "name": "Critical Hit Damage Up",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Critical Hit Damage",
+  "auto": true
+ },
+ "criticalhitrateup": {
+  "name": "Critical Hit Rate Up",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Critical Hit Rate",
+  "auto": true
+ },
+ "criticalmastery": {
+  "name": "Critical Mastery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Critical Hit Rate , Critical Hit DMG , Non-Crit DMG",
+  "auto": true
+ },
+ "danodegolpecriticoaumentado": {
+  "name": "Daño de Golpe Critico Aumentado",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de golpe crítico",
+  "auto": true
+ },
+ "darkside": {
+  "name": "Darkside",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "When HP >50%, ATK  but drain 10% of your HP every turn.",
+  "auto": true
+ },
+ "darksoul": {
+  "name": "Darksoul",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "When",
+  "auto": true
+ },
+ "deadlyfireball": {
+  "name": "Deadly Fireball",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Whenever your Weapon Attacks critically hit, cast a Fireball.",
+  "auto": true
+ },
+ "deadlyflames": {
+  "name": "Deadly Flames",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Skills that have a chance to trigger Fire Spells are guaranteed to trigger them if you critically strike.",
+  "auto": true
+ },
+ "deadlystars": {
+  "name": "Deadly Stars",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Shuriken DMG , but Shurikens no longer trigger other effects.",
+  "auto": true
+ },
+ "decontraataque": {
+  "name": "de Contraataque",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "le , obtén con cada traataque, dura hasta el final de la batalla.",
+  "auto": true
+ },
+ "dedercreciente": {
+  "name": "Deder Creciente",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada ronda,",
+  "auto": true
+ },
+ "defensacreciente": {
+  "name": "Defensa Creciente",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Cada ronda, DEF ",
+  "auto": true
+ },
+ "descargadefinitiva": {
+  "name": "Descarga Definitiva",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Lanza 2 Descargas después de usar tu Definitiva.",
+  "auto": true
+ },
+ "dicpel": {
+  "name": "Dicpel",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Enemy heals and shields are 50° less effective",
+  "auto": true
+ },
+ "diosdeltrueno": {
+  "name": "Dios del Trueno",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada turno, en vez de atacar con tu arma, obtienes un Escudo pequeño, obtienes Carga Definitiva y lanzas X Descargas, donde X es el número de la ronda actual.",
+  "auto": true
+ },
+ "disipar": {
+  "name": "Disipar",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Las curaciones y los escudos del enemigo son 50% menos efectivos",
+  "auto": true
+ },
+ "dispel": {
+  "name": "Dispel",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Enemy heals and shields are 50% less effective",
+  "auto": true
+ },
+ "dodgerateup": {
+  "name": "Dodge Rate Up",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Dodge Rate",
+  "auto": true
+ },
+ "dominiode": {
+  "name": "Dominio de",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de Combo ↑↑↑, gana con cada Ata el final de la batalla.",
+  "auto": true
+ },
+ "dominiodecombo": {
+  "name": "Dominio de Combo",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de Combo , obtienes ATQ  con cada Ataque de Combo, dura hasta el final de la batalla.",
+  "auto": true
+ },
+ "dominiodecontraataque": {
+  "name": "Dominio de Contraataque",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de Contraataque , obtén DEF  con cada Contraataque, dura hasta el final de la batalla.",
+  "auto": true
+ },
+ "dualcast": {
+  "name": "Dualcast",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "After using your Ultimate, follow up with another Ultimate. Ultimate Charge required to use Ultimate increased by",
+  "auto": true
+ },
+ "elementalstars": {
+  "name": "Elemental Stars",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Your Shurikens also apply any Elemental Weapon effects you have learned.",
+  "auto": true
+ },
+ "emociondelabatalla": {
+  "name": "Emoción de-la-Batalla",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Cuando el HP <50%, Barrido también restaurará un poco de HP.",
+  "auto": true
+ },
+ "energetic": {
+  "name": "Energetic",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Start combat with +50 Ultimate Charge",
+  "auto": true
+ },
+ "energizingcurrent": {
+  "name": "Energizing Current",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Every Bolt grants you 2 Ultimate Charge",
+  "auto": true
+ },
+ "energizingshuriken": {
+  "name": "Energizing Shuriken",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Every 2 rounds, throw 1 Shuriken. All Shurikens have a chance to grant a bit of Ultimate Charge.",
+  "auto": true
+ },
+ "enervatingcold": {
+  "name": "Enervating Cold",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Every 7th Icicle reduces enemy Ultimate Charge by -50.",
+  "auto": true
+ },
+ "enrageddodge": {
+  "name": "Enraged Dodge",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "When HP <40%, Dodge Rate ",
+  "auto": true
+ },
+ "enragedrecovery": {
+  "name": "Enraged-Recovery",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "When HP <40% for the first time, recover 7% HP every round for 3 rounds.",
+  "auto": true
+ },
+ "enragedshield": {
+  "name": "Enraged Shield",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "When HP <40% for the first time, gain a Shield equal to 25% HP.",
+  "auto": true
+ },
+ "enragedstrength": {
+  "name": "Enraged Strength",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "When HP <40%, ATK  and DEF ",
+  "auto": true
+ },
+ "envenenar": {
+  "name": "Envenenar",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando fueras a aplicar Herida, aplica Veneno en su lugar.",
+  "auto": true
+ },
+ "envenom": {
+  "name": "Envenom",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Whenever you would have applied Wound, apply Poison instead.",
+  "auto": true
+ },
+ "escudodegolpe": {
+  "name": "Escudo de Golpe",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Los Ataques de Arma tienen probabilidad de otorgar un Escudo",
+  "auto": true
+ },
+ "escudodeladefinitiva": {
+  "name": "Escudo de-la definitiva",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Despuês de usar tu Definitiva, obtienes un Escudo",
+  "auto": true
+ },
+ "escudoenfurecido": {
+  "name": "Escudo enfurecido",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "La primera vez que tu HP <40%, obtienes un Escudo igual al 25% de HP.",
+  "auto": true
+ },
+ "escudosarriba": {
+  "name": "Escudos-arriba!",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Reducciôn de Daño , al ser atacado hay 50% de probabilidad de ganar +20% de Reducción de Daño contra el ataque.",
+  "auto": true
+ },
+ "estrellaselementales": {
+  "name": "Estrellas-Elementales",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tus Shurikens también aplican los efectos de Arma Elemental que hayas aprendido.",
+  "auto": true
+ },
+ "estrellasmortales": {
+  "name": "Estrellas-Mortales",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de Shuriken , pero los Shurikens ya no activan otros efectos.",
+  "auto": true
+ },
+ "evasionenfurecida": {
+  "name": "Evasión-Enfurecida",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Cuando el HP <40%, Tasa de evasión ",
+  "auto": true
+ },
+ "executioner": {
+  "name": "Executioner",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "When the enemy has less than 50% HP, and your HP is higher than the enemy's HP, immediately execute them.",
+  "auto": true
+ },
+ "exoblindaje": {
+  "name": "Exoblindaje",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Al inicio del combate, gana un Escudo igual al 70% de tu HP Máx., pero HP Máx. ↓↓↓",
+  "auto": true
+ },
+ "exoplating": {
+  "name": "Exoplating",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "At the start of combat, gain a Shield equal to 70% of your Max HP, but Max HP ",
+  "auto": true
+ },
+ "exp": {
+  "name": "EXP",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Recovery Chance to restore 5% HP every turn.",
+  "auto": true
+ },
+ "experimentoespecial": {
+  "name": "Experimento Especial",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando tus Mascotas atacan, aplican 1 acumulaciôn de Veneno.",
+  "auto": true
+ },
+ "fester": {
+  "name": "Fester",
+  "lang": null,
+  "rarity": "legendary",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "When you use your Ultimate, trigger Fester, dealing bonus damage that scales with the amount of Poison stacks the enemy has.",
+  "auto": true
+ },
+ "firemastery": {
+  "name": "Fire Mastery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Fire DMG",
+  "auto": true
+ },
+ "firestarter": {
+  "name": "Firestarter",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "After casting Fireball, you have a chance to cast Fire Wave 2 times.",
+  "auto": true
+ },
+ "firewave": {
+  "name": "Fire Wave",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Every turn cast Fire Wave.",
+  "auto": true
+ },
+ "fireweapon": {
+  "name": "Fire Weapon",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Your Weapon Attacks deal additionai fire damage and have a chance to cast Fireball.",
+  "auto": true
+ },
+ "flamestrike": {
+  "name": "Flame Strike",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "After casting Fireball, you have a chance to cast Flame Strike",
+  "auto": true
+ },
+ "flashstorm": {
+  "name": "Flash Storm",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "At the start of battle cast 3 Bolts.",
+  "auto": true
+ },
+ "fragilecold": {
+  "name": "Fragile Cold",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Chill increases damage you deal to the target by 5% per stack.",
+  "auto": true
+ },
+ "freezingcold": {
+  "name": "Freezing Cold",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "When an enemy reaches max Chill stacks, they become Frozen, and all Chill stacks are consumed.",
+  "auto": true
+ },
+ "friodebilitante": {
+  "name": "Frio Debilitante",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada 7.º Carámbano reduce la Carga Definitiva del enemigo en -50.",
+  "auto": true
+ },
+ "friofragil": {
+  "name": "Frio Frágil",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Escalofrío aumenta el daño que infliges al objetivo en 5% por acumulación.",
+  "auto": true
+ },
+ "frostnova": {
+  "name": "Frost Nova",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "After every 10th Icicle, cast Frost Nova on all enemies and Freeze them.",
+  "auto": true
+ },
+ "froststrike": {
+  "name": "Frost Strike",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Every 4th Icicle, cast Frost Strike",
+  "auto": true
+ },
+ "fuerzaenfurecida": {
+  "name": "Fuerza-Enfurecida",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando el HP <40%, ATQ  y DEF",
+  "auto": true
+ },
+ "fumashuriken": {
+  "name": "Fuma Shuriken",
+  "lang": null,
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Every 4 Shurikens thrown, throw a massive Fuma Shuriken.",
+  "auto": true
+ },
+ "furia": {
+  "name": "Furia",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando el HP <50% Barrido se usa 2 veces en vez de 1.",
+  "auto": true
+ },
+ "fusion": {
+  "name": "Fusión",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Después de aplicar Quemadura 10 veces, lanza Fusión.",
+  "auto": true
+ },
+ "glasscannon": {
+  "name": "Glass Cannon",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "ATK ↑↑↑↑, Max HP ↓↓↓",
+  "auto": true
+ },
+ "golpedeescarcha": {
+  "name": "Golpe de-Escarcha",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada 4.° Carámbano, lanza Golpe de Escarcha",
+  "auto": true
+ },
+ "golpedeherida": {
+  "name": "Golpe de Herida",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Los Ataques de Arma aplicarán acumulación de Herida.",
+  "auto": true
+ },
+ "golpedella": {
+  "name": "Golpe de lla",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Después de lanzar tienes probabilidad de lanzar de Llama",
+  "auto": true
+ },
+ "golpeinicial": {
+  "name": "Golpe-Inicial",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "El ATQ se duplica durante la primera ronda.",
+  "auto": true
+ },
+ "golpevenenoso": {
+  "name": "Golpe Venenoso",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Los Ataques del arma aplicarán 1 acumulación de Veneno.",
+  "auto": true
+ },
+ "guerrero": {
+  "name": "Guerrero",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño fisico , Daño mágico ",
+  "auto": true
+ },
+ "healshuriken": {
+  "name": "Heal Shuriken",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Every 2 rounds, throw 1 Shuriken. All Shurikens have a chance to heal you a bit.",
+  "auto": true
+ },
+ "heroism": {
+  "name": "Heroism",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "ATK , DEF , Max HP",
+  "auto": true
+ },
+ "highvoltage": {
+  "name": "High Voltage",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Each Bolt increases your Lightning DMG by +8% for 2 turns.",
+  "auto": true
+ },
+ "icespikes": {
+  "name": "IceSpikes",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "When you are attacked while having a Shield up, counter-attack with Icicle.",
+  "auto": true
+ },
+ "icewall": {
+  "name": "Ice-Wall",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "When you take damage for the first time, take 50% DMG instead and counter with Icicle.",
+  "auto": true
+ },
+ "iceweapon": {
+  "name": "Ice Weapon",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Your Weapon Attacks deal additional ice damage and have a chance to cast Icicle.",
+  "auto": true
+ },
+ "imperecedero": {
+  "name": "Imperecedero",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Cuando el HP <50%, los efectos de Curación de HP son +100% más efectivos.",
+  "auto": true
+ },
+ "inferno": {
+  "name": "Inferno",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Chance to apply Burn is doubled. Burn now stacks infinitely.",
+  "auto": true
+ },
+ "jamuerte": {
+  "name": "Ja.Muerte",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Definitiva, lanza Después de usar tu a enem igos aleatorios.",
+  "auto": true
+ },
+ "ken": {
+  "name": "ken+",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "",
+  "auto": true
+ },
+ "ladooscuro": {
+  "name": "Lado Oscuro",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando el HP >50%, ATQ  pero drena el 10% de tu HP cada turno.",
+  "auto": true
+ },
+ "lamiendoheridas": {
+  "name": "Lamiendo-Heridas",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tras derrotar a un enemigo, restaura algo de HP. La efectividad aumenta por cada acumulación de Herida que tuviera el enemigo.",
+  "auto": true
+ },
+ "lanzamientodeshuriken": {
+  "name": "Lanzamiento de Shuriken",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada 2 rondas, lanza Shuriken.",
+  "auto": true
+ },
+ "lanzamientodoble": {
+  "name": "Lanzamiento Doble",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Después de usar tu Definitiva, encadena otra Definitiva. La Carga de Definitiva necesaria para usar la Definitiva aumenta",
+  "auto": true
+ },
+ "lanzamientorapido": {
+  "name": "Lanzamiento-Rápido",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Todos los tiempos de reutilización de Shuriken se reducen en 1 turno.",
+  "auto": true
+ },
+ "lashout": {
+  "name": "Lash Out",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "When HP <40% for the first time, use Cleave 2 times.",
+  "auto": true
+ },
+ "lentoperoseguro": {
+  "name": "Lento pero-Seguro",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de Efectos de Estado",
+  "auto": true
+ },
+ "lifesteal": {
+  "name": "Lifesteal",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Weapon Attacks have a chance to Lifesteal",
+  "auto": true
+ },
+ "lightningmastery": {
+  "name": "Lightning Mastery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Lightning DMG ",
+  "auto": true
+ },
+ "lightningweapon": {
+  "name": "Lightning Weapon",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Your Weapon Attacks deal additionai lightning damage and have a chance to cast Bolt.",
+  "auto": true
+ },
+ "livewire": {
+  "name": "Live Wire",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "When attacked by an enemy, cast Bolt.",
+  "auto": true
+ },
+ "llamasmortales": {
+  "name": "Llamas Mortales",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Las Habilidades que tienen probabilidad de activar Hechizos de Fuego los activan siempre si haces un golpe critico",
+  "auto": true
+ },
+ "lotodelamuerte": {
+  "name": "Loto de la-Muerte",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Después de usar tu Definitiva, lanza 5 Shurikens a enemigos aleatorios.",
+  "auto": true
+ },
+ "macizo": {
+  "name": "Macizo",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "HP Máx. ↑↑↑↑, ATQ ↓↓↓",
+  "auto": true
+ },
+ "maestriaconshuriken": {
+  "name": "Maestria con-Shuriken",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de shuriken ",
+  "auto": true
+ },
+ "maestriacritica": {
+  "name": "Maestria Critica",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de Golpe Critico , Daño de Golpe Critico , Daño sin Critico",
+  "auto": true
+ },
+ "maestriadebarrido": {
+  "name": "Maestria de Barrido",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de Barrido , pero ya no aplica Herida.",
+  "auto": true
+ },
+ "maestriadefinitiva": {
+  "name": "Maestria Definitiva",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Los Ataques básicos otorgan Carga de Definitiva adicional.",
+  "auto": true
+ },
+ "maestriadefuego": {
+  "name": "Maestria de Fuego",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Daño de Fuego ",
+  "auto": true
+ },
+ "maestriadeherida": {
+  "name": "Maestria-de-Herida",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Herida ahora puede acumularse hasta 20 veces.",
+  "auto": true
+ },
+ "maestriadehielo": {
+  "name": "Maestriade-Hielo",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Daño de hielo ",
+  "auto": true
+ },
+ "maestriadeveneno": {
+  "name": "Maestria de Veneno",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de veneno",
+  "auto": true
+ },
+ "maestrod": {
+  "name": "Maestro d",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa d combr",
+  "auto": true
+ },
+ "maestrodelaguerra": {
+  "name": "Maestro dela Guerra",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de golpe critico , Tasa de combo , Tasa de contraataque",
+  "auto": true
+ },
+ "mago": {
+  "name": "Mago",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "magic",
+  "role": "damage",
+  "description": "Daño Mágico , Daño Físico ",
+  "auto": true
+ },
+ "masterofwar": {
+  "name": "Master of War",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Critical Hit Rate , Combo Rate Counter Rate",
+  "auto": true
+ },
+ "mejorconamigos": {
+  "name": "Mejor Con Amigos",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de mascota",
+  "auto": true
+ },
+ "meltdown": {
+  "name": "Meltdown",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "After applying Burn 10 times, cast Meltdown.",
+  "auto": true
+ },
+ "meteor": {
+  "name": "Meteor",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "After casting Flame Strike, you have a chance to cast Meteor",
+  "auto": true
+ },
+ "murodehielo": {
+  "name": "Muro de Hielo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cuando recibes daño por primera vez, recibes 50% de Daño en su lugar y contraatacas con Carámbano.",
+  "auto": true
+ },
+ "nubedaralizanto": {
+  "name": "Nube Daralizanto",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Al recibir daño que te deje por debajo del <35% de HP por primera vez, aplica Veneno 5 veces a todos los enemigos y los Ati durante turno.",
+  "auto": true
+ },
+ "nubedeveneno": {
+  "name": "Nube de Veneno",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Al final de tu turno, aplica acumulación de Veneno a todos los enemigos.",
+  "auto": true
+ },
+ "oladefuego": {
+  "name": "Ola de Fuego",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada turno lanza Ola de Fuego.",
+  "auto": true
+ },
+ "openi": {
+  "name": "Openi",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "ATK is doubled for the",
+  "auto": true
+ },
+ "openingstrike": {
+  "name": "Opening Strike",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "ATK is doubled for the 1st round.",
+  "auto": true
+ },
+ "opportunist": {
+  "name": "Opportunist",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Deal increased DMG to enemies afflicted with Wound.",
+  "auto": true
+ },
+ "poisoncloud": {
+  "name": "Poison Cloud",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "At the end of your turn, apply 1 stack of Poison to all enemies.",
+  "auto": true
+ },
+ "poisonmastery": {
+  "name": "Poison Mastery",
+  "lang": null,
+  "rarity": "legendary",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Poison DMG ",
+  "auto": true
+ },
+ "poisonshuriken": {
+  "name": "PoisonShuriken",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Every 2 rounds, throw 1 Shuriken. All Shurikens have a chance to apply Poison.",
+  "auto": true
+ },
+ "poisonstrike": {
+  "name": "Poison Strike",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Weapon Attacks will apply 1 stack of Poison.",
+  "auto": true
+ },
+ "pyromania": {
+  "name": "Pyromania",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Deal more damage to burning targets.",
+  "auto": true
+ },
+ "ramp": {
+  "name": "Ramp",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Each round,",
+  "auto": true
+ },
+ "rampingd": {
+  "name": "Ramping D",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Each round, D",
+  "auto": true
+ },
+ "rampingdefense": {
+  "name": "Ramping Defense",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Each round, DEF",
+  "auto": true
+ },
+ "rampingpower": {
+  "name": "Ramping Power",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Each round, ATK ",
+  "auto": true
+ },
+ "recovery": {
+  "name": "Recovery",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Chance to restore 5% HP every turn.",
+  "auto": true
+ },
+ "recuperacion": {
+  "name": "Recuperación",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Probabilidad de restaurar 5% del HP cada turno.",
+  "auto": true
+ },
+ "recuperacionenfurecida": {
+  "name": "Recuperación-Enfurecida",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Cuando el HP <40% por primera vez, recupera 7% de HP cada ronda durante 3 rondas.",
+  "auto": true
+ },
+ "relampagoderondas": {
+  "name": "Relámpago de Rondas",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada turno lanza Descarga.",
+  "auto": true
+ },
+ "repeatedbolt": {
+  "name": "Repeated Bolt",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Bolts have a chance to trigger another Bolt.",
+  "auto": true
+ },
+ "resistenciaaladefinitiva": {
+  "name": "Resistencia a la-Definitiva",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Recibes 40% menos daño de los Ataques Definitivos enemigos",
+  "auto": true
+ },
+ "resurrection": {
+  "name": "Resurrection",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Revive after your first death. Effective only once.",
+  "auto": true
+ },
+ "robodevida": {
+  "name": "Robo de Vida",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Los Ataques de Arma tienen probabilidad de Robo de vida",
+  "auto": true
+ },
+ "roundbolt": {
+  "name": "Round-Bolt",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Every turn cast Bolt.",
+  "auto": true
+ },
+ "seddesangre": {
+  "name": "Sed de Sangre",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Herida inflige más daño a los enemigos por debajo del 50% de su HP máx..",
+  "auto": true
+ },
+ "shieldsup": {
+  "name": "Shields-Up!",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "DMG Reduction , when attacked there is a 50% chance to gain +20% DMG Reduction against the attack.",
+  "auto": true
+ },
+ "shop": {
+  "name": "SHOP",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Energetic Start combat with +50 Ultimate Charge",
+  "auto": true
+ },
+ "shurikencurativo": {
+  "name": "Shuriken-Curativo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada 2 rondas, lanza 1 Shuriken. Todos los Shurikens tienen probabilidad de curarte un poco.",
+  "auto": true
+ },
+ "shurikendeherida": {
+  "name": "Shuriken-de-Herida",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada 2 rondas, lanza 1 Shuriken. Todos los Shurikens tienen probabilidad de aplicar Herida.",
+  "auto": true
+ },
+ "shurikendeveneno": {
+  "name": "Shuriken de veneno",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada 2 rondas, lanza 1 Shuriken. Todos los Shurikens tienen probabilidad de aplicar Veneno.",
+  "auto": true
+ },
+ "shurikenenergizante": {
+  "name": "Shuriken Energizante",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada 2 rondas, lanza 1 Shuriken. Todos los Shurikens tienen probabilidad de otorgar un poco de Carga Definitiva.",
+  "auto": true
+ },
+ "shurikenfuma": {
+  "name": "Shuriken-Fuma",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada 4 Shurikens lanzados, lanza un Shuriken Fuma enorme.",
+  "auto": true
+ },
+ "shurikenthrow": {
+  "name": "Shuriken Throw",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Every 2 rounds, throw 1 Shuriken.",
+  "auto": true
+ },
+ "slowandsteady": {
+  "name": "Slow And Steady",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Status Effects DMG",
+  "auto": true
+ },
+ "sneakypoison": {
+  "name": "Sneaky Poison",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "When you dodge, apply Poison to a random enemy 2 times.",
+  "auto": true
+ },
+ "specialexperiment": {
+  "name": "Special-Experiment",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "When your Pets attack, they will apply 1 stack of Poison.",
+  "auto": true
+ },
+ "steelcyclone": {
+  "name": "SteelCyclone",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "After using Cleave 3 times, use Steel Cyclone, dealing damage to all enemies.",
+  "auto": true
+ },
+ "strikeshield": {
+  "name": "Strike-Shield",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Weapon Attacks have a chance to grant a Shield",
+  "auto": true
+ },
+ "sunerdectelle": {
+  "name": "Súner Dectelle",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "urde a Al inicio del combate, todos los enemigos durante turno.",
+  "auto": true
+ },
+ "sunerflach": {
+  "name": "Suner Flach",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "tun all At the start of combat, enemies for turn.",
+  "auto": true
+ },
+ "superdactelle": {
+  "name": "Súper Dactelle",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Al inicio del combate, todos los enemigos durante turno",
+  "auto": true
+ },
+ "superdestello": {
+  "name": "Súper-Destello",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Al inicio del combate, Aturde a todos los enemigos durante 1 turno.",
+  "auto": true
+ },
+ "superflash": {
+  "name": "Super-Flash",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "At the start of combat, Stun all enemies for 1 turn.",
+  "auto": true
+ },
+ "supuracion": {
+  "name": "Supuración",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando usas tu Definitiva, activas Supurar, infligiendo daño adicional que escala con la cantidad de acumulaciones de Veneno que tiene el enemigo.",
+  "auto": true
+ },
+ "tasadeevasionaumentada": {
+  "name": "Tasa de Evasión Aumentada",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "Tasa de Evasión",
+  "auto": true
+ },
+ "thrillofbattle": {
+  "name": "Thrill-of Battle",
+  "lang": null,
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "When HP <50%, Cleave will also restore a bit of HP",
+  "auto": true
+ },
+ "thundergod": {
+  "name": "Thunder God",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Every turn, instead of attacking with your weapon, gain a small Shield, gain Ultimate Charge, and cast X Bolts where X is the current round number.",
+  "auto": true
+ },
+ "thunderstorm": {
+  "name": "Thunderstorm",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Every Bolt causes a Thunderstorm, dealing damage to all enemies.",
+  "auto": true
+ },
+ "tormentadedestellos": {
+  "name": "Tormenta de Destellos",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Al inicio de la batalla, lanza 3 Descargas.",
+  "auto": true
+ },
+ "tormentaelectrica": {
+  "name": "Tormenta-Eléctrica",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada Descarga causa una Tormenta Eléctrica, infligiendo daño a todos los enemigos.",
+  "auto": true
+ },
+ "ultimatebolt": {
+  "name": "Ultimate Bolt",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cast 2 Bolts after using your Ultimate.",
+  "auto": true
+ },
+ "ultimatecleave": {
+  "name": "Ultimate Cleave",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "After using your Ultimate, trigger Cleave 2 times.",
+  "auto": true
+ },
+ "ultimatefireball": {
+  "name": "Ultimate Fireball",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cast 2 Fireballs after using your Ultimate.",
+  "auto": true
+ },
+ "ultimateicicle": {
+  "name": "Ultimate-Icicle",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cast 2 Icicles upon using your Ultimate.",
+  "auto": true
+ },
+ "ultimatemastery": {
+  "name": "Ultimate Mastery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Basic Attacks grant extra Ultimate Charge.",
+  "auto": true
+ },
+ "ultimatepoison": {
+  "name": "Ultimate-Poison",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "When using your Ultimate, apply 2 stacks of Poison.",
+  "auto": true
+ },
+ "ultimateresistance": {
+  "name": "Ultimate-Resistance",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "You take 40% less damage from enemy Ultimate Attacks",
+  "auto": true
+ },
+ "ultimateshield": {
+  "name": "Ultimate Shield",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "After using your Ultimate, gain a Shield",
+  "auto": true
+ },
+ "undying": {
+  "name": "Undying",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "When HP <50%, HP Heal effects are +100% more effective.",
+  "auto": true
+ },
+ "venenodefinitivo": {
+  "name": "Veneno Definitivo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Al usar tu Definitiva, aplica 2 acumulaciones de Veneno.",
+  "auto": true
+ },
+ "venenoprofundo": {
+  "name": "Veneno-Profundo",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada 2 rondas, tu siguiente Ataque básico duplicará las acumulaciones de Veneno del enemigo.",
+  "auto": true
+ },
+ "venenosigiloso": {
+  "name": "Veneno Sigiloso",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando esquivas, aplicas Veneno a un enemigo aleatorio 2 veces.",
+  "auto": true
+ },
+ "verdugo": {
+  "name": "Verdugo",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando el enemigo tenga menos del 50% de HP, y tu HP sea mayor que el HP del enemigo, ejecútalo de inmediato.",
+  "auto": true
+ },
+ "warrior": {
+  "name": "Warrior",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Physical DMG O, Magical DMG",
+  "auto": true
+ },
+ "wizard": {
+  "name": "Wizard",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "magic",
+  "role": "damage",
+  "description": "Magical DMG , Physical DMG ↓↓",
+  "auto": true
+ },
+ "woundmastery": {
+  "name": "Wound Mastery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Wound can now stack up to 20 times.",
+  "auto": true
+ },
+ "woundshuriken": {
+  "name": "Wound Shuriken",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Every 2 rounds, throw 1 Shuriken. All Shurikens have a chance to apply Wound.",
+  "auto": true
+ },
+ "woundstrike": {
+  "name": "Wound Strike",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Weapon Attacks will apply 1 stack of Wound.",
+  "auto": true
+ },
+ "xp": {
+  "name": "XP",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cleave Weapon Attacks have a chance to trigger Cleave, dealing damage to all enemies.",
+  "auto": true
+ }
+}
