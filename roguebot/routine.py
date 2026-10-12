@@ -27,7 +27,8 @@ SCREEN_TIMEOUT = 20  # seconds to wait for an expected screen
 
 
 class Routine:
-    def __init__(self, device: Device, ocr: Ocr, nav: Navigator):
+    def __init__(self, device: Device, ocr: Ocr, nav: Navigator, ads: bool = False):
+        self.ads = ads  # watch ads (dungeon tickets, quick patrol); only with an account that skips them
         self.device = device
         self.ocr = ocr
         self.nav = nav
@@ -108,7 +109,7 @@ class Routine:
         for _ in range(config.MAX_MODE_ACTIONS):
             popup = self._wait_for(lambda img, texts: self._claim_or(texts, parse_dungeon_popup), "dungeon popup")
             if popup.tickets < 1:
-                if not popup.ad:
+                if not (popup.ad and self.ads):
                     log.info("%s: no tickets left", label.variants[0])
                     return DONE
                 log.info("%s: watching an ad for a ticket", label.variants[0])
@@ -169,7 +170,7 @@ class Routine:
         for _ in range(config.MAX_MODE_ACTIONS):
             quick, energy = self._wait_for(lambda img, texts: self._claim_or(
                 texts, lambda t: (q := parse_quick_patrol(img, t)) and (q, parse_energy(t) or 0)), "quick patrol popup")
-            if quick.video:
+            if quick.video and self.ads:
                 log.info("Patrol: quick patrol with a free video")
                 self._tap(quick.video)
                 time.sleep(config.VIDEO_SETTLE)

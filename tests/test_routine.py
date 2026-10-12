@@ -38,9 +38,9 @@ def english(monkeypatch):
     labels.set_language(None)
 
 
-def make(screens):
+def make(screens, ads=False):
     """Routine whose captures return the given OCR text lists in order."""
-    r = Routine(FakeDevice(), None, FakeNav())
+    r = Routine(FakeDevice(), None, FakeNav(), ads)
     frames = iter(screens)
     r._capture = lambda: (None, next(frames))
     return r
@@ -113,7 +113,7 @@ def test_dungeon_challenges_then_sweeps_after_defeat_and_watches_ads(monkeypatch
               dungeon(1), CLAIM,               # sweep, claim
               dungeon(0, ad=True, buttons=False), CLAIM,  # watch ad, claim
               dungeon(1), CLAIM,               # still lost: sweep again, claim
-              dungeon(0)])                     # no tickets, no ad: done
+              dungeon(0)], ads=True)           # no tickets, no ad: done
     monkeypatch.setattr(r, "_open_mode", lambda label: None)
     assert r.dungeon(labels.MINES) == routine.DONE
     challenge, sweep, ad, cont, claim = (943, 1847), (495, 1820), (720, 1812), (717, 2330), (720, 2322)
@@ -263,7 +263,7 @@ def test_patrol_claims_then_uses_every_quick_patrol(monkeypatch):
     monkeypatch.setattr(routine.config, "VIDEO_SETTLE", 0)
     monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
     monkeypatch.setattr(routine, "parse_quick_patrol", _fake_quick)
-    r = make([PATROL_LOBBY, PATROL, CLAIM_ES, PATROL, quick(1, 1), CLAIM_ES, quick(0, 1), quick(0, 0)])
+    r = make([PATROL_LOBBY, PATROL, CLAIM_ES, PATROL, quick(1, 1), CLAIM_ES, quick(0, 1), quick(0, 0)], ads=True)
     assert r.patrol() == routine.DONE
     assert r.patrol_wait == routine.config.PATROL_CLAIM_AFTER  # claimed: the counter starts again
     assert r.device.taps == [(720, 1922), (945, 1775), (720, 2320), (495, 1775),  # patrol, claim, reward, quick
@@ -357,3 +357,16 @@ def test_arena_closes_a_popup_over_the_arena_screen(monkeypatch):
     monkeypatch.setattr(r, "_open_mode", lambda label: True)
     assert r.arena() == routine.DONE  # 0 tickets after the popup
     assert r.device.taps == [(720, 2460)]  # the popup's close text, not Challenge
+
+
+def test_without_ads_dungeon_tickets_and_quick_patrol_videos_are_skipped(monkeypatch):
+    r = make([dungeon(0, ad=True, buttons=False)])
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    assert r.dungeon(labels.MINES) == routine.DONE and r.device.taps == []
+    labels.set_language("es")
+    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
+    monkeypatch.setattr(routine, "parse_quick_patrol", _fake_quick)
+    early = [Text("Tiempo de patrulla: 1:00:00", 560, 1025, 960, 1070)] + PATROL[1:]
+    r = make([PATROL_LOBBY, early, quick(1, 0)])
+    assert r.patrol() == routine.DONE
+    assert r.device.taps == [(720, 1922), (495, 1775)]  # patrol, quick patrol; not its video

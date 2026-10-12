@@ -160,7 +160,7 @@ class FakeRoutine:
     calls = patrols = 0
     patrol_wait = None  # unreadable counter: the patrol is opened after every level
 
-    def __init__(self, device=None, ocr=None, nav=None):
+    def __init__(self, device=None, ocr=None, nav=None, ads=False):
         self.nav = nav
 
     def run_parts(self):
@@ -482,3 +482,55 @@ def test_patrol_next_check_is_the_claim_time_or_midnight():
     assert main._patrol_next(3600, evening) == evening + 3600
     assert main._patrol_next(6 * 3600, evening) == datetime(2026, 10, 13, 0, 0).timestamp()  # quick patrols reset
     assert main._patrol_next(None, evening) == evening  # unreadable counter: check after the next level
+
+
+def test_missing_star_challenge_plays_the_last_unlocked_level(monkeypatch):
+    class Nav(FakeNav):
+        def start_pending_stars(self, mode):
+            raise main.StarsUnavailable("Desafio de Estrellas is not unlocked on this account")
+    nav = Nav(energy=10)
+    report = run_with(monkeypatch, nav, [V], RunRequest(Mode.NORMAL, None, last_beaten=True, pending_stars=True))
+    assert report.results == [V] and nav.started == ["detect", ("latest", 13)]
+
+
+def test_missing_elite_mode_stops_without_restarting(monkeypatch):
+    from roguebot.navigation import EliteUnavailable
+    class Nav(FakeNav):
+        def start_latest(self, mode):
+            raise EliteUnavailable("Elite mode is not unlocked on this account")
+    FakeEmulator.shutdowns = 0
+    with pytest.raises(EliteUnavailable):
+        run_with(monkeypatch, Nav(energy=10), [], RunRequest(Mode.ELITE, None))
+    assert FakeEmulator.shutdowns == 0
+
+
+def test_without_star_challenge_a_won_level_is_not_pinned(monkeypatch):
+    """Review: "last unlocked" + repeat pins the won level and replays it from the star list, which this
+    account doesn't have: fall back to the last unlocked level and stop trying the star list."""
+    class Nav(FakeNav):
+        def start_star_challenge(self, mode, level):
+            self.started.append(("stars?", level))
+            raise main.StarsUnavailable("Desafio de Estrellas is not unlocked on this account")
+    nav = Nav(energy=15)
+    report = run_with(monkeypatch, nav, [V, V, V], RunRequest(Mode.NORMAL, None, repeat=True))
+    assert report.results == [V, V, V]
+    assert nav.started == ["detect", ("latest", 13), ("stars?", 13), ("latest", 13), ("latest", 13)]
+
+
+def test_failed_patrol_is_retried_much_later(monkeypatch):
+    class R(FakeRoutine):
+        def patrol(self):
+            FakeRoutine.patrols += 1
+            raise main.NavigationError("Patrol button not found in the lobby")
+
+    class Nav:
+        def go_to_lobby(self):
+            pass
+    clock = [1_000_000.0]
+    monkeypatch.setattr(main.time, "time", lambda: clock[0])
+    FakeRoutine.patrols, state = 0, {}
+    main._claim_patrol(R(nav=Nav()), state)
+    main._claim_patrol(R(nav=Nav()), state)  # one failure can be a hiccup: tried again after the next level
+    clock[0] += 3600
+    main._claim_patrol(R(nav=Nav()), state)  # two in a row: not before the reward could be due
+    assert FakeRoutine.patrols == 2

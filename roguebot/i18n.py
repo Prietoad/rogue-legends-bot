@@ -8,9 +8,15 @@ TEXTS = {
         "changelog": "Novedades",
         "info_title": "Info",
         "info": (
-            "Al pulsar Iniciar, el bot abre MuMu Player (si está cerrado) y Rogue Legend (si no está en pantalla).\n"
-            "  • Indica abajo la carpeta de instalación de MuMu Player (se detecta sola si es posible).\n"
-            "  • Rogue Legend debe estar instalado en el emulador."
+            "Requisitos:\n"
+            "  • MuMu Player 12 con Rogue Legend instalado, en vertical (9:16).\n"
+            "  • El juego en español o inglés, con el tutorial inicial terminado.\n"
+            "Al pulsar Iniciar, el bot abre el emulador y el juego si hace falta.\n"
+            "  • No uses el emulador mientras el bot juega.\n"
+            "  • Nunca gasta diamantes ni compra ofertas.\n"
+            "  • Si tu cuenta no tiene una función (gremio, élite, modos…), la salta y sigue.\n"
+            "  • Si se atasca, reinicia el emulador y sigue. Las capturas de los fallos van a la carpeta debug.\n"
+            "  • Tus opciones se guardan para la próxima vez."
         ),
         "language": "Idioma",
         "mumu_folder": "Carpeta de MuMu Player",
@@ -62,6 +68,7 @@ TEXTS = {
         "level_finished": "Nivel terminado: {result}",
         "out_of_energy": "Sin energía tras {runs} partidas: {wins} victorias, {losses} derrotas",
         "loop": "Repetir la rutina sin fin: modos, niveles hasta sin energía, esperar energía y volver a empezar",
+        "ads": "Ver anuncios (solo si la cuenta tiene comprada la opción de saltar anuncios)",
         "full": "Rutina completa: modos (Arena, Torre, Minas, Mascotas), Tarjetas VIP, patrulla, jefe del gremio, donación gratis y luego niveles hasta sin energía",
         "part_arena": "Arena",
         "part_tower": "Torre",
@@ -80,9 +87,15 @@ TEXTS = {
         "changelog": "Changelog",
         "info_title": "Info",
         "info": (
-            "On Start, the bot opens MuMu Player (if closed) and Rogue Legend (if not on screen).\n"
-            "  • Set the MuMu Player installation folder below (auto-detected when possible).\n"
-            "  • Rogue Legend must be installed in the emulator."
+            "Requirements:\n"
+            "  • MuMu Player 12 with Rogue Legend installed, in portrait (9:16).\n"
+            "  • The game in Spanish or English, with the first tutorial finished.\n"
+            "On Start, the bot opens the emulator and the game if needed.\n"
+            "  • Don't use the emulator while the bot plays.\n"
+            "  • It never spends gems or buys offers.\n"
+            "  • If your account lacks a feature (guild, elite, modes…), it skips it and moves on.\n"
+            "  • If it gets stuck, it restarts the emulator and goes on. Screenshots of failures go to the debug folder.\n"
+            "  • Your options are saved for next time."
         ),
         "language": "Language",
         "mumu_folder": "MuMu Player folder",
@@ -134,6 +147,7 @@ TEXTS = {
         "level_finished": "Level finished: {result}",
         "out_of_energy": "Out of energy after {runs} runs: {wins} victories, {losses} defeats",
         "loop": "Loop the routine forever: modes, levels until out of energy, wait for energy, start again",
+        "ads": "Watch ads (only if the account has bought the skip ads option)",
         "full": "Full routine: modes (Arena, Tower, Mines, Pets), VIP cards, patrol, guild raid, free guild donation, then levels until out of energy",
         "part_arena": "Arena",
         "part_tower": "Tower",

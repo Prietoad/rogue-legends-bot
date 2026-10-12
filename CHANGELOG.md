@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 (2026-10-12)
+- New "Watch ads" option (off by default; only for accounts that have bought ad skipping). When off, the bot never watches an ad: no energy videos, x2 rewards, video revives, ad tickets or quick patrol videos.
+- Every option in the window (and the language) is saved and restored the next time.
+- Works on other accounts: features the account doesn't have yet (elite, Desafío de Estrellas, patrol, guild, modes…) are skipped instead of stopping the bot.
+- Clearer Info section: requirements and what the bot does.
+
 ## 1.2.0 (2026-10-12)
 - Auto-play: the bot holds the dice to turn on the game's auto-play, then lets the level roll by itself (it falls back to tapping if auto-play isn't available).
 - Faster between levels: the Patrol popup is only opened when its reward is due (or after midnight, when the free quick patrols come back), instead of after every level.

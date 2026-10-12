@@ -33,13 +33,17 @@ class _QueueHandler(logging.Handler):
 
 
 class App:
-    def __init__(self, run: Callable[[RunRequest], Report], lang: str = "es",
-                 stop: Callable[[], None] | None = None):
+    def __init__(self, run: Callable[[RunRequest], Report], lang: str | None = None,
+                 stop: Callable[[], None] | None = None, settings_path: Path = settings.SETTINGS_PATH):
         """run(request) does the whole job and returns a Report; it raises on failure.
-        stop() asks a running job to end (it then raises from run)."""
+        stop() asks a running job to end (it then raises from run).
+        Every option is saved to settings_path (on Start, language change and close) and restored here."""
         self.run = run
         self.stop = stop
         self._stopping = False
+        self.settings_path = settings_path
+        saved = settings.load(settings_path)
+        lang = lang or (saved.get("lang") if saved.get("lang") in UI_LANGUAGES else "es")
         self.lang = lang
         self.logs: queue.Queue = queue.Queue()
         self._status: tuple[str, dict, str] = ("idle", {}, "black")  # i18n key, args, color
@@ -74,8 +78,8 @@ class App:
         picker = ttk.Combobox(top, textvariable=self.ui_lang, values=list(UI_LANGUAGES.values()),
                               state="readonly", width=10)
         picker.pack(side="left")
-        picker.bind("<<ComboboxSelected>>", lambda _: self.set_language(
-            next(k for k, v in UI_LANGUAGES.items() if v == self.ui_lang.get())))
+        picker.bind("<<ComboboxSelected>>", lambda _: (self.set_language(
+            next(k for k, v in UI_LANGUAGES.items() if v == self.ui_lang.get())), self._save_options()))
 
         info = self._text(ttk.LabelFrame(frame, padding=8), "info_title")
         info.grid(row=1, column=0, columnspan=4, sticky="ew", pady=(4, 10))
@@ -84,8 +88,8 @@ class App:
         folder_row = ttk.Frame(info)
         folder_row.pack(fill="x", pady=(6, 0))
         self._text(ttk.Label(folder_row), "mumu_folder").pack(side="left", padx=(0, 6))
-        saved = settings.load().get("mumu_folder", "")
-        self.mumu_folder = tk.StringVar(value=saved if emulator.tools(saved or "-") else str(emulator.find_install() or ""))
+        folder = saved.get("mumu_folder", "")
+        self.mumu_folder = tk.StringVar(value=folder if emulator.tools(folder or "-") else str(emulator.find_install() or ""))
         ttk.Entry(folder_row, textvariable=self.mumu_folder, width=45).pack(side="left", fill="x", expand=True)
         self._text(ttk.Button(folder_row, command=self._browse), "browse").pack(side="left", padx=(6, 0))
         self.mumu_status = ttk.Label(info)
@@ -120,10 +124,14 @@ class App:
         self._text(ttk.Checkbutton(frame, variable=self.loop), "loop").grid(
             row=6, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
-        self._build_section(frame).grid(row=7, column=0, columnspan=4, sticky="ew", pady=(8, 0))
+        self.ads = tk.BooleanVar(value=False)
+        self._text(ttk.Checkbutton(frame, variable=self.ads), "ads").grid(
+            row=7, column=0, columnspan=4, sticky="w", pady=(4, 0))
+
+        self._build_section(frame).grid(row=8, column=0, columnspan=4, sticky="ew", pady=(8, 0))
 
         buttons = ttk.Frame(frame)
-        buttons.grid(row=8, column=0, columnspan=4, sticky="ew", pady=8)
+        buttons.grid(row=9, column=0, columnspan=4, sticky="ew", pady=8)
         buttons.columnconfigure((0, 1), weight=1)
         self.start = self._text(ttk.Button(buttons, command=self._start), "start")
         self.start.grid(row=0, column=0, sticky="ew", padx=(0, 4))
@@ -131,17 +139,19 @@ class App:
         self.stop_button.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         self.status = ttk.Label(frame, font=("Segoe UI", 11, "bold"))
-        self.status.grid(row=9, column=0, columnspan=4, sticky="w", pady=(0, 6))
+        self.status.grid(row=10, column=0, columnspan=4, sticky="w", pady=(0, 6))
 
         self.log_view = tk.Text(frame, height=12, width=80, state="disabled")
-        self.log_view.grid(row=10, column=0, columnspan=4, sticky="nsew")
-        frame.rowconfigure(10, weight=1)
+        self.log_view.grid(row=11, column=0, columnspan=4, sticky="nsew")
+        frame.rowconfigure(11, weight=1)
         frame.columnconfigure(3, weight=1)
 
         handler = _QueueHandler(self.logs)
         handler.setFormatter(logging.Formatter("%(asctime)s %(message)s", "%H:%M:%S"))
         log.addHandler(handler)
+        self._restore_options(saved)
         self.set_language(lang)
+        self.root.protocol("WM_DELETE_WINDOW", self._close)
 
     def _build_section(self, parent) -> ttk.LabelFrame:
         """Skill preferences: nature, damage type order (move up/down), support every N damage skills."""
@@ -189,6 +199,44 @@ class App:
         every = self.support_every.get().strip()
         support_every = int(every) if self.support.get() and every.isdigit() and int(every) > 0 else None
         return Build(self.nature.get(), tuple(self.damage_order), support_every)
+
+    def options(self) -> dict:
+        """Every user choice, as saved between sessions."""
+        values = {"lang": self.lang, "mode": self.mode.get(), "source": self.source.get(), "level": self.level.get(),
+                  "repeat": self.repeat.get(), "full": self.full.get(), "loop": self.loop.get(), "ads": self.ads.get(),
+                  "nature": self.nature.get(), "damage_order": list(self.damage_order),
+                  "support": self.support.get(), "support_every": self.support_every.get()}
+        if emulator.tools(self.mumu_folder.get() or "-"):
+            values["mumu_folder"] = self.mumu_folder.get()
+        return values
+
+    def _restore_options(self, saved: dict) -> None:
+        """Last session's choices; anything missing or invalid keeps its default."""
+        for var, key, choices in ((self.mode, "mode", {m.value for m in Mode}),
+                                  (self.source, "source", {LATEST, BEATEN, PENDING, STARS}),
+                                  (self.nature, "nature", {PHYSICAL, MAGIC})):
+            if saved.get(key) in choices:
+                var.set(saved[key])
+        for var, key in ((self.repeat, "repeat"), (self.full, "full"), (self.loop, "loop"), (self.ads, "ads"),
+                         (self.support, "support")):
+            if isinstance(saved.get(key), bool):
+                var.set(saved[key])
+        for var, key in ((self.level, "level"), (self.support_every, "support_every")):
+            if str(saved.get(key, "")).isdigit():
+                var.set(str(saved[key]))
+        if sorted(saved.get("damage_order") or []) == sorted(DAMAGE_TYPES):
+            self.damage_order = list(saved["damage_order"])
+        self._toggle_level()
+
+    def _save_options(self) -> None:
+        try:
+            settings.save(self.options(), self.settings_path)
+        except OSError as e:  # e.g. a read-only folder: the bot still works, it just forgets the choices
+            log.error("Could not save the settings: %s", e)
+
+    def _close(self) -> None:
+        self._save_options()
+        self.root.destroy()
 
     def _text(self, widget, key: str):
         self._texts.append((widget, key))
@@ -249,14 +297,14 @@ class App:
         self.status.configure(text=text, foreground=color)
 
     def _start(self) -> None:
+        self._save_options()
         try:
             request = build_request(self.mode.get(), self.source.get(), self.level.get(), self.repeat.get(),
-                                    self.full.get(), self.build(), self.loop.get(), self.mumu_folder.get())
+                                    self.full.get(), self.build(), self.loop.get(), self.mumu_folder.get(),
+                                    self.ads.get())
         except ValueError as e:
             self._set_status(str(e), "red")
             return
-        if emulator.tools(request.mumu_folder or "-"):
-            settings.save({"mumu_folder": request.mumu_folder})
         self.start.configure(state="disabled")
         self._stopping = False
         if self.stop:

@@ -34,8 +34,10 @@ def _same_tap(a, b) -> bool:
 
 
 class Player:
-    def __init__(self, device: Device, ocr: Ocr, build: Build = Build(), catalog: Catalog | None = None):
+    def __init__(self, device: Device, ocr: Ocr, build: Build = Build(), catalog: Catalog | None = None,
+                 ads: bool = False):
         self.device = device
+        self.ads = ads  # watch ads (x2 rewards, free revive); only with an account that skips them
         self.ocr = ocr
         self.build = build
         self.catalog = catalog if catalog is not None else Catalog()
@@ -67,8 +69,13 @@ class Player:
             if state.kind is LevelScreen.DOUBLE_REWARD:
                 self._doubles += 1
                 proceed = find(texts, labels.CONTINUE, exact=True)
-                if self._doubles > config.DOUBLE_REWARD_TRIES and proceed:  # the x2 button stays: just continue
+                # No ads, or the x2 button stays after the tries: just continue
+                if (not self.ads or self._doubles > config.DOUBLE_REWARD_TRIES) and proceed:
                     state = LevelState(LevelScreen.CONTINUE, proceed.center)
+                elif not self.ads:  # Continue not read yet: never the ad button. Unknown, so the stuck guard applies
+                    state = LevelState(LevelScreen.UNKNOWN)
+            elif state.kind is LevelScreen.REVIVE and not self.ads:
+                state = LevelState(LevelScreen.UNKNOWN)  # the free revive is a video: let the 10 s countdown run out
 
             if state.kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY) and self._ensure_double_speed(texts):
                 continue

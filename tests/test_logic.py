@@ -353,7 +353,7 @@ def test_energy_claim_rereads_while_videos_are_left_without_a_button(monkeypatch
     monkeypatch.setattr(navigation, "parse_energy_popup", lambda img, texts: next(offers))
     lobby = [Text("Patrulla", 650, 1900, 790, 1945), Text("APAGADO", 880, 2060, 990, 2095),
              Text("INICIO", 600, 2070, 716, 2115), Text("de Estrellas", 840, 1910, 960, 1945), Text("20/32", 820, 70, 890, 100)]
-    nav = Navigator(_TapLog(), None)
+    nav = Navigator(_TapLog(), None, ads=True)
     nav._capture = lambda: (np.zeros((2560, 1440, 3), np.uint8), lobby)
     labels.set_language("es")
     try:
@@ -373,7 +373,7 @@ def test_energy_claim_gives_up_after_rereads(monkeypatch, tmp_path):
     monkeypatch.setattr(navigation, "parse_energy_popup", lambda img, texts: EnergyOffers(None, None, 2))
     lobby = [Text("Patrulla", 650, 1900, 790, 1945), Text("APAGADO", 880, 2060, 990, 2095),
              Text("INICIO", 600, 2070, 716, 2115), Text("de Estrellas", 840, 1910, 960, 1945), Text("3/32", 820, 70, 890, 100)]
-    nav = Navigator(_TapLog(), None)
+    nav = Navigator(_TapLog(), None, ads=True)  # rereads wait for a video: only with ads
     nav._capture = lambda: (np.zeros((2560, 1440, 3), np.uint8), lobby)
     labels.set_language("es")
     try:
@@ -542,7 +542,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.2.0"
+    assert roguebot.__version__ == "1.3.0"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -569,8 +569,8 @@ def test_seed_data_copies_skills_once(tmp_path):
     assert (target / "skills.json").read_text(encoding="utf-8") == '{"edited": 1}'
 
 
-def _play(monkeypatch, kinds):
-    """Run Player.play_level over a list of screen states; returns the device's (action, point) log."""
+def _play(monkeypatch, kinds, texts=()):
+    """Run Player.play_level over a list of screen states (OCR reads `texts`); returns the device's (action, point) log."""
     import numpy as np
     from roguebot import play
     from roguebot.screens import LevelState
@@ -592,7 +592,7 @@ def _play(monkeypatch, kinds):
 
     class NoOcr:
         def read(self, img):
-            return []
+            return list(texts)
     play.Player(Dev(), NoOcr()).play_level()
     return Dev.actions
 
@@ -620,3 +620,103 @@ def test_without_auto_play_the_dice_is_tapped(monkeypatch):
     actions = _play(monkeypatch, [(S.BOARD_READY, dice), (S.BOARD_READY, dice), (S.FIGHT, None),
                                   (S.BOARD_READY, dice), (S.VICTORY, (720, 2220))])
     assert actions == [("hold", dice), ("tap", dice), ("tap", dice), ("tap", (720, 2220))]
+
+
+def test_without_ads_x2_rewards_is_skipped_and_revive_waits(monkeypatch):
+    from roguebot.screens import LevelScreen as S
+    actions = _play(monkeypatch, [(S.REVIVE, (990, 1455)), (S.REVIVE, (990, 1455)), (S.DOUBLE_REWARD, (1150, 2220)),
+                                  (S.VICTORY, (720, 2220))])
+    assert actions == [("tap", (720, 2220))]  # no revive video, no x2 video: just Continue
+
+
+def test_watch_ads_is_off_by_default():
+    assert RunRequest(Mode.NORMAL, None).ads is False
+    assert build_request("normal", "latest", "1").ads is False
+    assert build_request("normal", "latest", "1", ads=True).ads is True
+
+
+def _lobby_texts(*extra):
+    return [Text("Patrulla", 650, 1900, 790, 1945), Text("INICIO", 600, 2070, 716, 2115),
+            Text("20/32", 820, 70, 890, 100), *extra]
+
+
+def test_lobby_without_elite_or_star_challenge_is_still_the_lobby():
+    """Other accounts may not have unlocked elite mode or Desafío de Estrellas yet."""
+    from roguebot.screens import parse_lobby
+    labels.set_language("es")
+    try:
+        lobby = parse_lobby(_lobby_texts())
+    finally:
+        labels.set_language(None)
+    assert lobby.mode is Mode.NORMAL and not lobby.has_elite and lobby.stars_button is None and lobby.energy == 20
+
+
+def _nav_on(texts):
+    import numpy as np
+    from roguebot import navigation
+    nav = Navigator(_TapLog(), None)
+    nav._capture = lambda: (np.zeros((2560, 1440, 3), np.uint8), texts)
+    nav.device.screenshot = lambda: np.zeros((10, 10, 3), np.uint8)
+    nav.saved = []
+    nav._save = lambda img, name: nav.saved.append(name) or "debug/x.png"
+    return nav, navigation
+
+
+def test_missing_elite_or_star_challenge_raise_their_own_errors():
+    nav, navigation = _nav_on(_lobby_texts())
+    labels.set_language("es")
+    try:
+        with pytest.raises(navigation.EliteUnavailable):
+            nav.start_latest(Mode.ELITE)
+        with pytest.raises(navigation.StarsUnavailable):
+            nav.start_star_challenge(Mode.NORMAL, 3)
+    finally:
+        labels.set_language(None)
+    assert nav.device.taps == []  # never tapped the skull spot or a missing button
+
+
+def test_lobby_is_read_again_before_a_button_counts_as_missing():
+    """Review: one frame where OCR misses the stars button must not mean "not unlocked"."""
+    from roguebot.screens import Lobby
+    nav, navigation = _nav_on([])
+    reads = iter([Lobby(Mode.NORMAL, None, None, None, 20), Lobby(Mode.NORMAL, None, None, Text("de Estrellas", 840, 1910, 960, 1945), 20)])
+    nav.go_to_lobby = lambda: next(reads)
+    assert nav._lobby_until(lambda lobby: lobby.stars_button is not None).stars_button is not None
+
+
+def test_without_ads_a_revive_popup_that_stays_still_times_out(monkeypatch, tmp_path):
+    """Review: waiting out the revive (no ads) must not wait forever if the popup never goes away."""
+    from roguebot import play
+    from roguebot.screens import LevelScreen as S
+    clock = iter(range(1000))
+    monkeypatch.setattr(play.time, "monotonic", lambda: next(clock) * 5.0)
+    monkeypatch.setattr(play, "DEBUG_DIR", tmp_path)
+    with pytest.raises(play.PlayError, match="unknown screen"):
+        _play(monkeypatch, [(S.REVIVE, (990, 1455))] * 50)
+
+
+def test_energy_videos_are_not_watched_without_ads(monkeypatch):
+    import numpy as np
+    from roguebot import navigation
+    from roguebot.screens import EnergyOffers
+    monkeypatch.setattr(navigation.time, "sleep", lambda s: None)
+    monkeypatch.setattr(navigation, "parse_energy_popup", lambda img, texts: EnergyOffers(None, (480, 1450), 2))
+    nav, _ = _nav_on(_lobby_texts(Text("APAGADO", 880, 2060, 990, 2095), Text("de Estrellas", 840, 1910, 960, 1945)))
+    labels.set_language("es")
+    try:
+        assert nav.claim_free_energy() == 20
+    finally:
+        labels.set_language(None)
+    assert nav.device.taps == [config.ENERGY_ICON, config.ENERGY_POPUP_CLOSE]  # the video button left alone
+    assert nav.saved == []  # no "energy_none" screenshot for videos that are just switched off
+
+
+def test_without_ads_the_level_end_continues_instead_of_doubling(monkeypatch):
+    from roguebot.screens import LevelScreen as S
+    labels.set_language("es")
+    try:
+        actions = _play(monkeypatch, [(S.DOUBLE_REWARD, (1150, 2220)), (S.VICTORY, (720, 2220))],
+                        [Text("Continuar", 600, 2360, 840, 2400), Text("x2 Recompensas", 1000, 2200, 1300, 2240)])
+    finally:
+        labels.set_language(None)
+    assert actions == [("tap", (720, 2380)), ("tap", (720, 2220))]  # Continuar, never the x2 ad button

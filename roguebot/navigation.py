@@ -21,6 +21,7 @@ DEBUG_DIR = Path("debug")
 MAX_SCROLLS = 15
 MAX_LOBBY_ATTEMPTS = 16  # popups chain after returning from a level (a new chapter: 6+ in a row)
 MAX_ENERGY_CLAIMS = 15  # popup reads while claiming: Daily Pack + up to 3 videos, with screens in between
+FEATURE_READS = 3  # lobby reads before deciding a button is missing (not unlocked), not just missed by OCR
 VIDEO_COOLDOWN_REREADS = 3  # chances left but no yellow button (just after a video): re-read before giving up
 MAX_ENERGY_REOPENS = 2  # a lobby promo can cover the energy popup: close it and open the energy popup again
 LEVEL_LOAD_TIMEOUT = 20  # seconds
@@ -37,6 +38,14 @@ class LevelUnavailable(NavigationError):
     """The requested level is locked or does not exist: restarting cannot fix it."""
 
 
+class StarsUnavailable(LevelUnavailable):
+    """No Desafío de Estrellas (not unlocked on this account) or no beaten level to replay yet."""
+
+
+class EliteUnavailable(LevelUnavailable):
+    """Elite mode is not unlocked on this account."""
+
+
 def _same_place(a: Text, b: Text) -> bool:
     return abs(a.center[0] - b.center[0]) < 20 and abs(a.center[1] - b.center[1]) < 20
 
@@ -48,10 +57,11 @@ def _still_there(button: Text, texts: list[Text]) -> bool:
 
 
 class Navigator:
-    def __init__(self, device: Device, ocr: Ocr, dry_run: bool = False):
+    def __init__(self, device: Device, ocr: Ocr, dry_run: bool = False, ads: bool = False):
         self.device = device
         self.ocr = ocr
         self.dry_run = dry_run
+        self.ads = ads  # watch ads (energy videos); only with an account that skips them
         self.resume_level: Callable[[], object] | None = None  # plays an interrupted run to its end
 
     # --- public API -------------------------------------------------------------------
@@ -70,7 +80,7 @@ class Navigator:
         latest = parse_level_number(lobby.level_title or "")
         if latest is None or latest < 2:
             self._fail(f"No beaten {mode.value} level (lobby level: {lobby.level_title})", self.device.screenshot(),
-                       LevelUnavailable)
+                       StarsUnavailable)
         self.start_star_challenge(mode, latest - 1)
         return latest - 1
 
@@ -108,6 +118,10 @@ class Navigator:
 
     def _open_star_list(self, mode: Mode) -> None:
         lobby = self._set_mode(mode)
+        if lobby.stars_button is None:
+            lobby = self._lobby_until(lambda lobby: lobby.stars_button is not None)
+        if lobby.stars_button is None:
+            self._fail("Desafio de Estrellas is not unlocked on this account", self.device.screenshot(), StarsUnavailable)
         self._tap_text(lobby.stars_button)
         img, texts = self._capture_change(is_star_list)
         if not is_star_list(texts):
@@ -165,15 +179,19 @@ class Navigator:
             if offers.free_pack:
                 log.info("Claiming free Daily Pack energy")
                 self._tap_text(offers.free_pack)
-            elif offers.video:
+            elif offers.video and self.ads:
                 log.info("Watching a video for energy")
                 self.device.tap(*offers.video, settle=config.VIDEO_SETTLE)
-            elif offers.videos_left and rereads < VIDEO_COOLDOWN_REREADS:
+            elif offers.videos_left and self.ads and rereads < VIDEO_COOLDOWN_REREADS:
                 if rereads == 0:  # backlog: the cooldown state was never captured; keep it for a fixture
                     self._save(img, "energy_cooldown")
                 log.info("Videos left (%d) but no video button yet, waiting", offers.videos_left)
                 rereads += 1
                 time.sleep(config.VIDEO_SETTLE)
+            elif offers.videos_left and not self.ads:  # only videos left, and ads are off
+                log.info("No free energy left to claim (videos are off)")
+                self.device.tap(*config.ENERGY_POPUP_CLOSE)
+                return self.go_to_lobby().energy or 0
             else:
                 log.info("No free energy left to claim (screenshot: %s)", self._save(img, "energy_none"))
                 self.device.tap(*config.ENERGY_POPUP_CLOSE)
@@ -231,7 +249,9 @@ class Navigator:
         self._fail("Could not reach the Aventura lobby", img)
 
     def _set_mode(self, mode: Mode) -> Lobby:
-        lobby = self.go_to_lobby()
+        lobby = self._lobby_until(lambda lobby: lobby.mode == mode or lobby.has_elite)
+        if lobby.mode != mode and not lobby.has_elite:
+            self._fail("Elite mode is not unlocked on this account", self.device.screenshot(), EliteUnavailable)
         if lobby.mode != mode:
             log.info("Switching mode %s -> %s", lobby.mode.value, mode.value)
             self.device.tap(*config.ELITE_TOGGLE)
@@ -240,6 +260,14 @@ class Navigator:
                 if time.monotonic() > deadline:
                     self._fail(f"Mode toggle did not switch to {mode.value}", self.device.screenshot())
                 time.sleep(config.POLL_INTERVAL)
+        return lobby
+
+    def _lobby_until(self, ok: Callable[[Lobby], bool]) -> Lobby:
+        """OCR can miss a button on one frame: read the lobby again before deciding it is not there."""
+        for _ in range(FEATURE_READS):
+            lobby = self.go_to_lobby()
+            if ok(lobby):
+                break
         return lobby
 
     def _scroll_to(self, level: int) -> Card:

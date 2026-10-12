@@ -11,10 +11,10 @@ from roguebot.ui import App  # noqa: E402
 
 
 @pytest.fixture(scope="module")
-def _window():
+def _window(tmp_path_factory):
     # One window for all tests: creating several Tk roots in one process fails randomly on Windows.
     try:
-        a = App(run=lambda request: Report([LevelScreen.VICTORY]))
+        a = App(run=lambda request: Report([LevelScreen.VICTORY]), settings_path=tmp_path_factory.mktemp("ui") / "settings.json")
     except tk.TclError as e:  # no display available
         pytest.skip(f"Tk cannot open a window: {e}")
     yield a
@@ -33,7 +33,8 @@ def app(_window):
 def test_info_section_lists_requirements(app):
     shown = app.info.cget("text")
     assert shown == TEXTS["en"]["info"]
-    for needed in ("opens MuMu Player", "installation folder", "Rogue Legend must be installed"):
+    for needed in ("MuMu Player 12 with Rogue Legend installed", "Spanish or English", "never spends gems",
+                   "skips it and moves on", "options are saved"):
         assert needed in shown
 
 
@@ -188,8 +189,7 @@ def test_mumu_folder_field_marks_valid_folders(app, tmp_path):
 def test_start_passes_and_saves_the_mumu_folder(app, monkeypatch, tmp_path):
     from roguebot import settings
     monkeypatch.setattr("roguebot.ui.threading.Thread", InlineThread)
-    monkeypatch.setattr(settings, "SETTINGS_PATH", tmp_path / "settings.json")
-    monkeypatch.setattr(settings.save, "__defaults__", (tmp_path / "settings.json",))
+    monkeypatch.setattr(app, "settings_path", tmp_path / "settings.json")
     good = tmp_path / "MuMu"
     (good / "shell").mkdir(parents=True)  # older MuMu 12 layout
     for exe in ("MuMuManager.exe", "adb.exe"):
@@ -204,7 +204,7 @@ def test_start_passes_and_saves_the_mumu_folder(app, monkeypatch, tmp_path):
     finally:
         app.mumu_folder.set(old)
     assert requests[0].mumu_folder == str(good)
-    assert settings.load(tmp_path / "settings.json") == {"mumu_folder": str(good)}
+    assert settings.load(tmp_path / "settings.json")["mumu_folder"] == str(good)
 
 
 def test_emulator_errors_are_shown_translated(app, monkeypatch):
@@ -257,3 +257,42 @@ def test_changelog_is_hidden_until_toggled(app):
     assert app.changelog_toggle.cget("text") == "▾ Novedades"
     app._toggle_changelog()
     assert not app.changelog_shown and not app.changelog.grid_info()
+
+
+def test_watch_ads_option_explains_it_needs_ad_skip(app):
+    assert app.ads.get() is False  # off by default
+    assert "(only if the account has bought the skip ads option)" in TEXTS["en"]["ads"]
+    assert "(solo si" in TEXTS["es"]["ads"]
+
+
+def test_every_option_is_saved_and_restored(app, tmp_path, monkeypatch):
+    from roguebot import settings
+    monkeypatch.setattr(app, "settings_path", tmp_path / "settings.json")
+    chosen = {"mode": "elite", "source": "stars", "level": "7", "repeat": True, "full": True, "loop": True,
+              "ads": True, "nature": "magic", "support": True, "support_every": "4"}
+    defaults = {k: getattr(app, k).get() for k in chosen}
+    order = list(reversed(app.damage_order))
+    try:
+        for key, value in chosen.items():
+            getattr(app, key).set(value)
+        app.damage_order = list(order)
+        app._save_options()
+        saved = settings.load(tmp_path / "settings.json")
+        assert {k: saved[k] for k in chosen} == chosen and saved["damage_order"] == order and saved["lang"] == "en"
+        for key, value in defaults.items():  # a fresh window, then last session's choices
+            getattr(app, key).set(value)
+        app.damage_order = sorted(order)
+        app._restore_options(saved)
+        assert {k: getattr(app, k).get() for k in chosen} == chosen and app.damage_order == order
+        assert str(app.level_entry.cget("state")) == "normal"  # "stars" enables the level box
+    finally:
+        for key, value in defaults.items():
+            getattr(app, key).set(value)
+        app.damage_order = sorted(order, key=list(reversed(order)).index)
+        app._toggle_level()
+
+
+def test_invalid_saved_options_keep_the_defaults(app):
+    before = app.options()
+    app._restore_options({"mode": "hard", "source": 3, "level": "-1", "repeat": "yes", "damage_order": ["fire"]})
+    assert app.options() == before

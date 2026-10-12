@@ -201,7 +201,7 @@ def test_x2_rewards_button_that_stays_is_given_up_for_continue(monkeypatch):
             return end
     labels.set_language("es")
     try:
-        assert play.Player(Dev(), Ocr(), catalog=object()).play_level() is LevelScreen.VICTORY
+        assert play.Player(Dev(), Ocr(), catalog=object(), ads=True).play_level() is LevelScreen.VICTORY
     finally:
         labels.set_language(None)
     assert taps == [(1150, 2220), (1150, 2220), (720, 2380), (720, 2380)]  # 2 tries, then Continue

@@ -22,14 +22,15 @@ class RunRequest:
     pending_stars: bool = False  # levels with missing stars first (star rewards), then the last beaten
     mumu_folder: str = ""  # MuMu Player installation folder (started and Rogue Legend opened on Start)
     loop: bool = False    # full routine forever: modes -> levels until out of energy -> wait for energy -> again
+    ads: bool = False     # watch ads (energy, x2 rewards, revive, tickets); only for accounts that skip them
 
 
 def build_request(mode: str, source: str, level: str, repeat: bool = False, full: bool = False,
-                  build: Build = Build(), loop: bool = False, mumu_folder: str = "") -> RunRequest:
+                  build: Build = Build(), loop: bool = False, mumu_folder: str = "", ads: bool = False) -> RunRequest:
     """Validate the form values. Raises ValueError with a user-facing message."""
     full = full or loop  # looping repeats the full routine
     repeat = repeat or full  # the full routine ends by clearing levels until out of energy
-    common = dict(repeat=repeat, full=full, build=build, mumu_folder=mumu_folder, loop=loop)
+    common = dict(repeat=repeat, full=full, build=build, mumu_folder=mumu_folder, loop=loop, ads=ads)
     if source in (LATEST, BEATEN, PENDING):
         return RunRequest(Mode(mode), None, last_beaten=source in (BEATEN, PENDING),
                           pending_stars=source == PENDING, **common)

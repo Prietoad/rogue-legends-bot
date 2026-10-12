@@ -27,8 +27,9 @@ class Lobby:
     mode: Mode
     level_title: str | None      # e.g. "13. Bosque Embrujado II"
     start_button: Text           # INICIO (normal) / LISTO (elite)
-    stars_button: Text           # "Desafio de Estrellas"
+    stars_button: Text | None    # "Desafio de Estrellas" (None: not unlocked on this account)
     energy: int | None           # top bar "12/32" -> 12
+    has_elite: bool = True       # the elite skull toggle shows (not unlocked on new accounts)
 
 
 @dataclass(frozen=True)
@@ -43,18 +44,19 @@ class Card:
 def parse_lobby(texts: list[Text]) -> Lobby | None:
     if not find(texts, L.PATROL) or popup_close(texts):  # some promos are see-through: lobby texts show under them
         return None
-    stars = find(texts, L.STARS_BUTTON)
+    # Other accounts may not have elite mode or Desafío de Estrellas yet: both are optional.
+    has_elite = True
     if find(texts, L.ELITE_ON, exact=True):
         mode = Mode.ELITE
     elif find(texts, L.ELITE_OFF, exact=True):
         mode = Mode.NORMAL
     else:
-        return None
+        mode, has_elite = Mode.NORMAL, False
     start = find(texts, START_LABEL[mode], exact=True)
-    if not (stars and start):
+    if not start:
         return None
     title = next((t.text for t in texts if parse_level_number(t.text) is not None), None)
-    return Lobby(mode, title, start, stars, parse_energy(texts))
+    return Lobby(mode, title, start, find(texts, L.STARS_BUTTON), parse_energy(texts), has_elite)
 
 
 def is_star_list(texts: list[Text]) -> bool:

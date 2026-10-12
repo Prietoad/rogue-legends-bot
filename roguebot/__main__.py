@@ -14,7 +14,7 @@ from typing import Callable
 from roguebot import config, settings
 from roguebot.device import Device, Stopped
 from roguebot.emulator import PERMANENT_ERRORS, Emulator, EmulatorError
-from roguebot.navigation import LevelUnavailable, NavigationError, Navigator
+from roguebot.navigation import LevelUnavailable, StarsUnavailable, NavigationError, Navigator
 from roguebot.play import Player, PlayError
 from roguebot.report import Report
 from roguebot.request import RunRequest
@@ -25,6 +25,7 @@ from roguebot.vision import Ocr
 
 log = logging.getLogger("roguebot")
 ENERGY_READS = 3
+PATROL_FAILS_TO_BACK_OFF = 2  # after-level patrol failures in a row before trying it only hours later
 
 def _start_level(nav: Navigator, request: RunRequest) -> int | None:
     """Start the requested level; returns its number when known."""
@@ -76,8 +77,12 @@ def _claim_patrol(routine: Routine, state: dict) -> None:
     try:
         routine.patrol()
         state["patrol_next"] = _patrol_next(routine.patrol_wait, time.time())
+        state["patrol_fails"] = 0
     except (NavigationError, PlayError) as e:
         log.error("Patrol failed: %s", e)
+        state["patrol_fails"] = state.get("patrol_fails", 0) + 1
+        if state["patrol_fails"] >= PATROL_FAILS_TO_BACK_OFF:  # likely not unlocked on this account: much later
+            state["patrol_next"] = _patrol_next(config.PATROL_CLAIM_AFTER, time.time())
         routine.nav.go_to_lobby()
 
 
@@ -109,8 +114,8 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         serial, adb, launched = Emulator(request.mumu_folder, stop).start()
         device = Device(serial, stop=stop, adb=adb)
         ocr = ocr or Ocr()
-        nav = Navigator(device, ocr, dry_run=dry_run)
-        nav.resume_level = lambda: Player(device, ocr, request.build, catalog or Catalog()).play_level()
+        nav = Navigator(device, ocr, dry_run=dry_run, ads=request.ads)
+        nav.resume_level = lambda: Player(device, ocr, request.build, catalog or Catalog(), request.ads).play_level()
         if launched:
             nav.wait_for_lobby(config.GAME_LOAD_TIMEOUT)
         nav.detect_language()
@@ -122,7 +127,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         while True:
             cycle += 1
             if request.full and not state["routine_done"]:  # a retry after an error skips what was done
-                state["parts"] = Routine(device, ocr, nav).run_parts()
+                state["parts"] = Routine(device, ocr, nav, request.ads).run_parts()
             state["routine_done"] = True
             while True:
                 if not request.repeat and results:  # a retry after an error must not replay the one level
@@ -130,15 +135,22 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                 if request.repeat and _energy(nav) < config.MIN_RUN_ENERGY:
                     if nav.claim_free_energy() < config.MIN_RUN_ENERGY:
                         break
-                played = _start_level(nav, request)
+                try:
+                    played = _start_level(nav, request)
+                except StarsUnavailable as e:  # no star list or no beaten level on this account (yet)
+                    log.warning("%s: playing the last unlocked level instead", e)
+                    state["no_stars"] = True  # remembered: no pinning, no more star list attempts
+                    request = state["request"] = replace(request, level=None, last_beaten=False, pending_stars=False)
+                    played = nav.start_latest(request.mode)
                 catalog = catalog or Catalog()
-                results.append(Player(device, ocr, request.build, catalog).play_level())
-                if request.level is None and not request.last_beaten and results[-1] is LevelScreen.VICTORY and played is not None:
+                results.append(Player(device, ocr, request.build, catalog, request.ads).play_level())
+                if (request.level is None and not request.last_beaten and results[-1] is LevelScreen.VICTORY
+                        and played is not None and not state.get("no_stars")):
                     # Winning unlocked the next level; keep replaying this one from Desafío de Estrellas.
                     request = state["request"] = replace(request, level=played)
                 nav.go_to_lobby()
                 log.info("Level finished: %s (run %d)", results[-1].value, len(results))
-                _claim_patrol(Routine(device, ocr, nav), state)
+                _claim_patrol(Routine(device, ocr, nav, request.ads), state)
                 if not request.repeat:
                     return Report(results)
             if not request.loop:
