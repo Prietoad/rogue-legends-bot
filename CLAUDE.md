@@ -92,6 +92,7 @@ roguebot/
   ui.py          tkinter window: info (prerequisites), mode, level source, level number, repeat, full routine, build (nature, type order, support every N), Start/Stop, status line, live log
   __main__.py    entry point; make_runner = the Start action (connects to the emulator on Start, navigate, play, back to lobby)
 tools/capture.py dev helper: save screenshot (+ OCR dump) to captures/
+phone/           the Android phone app (Flutter UI + Kotlin port of this bot), see "Phone app" below
 tests/           pytest on tests/fixtures/*.png (real 1440x2560 screenshots)
 ```
 
@@ -166,6 +167,13 @@ Recognition lives in `mode_screens.py` (pure, like `screens.py`); tests in `test
 - The game can hang on "Cargando..." (seen once; needed a manual restart). The bot stops with a screenshot after `LEVEL_LOAD_TIMEOUT`.
 
 Dev helpers used during exploration live in the session scratchpad (o.py: tap+screenshot+OCR; addcase.py: add a level-screen fixture case; lab.py: add a label variant).
+
+## Phone app (requested 2026-10-13, `phone/`)
+Native Android app with the same functionality, for a phone with the game installed (see `phone/README.md`). Flutter UI (`phone/lib`, like the sibling Flutter projects) + the bot engine ported to plain Kotlin (`phone/android/bot`, one file per Python module, same names and constants) + the Android side (`phone/android/app`: `BotService` accessibility = gestures/Back/app in front, `CaptureService` MediaProjection = screenshots, `Engine`). OCR = `PaddleOcr`: rapidocr's own models (PP-OCRv6, copied from the Python package at build time by `phone/tools/ocr_models.py`) and pipeline on ONNX Runtime, so the phone reads the game like the desktop. Google ML Kit was tried first and dropped: it misreads the game font ("INIIO", "Bxit", O/0) and joins texts on a row.
+- **Keep both bots in step.** A change to recognition, labels, config or routine logic goes into the Python bot *and* its Kotlin port. Then `python phone/tools/export_parity.py` and `cd phone/android && ./gradlew :bot:test` (ParityTest compares every Kotlin parser with the Python one on every fixture, same OCR boxes; OcrParityTest runs the phone OCR on every fixture and checks the parsers decide the same; RoutineTest/NavigationTest/LogicTest port the behaviour tests) and `cd phone && flutter test`. Templates and `data/skills.json` are copied into the APK at build time (never duplicated).
+- Phone differences: no emulator restart (recovery = bring the game to the front, `Device.launch`); `backToGame` launches the game if Back does not return to it; screen capture needs the user's consent on every Start; `ScreenMap` maps taller screens in three bands (top/center/bottom anchored), **not verified on a tall phone yet**: calibrate with a dump (`DumpReceiver`, README) on the first one.
+- MuMu Player (Android 12L) for testing the app: accessibility screenshots come back black (HWUI readback fails) and Flutter's Impeller/Vulkan renders black (Impeller is disabled in the manifest); MediaProjection works. `cmd appops set com.diego.roguebot_phone PROJECT_MEDIA allow` skips the capture prompt there.
+- Release: `flutter build apk --release` → attach as `RogueLegendBot.apk` to the GitHub release; app version in `phone/pubspec.yaml` and `phone/lib/main.dart`, changelog `phone/CHANGELOG.md`.
 
 ## Build (requested 2026-10-10)
 - **Skill database** `data/skills.json` (`skills.Catalog`): key = name letters only (OCR-proof), fuzzy match (0.85) for typos. Every skill seen on a level skill pick or in a shop is added with `infer_tags(name, description)`:

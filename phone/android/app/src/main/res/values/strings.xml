@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bot_service_label">Rogue Legend bot</string>
+    <string name="bot_service_description">Lets the bot see the screen and tap for you while it plays Rogue Legend. It only acts while you press Start in the bot app, and never buys anything.</string>
+</resources>

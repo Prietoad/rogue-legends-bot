@@ -589,6 +589,16 @@
   "description": "Tasa de Contraataque , obtén DEF  con cada Contraataque, dura hasta el final de la batalla.",
   "auto": true
  },
+ "doprrrdo": {
+  "name": "doprrrdo",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "↑↑↑↑, pero ya no",
+  "auto": true
+ },
  "dualcast": {
   "name": "Dualcast",
   "lang": "en",
@@ -1327,6 +1337,16 @@
   "nature": "physical",
   "role": "support",
   "description": "HP Máx. ↑↑↑↑, ATQ ↓↓↓",
+  "auto": true
+ },
+ "maestriaconarmas": {
+  "name": "Maestria con Armas",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tus Ataques básicos, Ataques de combo y Contraataques infligen +80% mãs daño",
   "auto": true
  },
  "maestriaconshuriken": {
