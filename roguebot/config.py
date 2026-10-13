@@ -23,7 +23,9 @@ TUTORIAL_TAP_OFFSET = (24, 215)  # from the hand template center to its target r
 TUTORIAL_MAX_STEPS = 8           # hand taps per go_to_lobby (a tutorial chains several steps)
 CLOSE_X_MIN_SCORE = 0.9      # template score: ≥0.998 on popups with ✕, ≤0.61 elsewhere
 FOOTER_Y = (2380, 2440)
-FOOTER_SAMPLES = (((60, 300), (80, 55, 123)), ((1140, 1380), (95, 86, 91)))  # first/last tab, BGR
+FOOTER_SAMPLES = (((60, 300), (80, 55, 123)), ((330, 570), (107, 80, 74)), ((600, 840), (107, 84, 89)),
+                  ((870, 1110), (105, 59, 106)), ((1140, 1380), (95, 86, 91)))  # the 5 tabs when not selected, BGR
+FOOTER_MIN_TABS = 4          # the selected tab has another color (Aventura in the lobby, Mascotas, Tienda...)
 FOOTER_COLOR_TOLERANCE = 12  # popups darken these to ~(8, 6, 12)
 
 # Top bar

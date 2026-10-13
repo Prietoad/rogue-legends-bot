@@ -74,8 +74,9 @@ class Canvas(val frame: Frame = Frame.blank()) {
         for (y in 0 until img.height) for (x in 0 until img.width) frame.pixels[(y0 + y) * frame.width + x0 + x] = img.pixels[y * img.width + x]
     }
 
-    /** The bottom tab bar of main screens, at full brightness. */
-    fun footer() = fill(60, 2380, 300, 2440, 123, 55, 80).fill(1140, 2380, 1380, 2440, 91, 86, 95)
+    /** The bottom tab bar of main screens, at full brightness (the center tab selected: another color). */
+    fun footer() = fill(60, 2380, 300, 2440, 123, 55, 80).fill(330, 2380, 570, 2440, 74, 80, 107)
+        .fill(870, 2380, 1110, 2440, 106, 59, 105).fill(1140, 2380, 1380, 2440, 91, 86, 95)
 
     /** The quick patrol's cyan lightning left of an "x10" label centered at (x, y). */
     fun lightning(x: Int, y: Int) = fill(x - 150, y - 45, x - 35, y + 45, 0, 200, 255)

@@ -301,6 +301,8 @@ def test_close_button(name, x_at):
 @pytest.mark.parametrize("name, visible", [
     ("lobby_normal.png", True), ("lobby_elite.png", True), ("en_lobby_normal.png", True),
     ("en_lobby_elite.png", True),
+    ("pets_tab.png", True),  # Mascotas tab selected: its own tab color changes, the other four stay
+    ("en_board_dice_unknown.png", False),  # dark teal level board
     ("en_lobby_daily_login.png", False), ("en_energy_popup.png", False), ("lobby_promo_popup.png", False),
     ("lobby_roulette_popup.png", False), ("elite_dialog_x5.png", False),
     ("stars_normal_end.png", False), ("level_board_ready.png", False), ("level_victory.png", False),

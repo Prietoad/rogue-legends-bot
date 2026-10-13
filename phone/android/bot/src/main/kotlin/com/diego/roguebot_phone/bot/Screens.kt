@@ -110,15 +110,12 @@ object Screens {
         return P(c.x + Config.TUTORIAL_TAP_OFFSET.x, c.y + Config.TUTORIAL_TAP_OFFSET.y)
     }
 
-    /** Main screens show the bottom tab bar at full brightness; popups darken it. Both samples must match. */
-    fun footerVisible(img: Frame): Boolean {
-        for ((xs, bgr) in Config.FOOTER_SAMPLES) {
-            val (r, g, b) = img.mean(xs.first, Config.FOOTER_Y.first, xs.last + 1, Config.FOOTER_Y.last + 1).let { Triple(it[0], it[1], it[2]) }
-            val diff = maxOf(kotlin.math.abs(b - bgr[0]), kotlin.math.abs(g - bgr[1]), kotlin.math.abs(r - bgr[2]))
-            if (diff >= Config.FOOTER_COLOR_TOLERANCE) return false
-        }
-        return true
-    }
+    /** Main screens show the bottom tab bar at full brightness; popups darken it. Every tab but the selected
+     * one must show its color. */
+    fun footerVisible(img: Frame): Boolean = Config.FOOTER_SAMPLES.count { (xs, bgr) ->
+        val m = img.mean(xs.first, Config.FOOTER_Y.first, xs.last + 1, Config.FOOTER_Y.last + 1)
+        maxOf(kotlin.math.abs(m[2] - bgr[0]), kotlin.math.abs(m[1] - bgr[1]), kotlin.math.abs(m[0] - bgr[2])) < Config.FOOTER_COLOR_TOLERANCE
+    } >= Config.FOOTER_MIN_TABS
 
     /** Lobby promo popups ("Toca para cerrar"). Only this text is ever tapped on a popup. */
     fun popupClose(texts: List<Text>): Text? = find(texts, L.POPUP_CLOSE)

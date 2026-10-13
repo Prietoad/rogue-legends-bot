@@ -1,5 +1,8 @@
 # Changelog (phone app)
 
+## 0.1.1 (2026-10-13)
+- Finds its way back to the lobby from the Mascotas and Tienda tabs too (same fix as the desktop bot 1.4.2).
+
 ## 0.1.0 (2026-10-13)
 - First version of the Android app: the desktop bot (1.4.1) running on the phone where Rogue Legend is installed.
 - Same options as the desktop window: mode, level, repeat, full routine, loop, watch ads, build. They are saved for next time.

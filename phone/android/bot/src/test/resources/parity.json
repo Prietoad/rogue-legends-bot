@@ -34969,6 +34969,171 @@
 "detect_language": "es"
 }
 },
+"pets_tab.png": {
+"lang": "es",
+"texts": [
+[
+"134",
+812,
+64,
+894,
+107
+],
+[
+"13918",
+1037,
+63,
+1166,
+107
+],
+[
+"12978",
+1281,
+63,
+1410,
+107
+],
+[
+"Nv.9",
+340,
+296,
+501,
+361
+],
+[
+"9/500",
+763,
+301,
+900,
+350
+],
+[
+"Gratis en 05:46:57",
+222,
+1823,
+525,
+1861
+],
+[
+"1",
+734,
+1907,
+774,
+1961
+],
+[
+"100",
+1071,
+1901,
+1177,
+1963
+],
+[
+"Consigue 3",
+207,
+1957,
+491,
+2029
+],
+[
+"Tirada x1",
+603,
+1962,
+834,
+2019
+],
+[
+"Tirada x100",
+942,
+1962,
+1236,
+2019
+],
+[
+"Colección",
+405,
+2175,
+641,
+2232
+],
+[
+"Invocar",
+820,
+2180,
+1013,
+2237
+],
+[
+"Mascotas",
+1213,
+2451,
+1377,
+2490
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"is_loading": false,
+"close_button": null,
+"tutorial_hand": null,
+"footer_visible": true,
+"popup_close": null,
+"classify_level_screen": {
+"kind": "unknown",
+"tap": null
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"back_arrow": null,
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
 "raid_done.png": {
 "lang": "es",
 "texts": [

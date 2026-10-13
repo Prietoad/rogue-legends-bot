@@ -22,7 +22,10 @@ object Config {
     const val TUTORIAL_MAX_STEPS = 8
     const val CLOSE_X_MIN_SCORE = 0.9
     val FOOTER_Y = 2380 until 2440
-    val FOOTER_SAMPLES = listOf((60 until 300) to intArrayOf(80, 55, 123), (1140 until 1380) to intArrayOf(95, 86, 91))  // BGR
+    val FOOTER_SAMPLES = listOf((60 until 300) to intArrayOf(80, 55, 123), (330 until 570) to intArrayOf(107, 80, 74),
+        (600 until 840) to intArrayOf(107, 84, 89), (870 until 1110) to intArrayOf(105, 59, 106),
+        (1140 until 1380) to intArrayOf(95, 86, 91))  // the 5 tabs when not selected, BGR
+    const val FOOTER_MIN_TABS = 4  // the selected tab has another color
     const val FOOTER_COLOR_TOLERANCE = 12
 
     // Top bar

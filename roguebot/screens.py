@@ -177,13 +177,14 @@ def tutorial_hand(img: np.ndarray) -> tuple[int, int] | None:
 
 
 def footer_visible(img: np.ndarray) -> bool:
-    """Main screens show the bottom tab bar at full brightness; popups darken it. Both tab samples
-    must match: one alone matched a dark teal level board (and the bot took it for a main screen)."""
+    """Main screens show the bottom tab bar at full brightness; popups darken it. Every tab but the
+    selected one must show its color (one sample alone matched a dark teal level board, and the bot took
+    it for a main screen; checking only the first and last tab missed the footer on the Mascotas tab)."""
+    matching = 0
     for (x1, x2), color in config.FOOTER_SAMPLES:
         mean = img[config.FOOTER_Y[0]:config.FOOTER_Y[1], x1:x2].reshape(-1, 3).mean(0)
-        if np.abs(mean - color).max() >= config.FOOTER_COLOR_TOLERANCE:
-            return False
-    return True
+        matching += bool(np.abs(mean - color).max() < config.FOOTER_COLOR_TOLERANCE)
+    return matching >= config.FOOTER_MIN_TABS
 
 
 def popup_close(texts: list[Text]) -> Text | None:

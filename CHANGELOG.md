@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.2 (2026-10-13)
+- The bot finds its way back to the lobby from the Mascotas and Tienda tabs too (it didn't recognize the bottom tab bar there and got stuck).
+
 ## 1.4.1 (2026-10-13)
 - Ads for other apps that the emulator shows over the game no longer stop the bot: it presses Back, brings the game to the front again and, if the ad only closes by tapping it, taps it and closes the page it opens.
 
