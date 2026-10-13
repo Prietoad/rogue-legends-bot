@@ -244,9 +244,30 @@ class Navigator:
             elif footer_visible(img):
                 log.info("Not in Aventura lobby, tapping footer tab")
                 self.device.tap(*config.AVENTURA_TAB)
-            else:  # loading, animation or a screen we don't know: wait, never guess
+            elif not self._leave_other_app():  # loading, animation or a screen we don't know: wait, never guess
                 time.sleep(config.UI_SETTLE)
         self._fail("Could not reach the Aventura lobby", img)
+
+    def _leave_other_app(self) -> bool:
+        """Another app is in front of the game: an ad the emulator shows for other apps, or the page such
+        an ad opened. Back, then bring the game to the front; an ad that only closes by tapping it is
+        tapped (it opens another app or tab) and left the same way. True if another app was in front."""
+        package = self.device.foreground_package()
+        if package == config.PACKAGE:
+            return False
+        log.info("Another app is in front (%s), going back to the game", package)
+        for tap_ad in (False, True):
+            if tap_ad:
+                log.info("Tapping the ad to close it")
+                self.device.tap(*config.OTHER_APP_AD_TAP, settle=config.VIDEO_SETTLE)
+            for _ in range(config.BROWSER_BACK_MAX):
+                if self.device.foreground_package() == config.PACKAGE:
+                    return True
+                self.device.back()
+            self.device.launch(config.PACKAGE)
+            if self.device.foreground_package() == config.PACKAGE:
+                return True
+        return True  # go_to_lobby keeps trying and fails with a screenshot
 
     def _set_mode(self, mode: Mode) -> Lobby:
         lobby = self._lobby_until(lambda lobby: lobby.mode == mode or lobby.has_elite)

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1 (2026-10-13)
+- Ads for other apps that the emulator shows over the game no longer stop the bot: it presses Back, brings the game to the front again and, if the ad only closes by tapping it, taps it and closes the page it opens.
+
 ## 1.4.0 (2026-10-13)
 - Full routine: new Dojo Battle (fights while there are tickets, claims its free progress chest) and Dungeon Dive (plays its 3-depth runs like a level, with your build, until no tickets are left).
 - Full routine: daily rewards (top-left menu → Recompensas Diarias, claimed on the game's web page, then back to the game) and mail (Reclamar todo).

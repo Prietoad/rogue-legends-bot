@@ -130,3 +130,4 @@ DOJO_TITLE_MAX_Y = 400                   # dojo screen title (the modes list car
 MENU_BUTTON = (80, 310)                  # lobby, top-left ≡ (unlabeled): Correo, Recompensas Diarias...
 MENU_MAX_X = 700                         # menu panel entries (left of the lobby's level title)
 BROWSER_BACK_MAX = 5                     # Back presses to leave the web store and return to the game
+OTHER_APP_AD_TAP = (720, 1280)           # an emulator ad for another app that only closes by tapping it

@@ -154,6 +154,9 @@ class _TapLog:
     def tap(self, x, y, settle=0):
         self.taps.append((x, y))
 
+    def foreground_package(self):
+        return config.PACKAGE
+
 
 def _start_with_frames(monkeypatch, frames):
     import numpy as np
@@ -542,7 +545,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.4.0"
+    assert roguebot.__version__ == "1.4.1"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -720,3 +723,66 @@ def test_without_ads_the_level_end_continues_instead_of_doubling(monkeypatch):
     finally:
         labels.set_language(None)
     assert actions == [("tap", (720, 2380)), ("tap", (720, 2220))]  # Continuar, never the x2 ad button
+
+
+class _OtherAppDevice(_TapLog):
+    """The game is in front again after `backs` Back presses, `launches` launches or a tap on the ad."""
+    def __init__(self, backs=None, launches=None, ad_tap=False):
+        super().__init__()
+        self.actions, self.backs, self.launches, self.ad_tap = [], backs, launches, ad_tap
+
+    def _game(self):
+        return (self.actions.count("back") == self.backs or self.actions.count("launch") == self.launches
+                or (self.ad_tap and self.taps))
+
+    def foreground_package(self):
+        return config.PACKAGE if self._game() else "com.other.ad"
+
+    def back(self, settle=0):
+        self.actions.append("back")
+
+    def launch(self, package, settle=0):
+        assert package == config.PACKAGE
+        self.actions.append("launch")
+
+
+def _other_app_nav(monkeypatch, device):
+    import numpy as np
+    from roguebot import navigation
+    monkeypatch.setattr(navigation.time, "sleep", lambda s: None)
+    monkeypatch.setattr(navigation, "close_button", lambda img: None)
+    monkeypatch.setattr(navigation, "back_arrow", lambda img: None)
+    monkeypatch.setattr(navigation, "footer_visible", lambda img: False)
+    lobby = [Text("Patrulla", 650, 1900, 790, 1945), Text("APAGADO", 880, 2060, 990, 2095),
+             Text("INICIO", 600, 2070, 716, 2115), Text("de Estrellas", 840, 1910, 960, 1945)]
+    ad = [Text("Install now", 600, 1500, 840, 1550)]
+    frames = iter([ad, lobby])
+    nav = Navigator(device, None)
+    nav._capture = lambda: (np.zeros((2560, 1440, 3), np.uint8), next(frames))
+    return nav
+
+
+def test_go_to_lobby_leaves_another_app_with_back(monkeypatch):
+    device = _OtherAppDevice(backs=1)
+    _other_app_nav(monkeypatch, device).go_to_lobby()
+    assert device.actions == ["back"] and device.taps == []
+
+
+def test_go_to_lobby_brings_the_game_back_when_back_does_nothing(monkeypatch):
+    device = _OtherAppDevice(launches=1)
+    _other_app_nav(monkeypatch, device).go_to_lobby()
+    assert device.actions == ["back"] * config.BROWSER_BACK_MAX + ["launch"] and device.taps == []
+
+
+def test_go_to_lobby_taps_an_ad_that_only_closes_by_tapping_it(monkeypatch):
+    device = _OtherAppDevice(ad_tap=True)
+    _other_app_nav(monkeypatch, device).go_to_lobby()
+    assert device.taps == [config.OTHER_APP_AD_TAP]
+    assert device.actions == ["back"] * config.BROWSER_BACK_MAX + ["launch"]
+
+
+def test_go_to_lobby_waits_on_an_unknown_game_screen(monkeypatch):
+    device = _OtherAppDevice()
+    device.foreground_package = lambda: config.PACKAGE
+    _other_app_nav(monkeypatch, device).go_to_lobby()
+    assert device.actions == [] and device.taps == []  # the game's own screen: never tap blindly

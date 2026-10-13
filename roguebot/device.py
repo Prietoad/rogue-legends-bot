@@ -87,6 +87,12 @@ class Device:
         self._d.shell(["input", "keyevent", "4"], timeout=config.ADB_TIMEOUT)
         time.sleep(settle)
 
+    def launch(self, package: str, settle: float = config.VIDEO_SETTLE) -> None:
+        """Bring an app to the front (starts it if it is not running)."""
+        self._check_stop()
+        self._d.shell(["monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1"], timeout=config.ADB_TIMEOUT)
+        time.sleep(settle)
+
     def hold(self, x: int, y: int, seconds: float, settle: float = config.UI_SETTLE) -> None:
         """Long press: a swipe that does not move."""
         self.swipe((x, y), (x, y), duration=seconds, settle=settle)
