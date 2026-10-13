@@ -115,7 +115,8 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         device = Device(serial, stop=stop, adb=adb)
         ocr = ocr or Ocr()
         nav = Navigator(device, ocr, dry_run=dry_run, ads=request.ads)
-        nav.resume_level = lambda: Player(device, ocr, request.build, catalog or Catalog(), request.ads).play_level()
+        play_level = lambda: Player(device, ocr, request.build, catalog or Catalog(), request.ads).play_level()
+        nav.resume_level = play_level
         if launched:
             nav.wait_for_lobby(config.GAME_LOAD_TIMEOUT)
         nav.detect_language()
@@ -127,7 +128,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         while True:
             cycle += 1
             if request.full and not state["routine_done"]:  # a retry after an error skips what was done
-                state["parts"] = Routine(device, ocr, nav, request.ads).run_parts()
+                state["parts"] = Routine(device, ocr, nav, request.ads, play_level).run_parts()
             state["routine_done"] = True
             while True:
                 if not request.repeat and results:  # a retry after an error must not replay the one level

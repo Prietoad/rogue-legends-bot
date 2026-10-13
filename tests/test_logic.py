@@ -542,7 +542,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.3.0"
+    assert roguebot.__version__ == "1.4.0"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):

@@ -100,7 +100,7 @@ UI_SETTLE = 0.7              # after taps; every step re-reads the screen, so th
 SCROLL_SETTLE = 0.8          # after a list swipe (the star list also waits for the target card to stop moving)
 VIDEO_SETTLE = 3             # after starting a reward video (VIP skips the ad itself)
 
-# Full routine: modes (Arena, Tower, Crystal Mines, Pet Kingdom) and the guild raid
+# Full routine: modes (Arena, Dojo, Tower, Dungeon Dive, Crystal Mines, Pet Kingdom), daily rewards, mail, guild raid
 BACK_ARROW_MIN_SCORE = 0.85              # back-arrow template: ~1.0 on menus, <=0.68 elsewhere
 MODES_BUTTON = (1350, 2130)              # lobby, bottom-right (its Spanish label "Modos" OCRs badly)
 LOBBY_LEFT_ICONS_MAX_X = 250            # lobby left column of icons (Paquete Inicial, Tarjetas VIP, ...)
@@ -124,3 +124,9 @@ MODES_SCROLL_UP = ((720, 700), (720, 2000))  # finger drags down = list scrolls 
 MODES_MAX_SCROLLS = 3
 MODE_FIGHT_TIMEOUT = 240                 # one mode/raid fight, seconds
 MAX_MODE_ACTIONS = 40                    # taps within one mode before giving up
+DOJO_TICKETS_REGION = (1270, 45, 1420, 130)  # dojo ticket count (top-right); full-frame OCR misses it
+DOJO_CHEST_Y = (2000, 2250)              # dojo progress chest "RECLAMAR" ("Intenta el Dojo N veces")
+DOJO_TITLE_MAX_Y = 400                   # dojo screen title (the modes list card says the same, lower)
+MENU_BUTTON = (80, 310)                  # lobby, top-left ≡ (unlabeled): Correo, Recompensas Diarias...
+MENU_MAX_X = 700                         # menu panel entries (left of the lobby's level title)
+BROWSER_BACK_MAX = 5                     # Back presses to leave the web store and return to the game

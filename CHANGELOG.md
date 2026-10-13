@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0 (2026-10-13)
+- Full routine: new Dojo Battle (fights while there are tickets, claims its free progress chest) and Dungeon Dive (plays its 3-depth runs like a level, with your build, until no tickets are left).
+- Full routine: daily rewards (top-left menu → Recompensas Diarias, claimed on the game's web page, then back to the game) and mail (Reclamar todo).
+
 ## 1.3.0 (2026-10-12)
 - New "Watch ads" option (off by default; only for accounts that have bought ad skipping). When off, the bot never watches an ad: no energy videos, x2 rewards, video revives, ad tickets or quick patrol videos.
 - Every option in the window (and the language) is saved and restored the next time.

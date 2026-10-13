@@ -1,5 +1,7 @@
 """Full routine behaviour with fake screens (no device)."""
 
+import itertools
+
 import pytest
 
 from roguebot import labels, routine
@@ -11,9 +13,17 @@ from roguebot.vision import Text
 class FakeDevice:
     def __init__(self):
         self.taps = []
+        self.backs = 0
+        self.apps = []  # foreground packages to report in order (then the game)
 
     def tap(self, x, y, settle=0):
         self.taps.append((x, y))
+
+    def back(self, settle=0):
+        self.backs += 1
+
+    def foreground_package(self):
+        return self.apps.pop(0) if self.apps else routine.config.PACKAGE
 
     def screenshot(self):
         return None
@@ -47,7 +57,7 @@ def make(screens, ads=False):
 
 
 def test_failed_part_is_reported_and_the_next_one_runs(monkeypatch):
-    r = make([MODES_TOP] * 3)  # after arena, tower and mines: already back on the modes list
+    r = make([MODES_TOP] * 5)  # after arena, dojo, tower, dive and mines: already back on the modes list
     ran = []
 
     def ok():
@@ -63,11 +73,14 @@ def test_failed_part_is_reported_and_the_next_one_runs(monkeypatch):
     monkeypatch.setattr(r, "vip", lambda: routine.DONE)
     monkeypatch.setattr(r, "donate", lambda: routine.DONE)
     monkeypatch.setattr(r, "patrol", lambda: routine.DONE)
+    for part in ("daily", "mail", "dojo", "dive"):
+        monkeypatch.setattr(r, part, lambda: routine.DONE)
     results = r.run_parts()
-    assert results == [("vip", "done"), ("arena", "failed"), ("tower", "done"), ("mines", "done"), ("pets", "done"), ("patrol", "done"), ("raid", "skipped"),
-                       ("donate", "done")]
+    assert results == [("vip", "done"), ("daily", "done"), ("mail", "done"), ("arena", "failed"), ("dojo", "done"),
+                       ("tower", "done"), ("dive", "done"), ("mines", "done"), ("pets", "done"), ("patrol", "done"),
+                       ("raid", "skipped"), ("donate", "done")]
     assert ran == ["ok"]
-    assert r.nav.lobby_visits == 5  # stays in the modes tab; lobby after VIP (first), modes, patrol, raid, donation
+    assert r.nav.lobby_visits == 7  # stays in the modes tab; lobby after VIP, daily, mail, modes, patrol, raid, donation
 
 
 def skill_screen(chosen, needed, rarities):
@@ -334,7 +347,7 @@ def test_open_mode_waits_for_the_list_to_stop_after_scrolling():
 def test_a_stuck_lobby_between_parts_does_not_abort_the_routine(monkeypatch):
     """Review: go_to_lobby raising between parts used to skip every remaining part."""
     r = make([])
-    for part in ("vip", "arena", "tower", "patrol", "raid", "donate"):
+    for part in ("vip", "daily", "mail", "arena", "dojo", "tower", "dive", "patrol", "raid", "donate"):
         monkeypatch.setattr(r, part, lambda: routine.DONE)
     monkeypatch.setattr(r, "dungeon", lambda label: routine.DONE)
     monkeypatch.setattr(r, "_back_to_modes", lambda: True)
@@ -370,3 +383,108 @@ def test_without_ads_dungeon_tickets_and_quick_patrol_videos_are_skipped(monkeyp
     r = make([PATROL_LOBBY, early, quick(1, 0)])
     assert r.patrol() == routine.DONE
     assert r.device.taps == [(720, 1922), (495, 1775)]  # patrol, quick patrol; not its video
+
+
+# --- Dojo Battle, Dungeon Dive, daily rewards, mail (2026-10-13) ---
+
+def fake_dojo(img, texts, ocr):
+    """parse_dojo without the ticket crop: fake screens say "tickets N"."""
+    from roguebot.mode_screens import DojoScreen
+    n = next((int(t.text.split()[1]) for t in texts if t.text.startswith("tickets")), None)
+    if n is None:
+        return None
+    challenge = next((t for t in texts if t.text == "Desafío"), None)
+    chest = next((t for t in texts if t.text == "RECLAMAR"), None)
+    return DojoScreen(challenge, n, chest)
+
+
+def dojo(tickets, chest=False):
+    texts = [Text(f"tickets {tickets}", 1300, 60, 1400, 110)]
+    texts.append(Text("RECLAMAR", 275, 2127, 502, 2170) if chest else
+                 Text("Desafío", 620, 2390, 820, 2440) if tickets else Text("Se actualiza en:", 560, 2390, 880, 2440))
+    return texts
+
+
+def test_dojo_fights_while_there_are_tickets_and_claims_the_chest(monkeypatch):
+    labels.set_language("es")
+    monkeypatch.setattr(routine, "parse_dojo", fake_dojo)
+    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
+    victory = [Text("VICTORIA", 600, 1000, 830, 1055), Text("Confirmar", 534, 2280, 905, 2367)]
+    r = make([dojo(2), victory, dojo(1), victory, dojo(0, chest=True), CLAIM_ES, dojo(0)])
+    monkeypatch.setattr(r, "_open_mode", lambda label: True)
+    assert r.dojo() == routine.DONE
+    challenge, confirm, chest = (720, 2415), (719, 2323), (388, 2148)
+    assert r.device.taps == [challenge, confirm, challenge, confirm, chest, (720, 2320)]
+
+
+def test_dojo_without_tickets_taps_nothing(monkeypatch):
+    labels.set_language("es")
+    monkeypatch.setattr(routine, "parse_dojo", fake_dojo)
+    r = make([dojo(0)])
+    monkeypatch.setattr(r, "_open_mode", lambda label: True)
+    assert r.dojo() == routine.DONE and r.device.taps == []
+
+
+def dive(tickets):
+    return [Text(f"{tickets}/2", 800, 65, 905, 100), Text("Recompensas", 600, 470, 830, 515),
+            Text("Desafío", 620, 2390, 820, 2440)]
+
+
+def test_dive_plays_a_level_per_ticket_win_or_lose(monkeypatch):
+    labels.set_language("es")
+    from roguebot.screens import LevelScreen
+    results = iter([LevelScreen.DEFEAT, LevelScreen.VICTORY])
+    r = make([dive(2), dive(1), dive(0)])
+    r.play_level = lambda: next(results)
+    monkeypatch.setattr(r, "_open_mode", lambda label: True)
+    assert r.dive() == routine.DONE
+    assert r.device.taps == [(720, 2415), (720, 2415)]  # 2 tickets, 2 runs; at 0 the button is not tapped
+
+
+ES_MENU = ES_LOBBY + [Text("Correo", 336, 449, 461, 498), Text("Recompensas", 320, 1040, 480, 1070),
+                      Text("Diarias", 349, 1068, 446, 1100)]
+DAILY_POPUP = [Text("Recompensas Diarias", 420, 880, 1020, 935), Text("Reclamar", 551, 1138, 842, 1218),
+               Text("Introducir Código", 470, 1360, 970, 1430)]
+WEB_PAGE = [Text("roguelegend.io", 220, 130, 390, 170), Text("TIENDA", 780, 310, 890, 350),
+            Text("Reclamar ahora!", 824, 1392, 1154, 1438)]
+
+
+def test_daily_rewards_claims_on_the_web_page_and_goes_back_to_the_game(monkeypatch):
+    labels.set_language("es")
+    monkeypatch.setattr(routine.config, "VIDEO_SETTLE", 0)
+    r = make([ES_LOBBY, ES_MENU, DAILY_POPUP, WEB_PAGE])
+    r.device.apps = ["com.android.chromium", "com.android.chromium"]  # Back twice: page history, then the game
+    assert r.daily() == routine.DONE
+    assert r.device.taps == [routine.config.MENU_BUTTON, (397, 1084), (696, 1178), (989, 1415)]
+    assert r.device.backs == 2
+
+
+def test_daily_rewards_goes_back_to_the_game_even_without_the_web_claim(monkeypatch):
+    """Another account may not be logged in on the web store: no "Reclamar ahora!"."""
+    labels.set_language("es")
+    monkeypatch.setattr(routine, "SCREEN_TIMEOUT", 0.05)
+    login = [Text("roguelegend.io", 220, 130, 390, 170), Text("Iniciar sesión", 500, 1200, 900, 1260)]
+    r = make(itertools.chain([ES_LOBBY, ES_MENU, DAILY_POPUP], itertools.repeat(login)))
+    r.device.apps = ["com.android.chromium"]
+    with pytest.raises(NavigationError):
+        r.daily()
+    assert r.device.backs == 1 and (989, 1415) not in r.device.taps
+
+
+def test_menu_entry_missing_skips_the_part(monkeypatch):
+    labels.set_language("es")
+    r = make([ES_LOBBY, ES_MENU[:-2]])  # menu without "Recompensas Diarias"
+    assert r.daily() == routine.SKIPPED
+    assert r.device.taps == [routine.config.MENU_BUTTON]
+
+
+MAIL = [Text("Correo", 600, 470, 840, 525), Text("Recompensa diaria", 450, 670, 820, 710),
+        Text("Eliminar todo", 300, 1815, 690, 1880), Text("Reclamar todo", 736, 1815, 1149, 1880)]
+
+
+def test_mail_claims_all_and_never_deletes(monkeypatch):
+    labels.set_language("es")
+    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
+    r = make([ES_LOBBY, ES_MENU, MAIL, CLAIM_ES, MAIL])
+    assert r.mail() == routine.DONE
+    assert r.device.taps == [routine.config.MENU_BUTTON, (398, 473), (942, 1847), (720, 2320)]

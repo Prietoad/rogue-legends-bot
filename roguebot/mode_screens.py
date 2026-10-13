@@ -231,6 +231,64 @@ def parse_tower(texts: list[Text]) -> TowerScreen | None:
 
 
 @dataclass(frozen=True)
+class DojoScreen:
+    challenge: Text | None       # gone at 0 tickets: the button shows "Se actualiza en" instead
+    tickets: int
+    chest: Text | None           # progress chest "RECLAMAR" (free reward), when ready
+
+
+def parse_dojo(img: np.ndarray, texts: list[Text], ocr: Ocr) -> DojoScreen | None:
+    """Dojo Battle main screen. Tickets are re-read from a crop (full-frame OCR misses them)."""
+    title = find(texts, L.DOJO)
+    if not (title and title.center[1] < config.DOJO_TITLE_MAX_Y):
+        return None
+    digits = [t for t in ocr.read(img, config.DOJO_TICKETS_REGION) if t.norm.isdigit()]
+    if not digits:
+        return None
+    chest = next((t for t in texts if matches(t, L.DOJO_CHEST, exact=True)
+                  and config.DOJO_CHEST_Y[0] < t.center[1] < config.DOJO_CHEST_Y[1]), None)
+    return DojoScreen(_bottom_challenge(texts), int(digits[0].norm), chest)
+
+
+@dataclass(frozen=True)
+class DiveScreen:
+    challenge: Text
+    tickets: int                 # top bar "1/2"; at 0 the Challenge button stays but does nothing
+
+
+def parse_dive(texts: list[Text]) -> DiveScreen | None:
+    """Dungeon Dive main screen ("Ruinas Olvidadas 12": the title changes with the stage)."""
+    button = _bottom_challenge(texts)
+    if not (button and find(texts, L.DIVE_REWARDS, exact=True)) or find(texts, L.TOWER_TITLE):
+        return None
+    for t in texts:
+        m = _RATIO_RE.match(t.norm)
+        if m and t.center[1] < config.TOP_BAR_MAX_Y:
+            return DiveScreen(button, int(m.group(1)))
+    return None
+
+
+def menu_entry(texts: list[Text], label: L.Label) -> Text | None:
+    """An entry of the lobby's top-left ≡ menu (Correo, Recompensas Diarias...)."""
+    return next((t for t in texts if matches(t, label, exact=True) and t.center[0] < config.MENU_MAX_X), None)
+
+
+def daily_claim(texts: list[Text]) -> Text | None:
+    """The "Recompensas Diarias" popup's "Reclamar" (it opens the game's web store in a browser)."""
+    title = find(texts, L.DAILY_TITLE)
+    if not title:
+        return None
+    return next((t for t in texts if matches(t, L.DAILY_CLAIM, exact=True) and t.center[1] > title.center[1]), None)
+
+
+def mail_claim_all(texts: list[Text]) -> Text | None:
+    """The mail popup's "Reclamar todo" (never "Eliminar todo" next to it)."""
+    if not find(texts, L.MAIL_TITLE, exact=True):
+        return None
+    return find(texts, L.CLAIM_ALL, exact=True)
+
+
+@dataclass(frozen=True)
 class DungeonPopup:
     """Crystal Mines / Pet Kingdom popup."""
     difficulty: int | None

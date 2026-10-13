@@ -1,6 +1,6 @@
-"""Full routine, part 1 and 2: the daily modes (Arena, Tower, Crystal Mines, Pet Kingdom) and the
-guild raid. Each part spends its tickets/attempts; a part that gets stuck is reported as failed and
-the routine goes on with the next one."""
+"""Full routine: VIP cards, daily rewards, mail, the daily modes (Arena, Dojo, Tower, Dungeon Dive,
+Crystal Mines, Pet Kingdom), patrol and the guild raid/donation. Each part spends its tickets/attempts;
+a part that gets stuck is reported as failed and the routine goes on with the next one."""
 
 import logging
 import time
@@ -8,9 +8,9 @@ from typing import Callable
 
 from roguebot import config, labels as L
 from roguebot.device import Device
-from roguebot.mode_screens import (FightResult, back_arrow, free_donation, parse_patrol, parse_quick_patrol, guild_hall_donate, in_guild, is_modes_list, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
-                                   parse_dungeon_popup, parse_fight_result, parse_raid, parse_skill_choice,
-                                   parse_tower, pick_opponent, vip_cards_icon, vip_claim_all)
+from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, free_donation, parse_patrol, parse_quick_patrol, guild_hall_donate, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
+                                   parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
+                                   parse_skill_choice, parse_tower, pick_opponent, vip_cards_icon, vip_claim_all)
 from roguebot.navigation import NavigationError, Navigator
 from roguebot.play import PlayError
 from roguebot.screens import close_button, parse_energy, parse_lobby, popup_close
@@ -18,8 +18,8 @@ from roguebot.vision import Ocr, Text, find
 
 log = logging.getLogger(__name__)
 
-PARTS = ("vip", "arena", "tower", "mines", "pets", "patrol", "raid", "donate")
-MODE_PARTS = ("arena", "tower", "mines", "pets")  # run from the modes list without going back to the lobby
+PARTS = ("vip", "daily", "mail", "arena", "dojo", "tower", "dive", "mines", "pets", "patrol", "raid", "donate")
+MODE_PARTS = ("arena", "dojo", "tower", "dive", "mines", "pets")  # run from the modes list without going back to the lobby
 MAX_BACK_STEPS = 8   # screens to back out of (popups, arena panel, mode screen) to reach the modes list
 DONE, SKIPPED, FAILED = "done", "skipped", "failed"
 LOBBY_RETRIES = 3     # lobby reads before using whatever shows (the game may open a screen by itself)
@@ -27,7 +27,9 @@ SCREEN_TIMEOUT = 20  # seconds to wait for an expected screen
 
 
 class Routine:
-    def __init__(self, device: Device, ocr: Ocr, nav: Navigator, ads: bool = False):
+    def __init__(self, device: Device, ocr: Ocr, nav: Navigator, ads: bool = False,
+                 play_level: Callable[[], object] | None = None):
+        self.play_level = play_level  # plays a level board to its end (Player.play_level): Dungeon Dive runs
         self.ads = ads  # watch ads (dungeon tickets, quick patrol); only with an account that skips them
         self.device = device
         self.ocr = ocr
@@ -36,7 +38,8 @@ class Routine:
 
     def run_parts(self) -> list[tuple[str, str]]:
         """Run every part in order; returns (part, status) pairs."""
-        steps = {"arena": self.arena, "tower": self.tower, "mines": lambda: self.dungeon(L.MINES),
+        steps = {"arena": self.arena, "dojo": self.dojo, "dive": self.dive, "daily": self.daily, "mail": self.mail,
+                 "tower": self.tower, "mines": lambda: self.dungeon(L.MINES),
                  "pets": lambda: self.dungeon(L.PETS), "raid": self.raid, "vip": self.vip, "patrol": self.patrol,
                  "donate": self.donate}
         results = []
@@ -126,6 +129,71 @@ class Routine:
                 self._tap(popup.challenge)
                 lost = not self._fight().victory
         self._fail("Dungeon did not run out of tickets")
+
+    def dojo(self) -> str:
+        """Dojo Battle: fight the training dummy (most damage wins rank) while there are tickets; skills by
+        rarity, like the raid. Also claims the free progress chest ("Intenta el Dojo N veces")."""
+        if not self._open_mode(L.DOJO):
+            log.info("Dojo: closed for now")
+            return SKIPPED
+        for _ in range(config.MAX_MODE_ACTIONS):
+            screen = self._wait_for(lambda img, texts: self._claim_or(texts, lambda t: parse_dojo(img, t, self.ocr)),
+                                    "dojo screen")
+            if screen.chest:
+                log.info("Dojo: claiming the progress chest")
+                self._tap(screen.chest)
+                time.sleep(config.UI_SETTLE)
+            elif screen.tickets < 1 or not screen.challenge:
+                log.info("Dojo: no tickets left")
+                return DONE
+            else:
+                log.info("Dojo: challenge (%d tickets)", screen.tickets)
+                self._tap(screen.challenge)
+                self._fight()
+        self._fail("Dojo did not run out of tickets")
+
+    def dive(self) -> str:
+        """Dungeon Dive: a 3-depth level board, played like a normal level (build, auto-play) while there
+        are tickets, whatever the result."""
+        if not self._open_mode(L.DIVE):
+            log.info("Dungeon Dive: closed for now")
+            return SKIPPED
+        for _ in range(config.MAX_MODE_ACTIONS):
+            screen = self._wait_for(lambda img, texts: self._claim_or(texts, parse_dive), "dungeon dive screen")
+            if screen.tickets < 1:
+                log.info("Dungeon Dive: no tickets left")
+                return DONE
+            log.info("Dungeon Dive: challenge (%d tickets)", screen.tickets)
+            self._tap(screen.challenge)
+            log.info("Dungeon Dive finished: %s", self.play_level().value)
+        self._fail("Dungeon Dive did not run out of tickets")
+
+    def daily(self) -> str:
+        """Lobby ≡ menu → "Recompensas Diarias" → "Reclamar": the game opens its web store in a browser,
+        where only "Reclamar ahora!" is tapped (the store sells things); then Back to the game. The
+        reward arrives by mail (the mail part comes next)."""
+        if not self._open_menu(L.MENU_DAILY):
+            return SKIPPED
+        self._tap(self._wait_for(lambda img, texts: daily_claim(texts), "daily rewards popup"))
+        try:
+            claim = self._wait_for(lambda img, texts: find(texts, L.DAILY_WEB_CLAIM), "daily reward web page")
+            log.info("Daily rewards: claiming on the web page")
+            self._tap(claim)
+            time.sleep(config.VIDEO_SETTLE)  # the page loads the store with the claimed day
+        finally:
+            self._back_to_game()
+        return DONE
+
+    def mail(self) -> str:
+        """Lobby ≡ menu → "Correo" → "Reclamar todo" (never "Eliminar todo"); claim popups; ✕."""
+        if not self._open_menu(L.MENU_MAIL):
+            return SKIPPED
+        self._tap(self._wait_for(lambda img, texts: mail_claim_all(texts), "mail popup"))
+        log.info("Mail: claim all")
+        time.sleep(config.UI_SETTLE)
+        # Reward popups ("Tap anywhere to claim") until the mail shows again; go_to_lobby closes it (✕).
+        self._wait_for(lambda img, texts: self._claim_or(texts, mail_claim_all), "mail popup")
+        return DONE
 
     def raid(self) -> str:
         """Guild raid boss: challenge until no attempts are left. Skipped when not in a guild."""
@@ -252,6 +320,31 @@ class Routine:
             return False
         self._tap(entry)
         return True
+
+    def _open_menu(self, label: L.Label) -> bool:
+        """Open the lobby's ≡ menu and tap an entry. False (logged) if the menu or the entry isn't there."""
+        self._lobby_texts()
+        self.device.tap(*config.MENU_BUTTON)
+        deadline = time.monotonic() + SCREEN_TIMEOUT
+        while time.monotonic() < deadline:
+            _, texts = self._capture()
+            if menu_entry(texts, L.MENU_MAIL):  # the menu is open
+                entry = menu_entry(texts, label)
+                if entry:
+                    self._tap(entry)
+                    return True
+                break
+            time.sleep(config.POLL_INTERVAL)
+        log.info("No %s in the lobby menu, skipping", label.variants[0])
+        return False
+
+    def _back_to_game(self) -> None:
+        """Back key until the game is in front again (it opened a browser)."""
+        for _ in range(config.BROWSER_BACK_MAX):
+            if self.device.foreground_package() == config.PACKAGE:
+                return
+            self.device.back()
+        self._fail("Could not get back to the game from the browser")
 
     def _back_to_modes(self) -> bool:
         """Back out of a mode (popups, ✕, ← arrows) to the modes list. False if it was not reached."""

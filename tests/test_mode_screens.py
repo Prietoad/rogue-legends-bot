@@ -6,7 +6,8 @@ import cv2
 import pytest
 
 from roguebot import labels
-from roguebot.mode_screens import (back_arrow, in_guild, is_modes_list, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
+from roguebot.mode_screens import (back_arrow, daily_claim, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed,
+                                   mode_entry, parse_arena, parse_arena_opponents, parse_dive, parse_dojo,
                                    parse_dungeon_popup, parse_fight_result, parse_raid, parse_skill_choice,
                                    parse_tower, pick_opponent)
 from roguebot.screens import close_button
@@ -344,3 +345,75 @@ def test_arena_season_promotion_popup_closes_by_text(ocr):
     _, texts = load(ocr, "arena_promotion_popup.png")
     close = popup_close(texts)
     assert close and close.center[1] > 2400
+
+
+# --- Dojo Battle, Dungeon Dive, lobby menu (daily rewards, mail); seen 2026-10-13 ---
+
+def test_modes_list_has_dojo_and_dive(ocr):
+    _, texts = load(ocr, "modes_list_dojo_dive.png")
+    assert is_modes_list(texts)
+    assert mode_entry(texts, labels.DOJO).center[1] < mode_entry(texts, labels.DIVE).center[1]
+
+
+def test_dojo_with_a_ticket(ocr):
+    img, texts = load(ocr, "dojo.png")
+    screen = parse_dojo(img, texts, ocr)
+    assert screen.tickets == 1 and screen.challenge is not None and screen.chest is None
+
+
+def test_dojo_without_tickets_shows_the_progress_chest(ocr):
+    img, texts = load(ocr, "dojo_no_tickets_chest.png")
+    screen = parse_dojo(img, texts, ocr)
+    assert screen.tickets == 0 and screen.challenge is None  # "Se actualiza en" replaces the button
+    assert screen.chest.text == "RECLAMAR"
+
+
+@pytest.mark.parametrize("name", ["modes_list_dojo_dive.png", "dojo_skills.png", "dive.png"])
+def test_not_dojo(ocr, name):
+    img, texts = load(ocr, name)
+    assert parse_dojo(img, texts, ocr) is None
+
+
+def test_dojo_skill_pick_is_the_raid_skill_pick(ocr):
+    _, texts = load(ocr, "dojo_skills.png")
+    choice = parse_skill_choice(texts)
+    assert choice.needed == 2 and choice.chosen == 0 and len(choice.cards) == 4
+
+
+@pytest.mark.parametrize("name, tickets", [("dive.png", 1), ("dive_no_tickets.png", 0)])
+def test_dive_screen(ocr, name, tickets):
+    _, texts = load(ocr, name)
+    assert parse_dive(texts).tickets == tickets
+
+
+@pytest.mark.parametrize("name", ["dojo.png", "dive_modifiers.png", "en_tower.png", "en_arena.png"])
+def test_not_dive(ocr, name):
+    _, texts = load(ocr, name)
+    assert parse_dive(texts) is None
+
+
+def test_lobby_menu_entries(ocr):
+    _, texts = load(ocr, "lobby_menu.png")
+    assert menu_entry(texts, labels.MENU_MAIL).text == "Correo"
+    assert menu_entry(texts, labels.MENU_DAILY).center[1] > 1000
+
+
+def test_lobby_without_menu_has_no_entries(ocr):
+    _, texts = load(ocr, "daily_rewards.png")  # the lobby's "Recompensas de Capítulo" is not the menu
+    assert menu_entry(texts, labels.MENU_MAIL) is None
+
+
+def test_daily_rewards_popup_and_web_page(ocr):
+    _, texts = load(ocr, "daily_rewards.png")
+    assert daily_claim(texts).text == "Reclamar"  # not "Introducir Código"
+    _, texts = load(ocr, "daily_rewards_web.png")
+    assert find(texts, labels.DAILY_WEB_CLAIM) is not None
+    _, texts = load(ocr, "daily_rewards_store.png")  # the store itself: nothing to claim there
+    assert find(texts, labels.DAILY_WEB_CLAIM) is None and daily_claim(texts) is None
+
+
+def test_mail_claims_all_never_deletes(ocr):
+    _, texts = load(ocr, "mail.png")
+    assert mail_claim_all(texts).text == "Reclamar todo"
+    _, texts = load(ocr, "lobby_menu.png")
+    assert mail_claim_all(texts) is None

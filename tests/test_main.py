@@ -160,11 +160,13 @@ class FakeRoutine:
     calls = patrols = 0
     patrol_wait = None  # unreadable counter: the patrol is opened after every level
 
-    def __init__(self, device=None, ocr=None, nav=None, ads=False):
+    def __init__(self, device=None, ocr=None, nav=None, ads=False, play_level=None):
+        self.play_level = play_level
         self.nav = nav
 
     def run_parts(self):
         FakeRoutine.calls += 1
+        FakeRoutine.had_player = self.play_level is not None  # Dungeon Dive plays levels with the Player
         return [("arena", "done"), ("raid", "skipped")]
 
     def patrol(self):
@@ -177,7 +179,7 @@ def test_full_routine_runs_parts_then_levels(monkeypatch):
     monkeypatch.setattr(main, "Routine", FakeRoutine)
     nav = FakeNav(energy=10)
     report = run_with(monkeypatch, nav, [V, V], RunRequest(Mode.NORMAL, 4, repeat=True, full=True))
-    assert FakeRoutine.calls == 1
+    assert FakeRoutine.calls == 1 and FakeRoutine.had_player
     assert report.parts == [("arena", "done"), ("raid", "skipped")]
     assert report.results == [V, V] and report.repeat
 
@@ -389,6 +391,8 @@ def test_device_calls_have_timeouts_and_an_empty_screenshot_is_an_error():
         dev.screenshot()
     dev.tap(10, 20, settle=0)
     assert all(t == main.config.ADB_TIMEOUT for _, t in calls) and calls[1][0] == ["input", "tap", "10", "20"]
+    dev.back(settle=0)  # leaving the browser the daily rewards open
+    assert calls[-1] == (["input", "keyevent", "4"], main.config.ADB_TIMEOUT)
 
 
 def test_an_unavailable_level_is_not_retried(monkeypatch):
