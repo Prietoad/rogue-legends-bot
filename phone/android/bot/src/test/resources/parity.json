@@ -2543,6 +2543,240 @@
 "detect_language": null
 }
 },
+"dive_defeat.png": {
+"lang": "es",
+"texts": [
+[
+"0/200k",
+160,
+55,
+370,
+104
+],
+[
+"98,1k",
+632,
+51,
+781,
+109
+],
+[
+"21,8k",
+1074,
+51,
+1222,
+109
+],
+[
+"x3600 x3600",
+178,
+277,
+482,
+320
+],
+[
+"undidad:2/3",
+0,
+366,
+334,
+427
+],
+[
+"DERROTA",
+410,
+949,
+1035,
+1105
+],
+[
+"Ruinas Olvidadas 13",
+446,
+1100,
+990,
+1165
+],
+[
+"x",
+477,
+1236,
+506,
+1265
+],
+[
+"x3",
+345,
+1567,
+411,
+1616
+],
+[
+"x7200",
+529,
+1569,
+677,
+1612
+],
+[
+"OLX",
+785,
+1566,
+879,
+1615
+],
+[
+"x36",
+1011,
+1565,
+1107,
+1615
+],
+[
+"X",
+1239,
+1953,
+1269,
+1983
+],
+[
+"4",
+234,
+2061,
+250,
+2077
+],
+[
+"Confirmar",
+534,
+2103,
+906,
+2185
+],
+[
+"Modificadores",
+1225,
+2233,
+1437,
+2270
+],
+[
+"x4",
+51,
+2252,
+154,
+2330
+],
+[
+"X",
+1177,
+2247,
+1197,
+2265
+],
+[
+"de nivel",
+1271,
+2269,
+1393,
+2305
+],
+[
+"》>x2",
+57,
+2393,
+246,
+2473
+],
+[
+"Habilidad",
+1235,
+2458,
+1432,
+2501
+],
+[
+"Aprendida",
+1226,
+2505,
+1438,
+2553
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"is_loading": false,
+"close_button": null,
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"classify_level_screen": {
+"kind": "defeat",
+"tap": [
+720,
+2144
+]
+},
+"game_speed": 2,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"back_arrow": null,
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": {
+"victory": false,
+"button": [
+"Confirmar",
+534,
+2103,
+906,
+2185
+],
+"next_floor": null
+},
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
 "dive_modifiers.png": {
 "lang": "es",
 "texts": [
@@ -7125,7 +7359,8 @@
 2069,
 786,
 2161
-]
+],
+"next_floor": null
 },
 "mode_entry_ARENA": null,
 "mode_closed_ARENA": null,
@@ -16241,7 +16476,8 @@
 2286,
 982,
 2375
-]
+],
+"next_floor": null
 },
 "mode_entry_ARENA": null,
 "mode_closed_ARENA": null,
@@ -19546,7 +19782,8 @@
 2278,
 786,
 2370
-]
+],
+"next_floor": null
 },
 "mode_entry_ARENA": null,
 "mode_closed_ARENA": null,
@@ -21836,7 +22073,8 @@
 2289,
 979,
 2371
-]
+],
+"next_floor": null
 },
 "mode_entry_ARENA": null,
 "mode_closed_ARENA": null,
@@ -23101,6 +23339,160 @@
 151,
 703
 ],
+"vip_claim_all": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
+"energy_popup_pack_reward.png": {
+"lang": "es",
+"texts": [
+[
+"Comprar",
+588,
+725,
+851,
+805
+],
+[
+"Recompensas",
+511,
+837,
+929,
+918
+],
+[
+"x15",
+680,
+1241,
+756,
+1282
+],
+[
+"X",
+685,
+1372,
+709,
+1396
+],
+[
+"30",
+948,
+1361,
+1022,
+1416
+],
+[
+"Paquete",
+272,
+1532,
+477,
+1584
+],
+[
+"Diario",
+455,
+1536,
+590,
+1580
+],
+[
+"Se actualiza en: 02:45:08",
+884,
+1547,
+1164,
+1572
+],
+[
+"Gratis",
+943,
+1652,
+1104,
+1716
+],
+[
+"X15",
+288,
+1716,
+397,
+1774
+],
+[
+"Toca en cualquier lugar para reclamar",
+316,
+2291,
+1127,
+2354
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": {
+"free_pack": null,
+"video": null,
+"videos_left": 0
+},
+"update_required": false,
+"resume_prompt": null,
+"is_loading": false,
+"close_button": [
+720,
+1947
+],
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"classify_level_screen": {
+"kind": "continue",
+"tap": [
+721,
+2322
+]
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"back_arrow": null,
+"in_guild": false,
+"vip_cards_icon": null,
 "vip_claim_all": null,
 "guild_hall_donate": null,
 "free_donation": null,
@@ -37146,6 +37538,378 @@
 "detect_language": null
 }
 },
+"tower_auto_advance.png": {
+"lang": "es",
+"texts": [
+[
+"14/10",
+786,
+56,
+920,
+110
+],
+[
+"18029",
+1036,
+63,
+1164,
+108
+],
+[
+"36634",
+1278,
+63,
+1410,
+107
+],
+[
+"Torre de los Héroes 24",
+397,
+233,
+1041,
+298
+],
+[
+"Piso 5",
+558,
+322,
+879,
+438
+],
+[
+"Recompensas",
+567,
+465,
+869,
+521
+],
+[
+"x1400",
+583,
+637,
+703,
+677
+],
+[
+"x25",
+757,
+637,
+831,
+677
+],
+[
+"5/10",
+156,
+1461,
+264,
+1512
+],
+[
+"1,2m",
+507,
+1607,
+657,
+1676
+],
+[
+"2,6m",
+798,
+1610,
+948,
+1674
+],
+[
+"Avance",
+666,
+2104,
+781,
+2143
+],
+[
+"automatico",
+664,
+2134,
+838,
+2176
+],
+[
+"al siguiente nivel",
+667,
+2171,
+915,
+2210
+],
+[
+"Por defecto",
+159,
+2246,
+345,
+2287
+],
+[
+"Desafio",
+618,
+2385,
+820,
+2447
+],
+[
+"1",
+748,
+2447,
+786,
+2501
+],
+[
+"Clasificaciôn",
+1194,
+2461,
+1393,
+2504
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": 14,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"is_loading": false,
+"close_button": null,
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"classify_level_screen": {
+"kind": "unknown",
+"tap": null
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"back_arrow": [
+120,
+2447
+],
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": {
+"challenge": [
+"Desafio",
+618,
+2385,
+820,
+2447
+],
+"tickets": 14
+},
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
+"tower_auto_advance_vip_offer.png": {
+"lang": "es",
+"texts": [
+[
+"Tarjeta VIP",
+478,
+360,
+961,
+477
+],
+[
+"Compra para recibir ahora",
+79,
+1065,
+578,
+1112
+],
+[
+"x600",
+624,
+1132,
+739,
+1178
+],
+[
+"Desbloquea Velocidad de Juego x4",
+133,
+1229,
+1053,
+1301
+],
+[
+"+1 boleto para la Mina de Cristal y el Reino de",
+133,
+1331,
+1347,
+1400
+],
+[
+"las Mascotas cada día",
+131,
+1396,
+732,
+1459
+],
+[
+"Omite las batallas de Mazmorra y Arena",
+135,
+1491,
+1206,
+1562
+],
+[
+"Recompensas de Patrulla +30%",
+131,
+1587,
+972,
+1663
+],
+[
+"Limite de Patrulla Rápida +3",
+132,
+1691,
+894,
+1760
+],
+[
+"Reclamo diario",
+135,
+1793,
+541,
+1854
+],
+[
+"250",
+623,
+1792,
+743,
+1858
+],
+[
+"30 dias de VIP",
+524,
+1994,
+888,
+2051
+],
+[
+"Toca en cualquier lugar para cerrar",
+253,
+2398,
+1185,
+2472
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"is_loading": false,
+"close_button": null,
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": [
+"Toca en cualquier lugar para cerrar",
+253,
+2398,
+1185,
+2472
+],
+"classify_level_screen": {
+"kind": "continue",
+"tap": [
+719,
+2435
+]
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": true,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"back_arrow": null,
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": "es"
+}
+},
 "tower_victory.png": {
 "lang": "es",
 "texts": [
@@ -37242,8 +38006,11 @@
 "footer_visible": false,
 "popup_close": null,
 "classify_level_screen": {
-"kind": "unknown",
-"tap": null
+"kind": "victory",
+"tap": [
+719,
+1963
+]
 },
 "game_speed": null,
 "dice_ready": false,
@@ -37282,6 +38049,142 @@
 1917,
 906,
 2009
+],
+"next_floor": null
+},
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
+"tower_victory_next_floor.png": {
+"lang": "es",
+"texts": [
+[
+"VICTORIA!",
+394,
+945,
+1047,
+1120
+],
+[
+"Torre de los Hêroes 24",
+415,
+1090,
+1023,
+1171
+],
+[
+"X",
+1244,
+1181,
+1284,
+1223
+],
+[
+"0070",
+528,
+1527,
+677,
+1575
+],
+[
+"x25",
+786,
+1527,
+876,
+1575
+],
+[
+"Confirmar",
+280,
+1921,
+654,
+2007
+],
+[
+"Prôximo piso",
+747,
+1913,
+1195,
+2016
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"is_loading": false,
+"close_button": null,
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"classify_level_screen": {
+"kind": "victory",
+"tap": [
+467,
+1964
+]
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"back_arrow": null,
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": {
+"victory": true,
+"button": [
+"Confirmar",
+280,
+1921,
+654,
+2007
+],
+"next_floor": [
+"Prôximo piso",
+747,
+1913,
+1195,
+2016
 ]
 },
 "mode_entry_ARENA": null,

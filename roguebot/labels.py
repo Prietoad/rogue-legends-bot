@@ -69,6 +69,7 @@ DAILY_PACK_CLAIMED = _l("se actualiza en", "refresh in")             # timer onc
 
 # Level end
 CONTINUE = _l("continuar", "continue")               # exact
+CONFIRM = _l("confirmar", "confirm")                 # exact; Dungeon Dive end screen button (English guessed)
 DEFEAT = _l("derrota", "defeat")                     # English inferred from "VICTORY!", not seen yet
 VICTORY = _l("victoria", "victory")
 DOUBLE_REWARD = _l(en="x2 rewards")                  # ad button, bottom-right of the end screen (some runs)
@@ -115,6 +116,7 @@ CHALLENGE = _l(("desafiar", "desafio"), "challenge")  # exact (arena/tower/mines
 ARENA_PANEL = _l("desafio de la arena", "arena challenge")  # opponent list title
 FREE_REFRESH = _l("recarga gratis", "free refresh")  # opponent list refresh, only when free
 TOWER_TITLE = _l("torre de los heroes", "tower of heroes")
+TOWER_NEXT_FLOOR = _l("proximo piso", "next floor")  # tower victory: starts the next floor (one more ticket); en guessed
 TOWER_CLEARED = _l(("felicidades", "enhorabuena"), "congratulations on clearing")  # whole tower done: chest (es guessed)
 DIFFICULTY = _l("dificultad", "difficulty")          # mines / pet popup
 SWEEP = _l("barrer", "sweep previous")               # "Barrer etapa anterior" / "Sweep previous stage"

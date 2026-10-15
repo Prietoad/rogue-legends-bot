@@ -118,11 +118,12 @@ def dungeon(tickets, ad=False, buttons=True):
 
 
 CLAIM = [Text("Tap anywhere to claim", 480, 2300, 960, 2345)]
+LOADING = [Text("Loading...", 600, 1260, 840, 1300)]  # right after a Challenge tap registered
 DEFEAT = [Text("DEFEAT", 600, 1000, 830, 1055), Text("Tap to Continue", 560, 2310, 875, 2350)]
 
 
 def test_dungeon_challenges_then_sweeps_after_defeat_and_watches_ads(monkeypatch):
-    r = make([dungeon(1), DEFEAT,              # challenge, lose (ticket kept)
+    r = make([dungeon(1), LOADING, DEFEAT,     # challenge, lose (ticket kept)
               dungeon(1), CLAIM,               # sweep, claim
               dungeon(0, ad=True, buttons=False), CLAIM,  # watch ad, claim
               dungeon(1), CLAIM,               # still lost: sweep again, claim
@@ -203,7 +204,7 @@ TOWER = [Text("Tower of Heroes 16", 560, 245, 880, 290), Text("11/10", 800, 65, 
 
 
 def test_tower_opens_the_cleared_tower_chest(monkeypatch):
-    r = make([CONGRATS, CONGRATS + CLAIM, TOWER, DEFEAT, TOWER])
+    r = make([CONGRATS, CONGRATS + CLAIM, TOWER, LOADING, DEFEAT, TOWER])
     monkeypatch.setattr(r, "_open_mode", lambda label: None)
     assert r.tower() == routine.DONE
     assert r.device.taps[:3] == [routine.config.TOWER_CHEST, (720, 2322), (720, 2417)]  # chest, claim, Challenge
@@ -410,7 +411,7 @@ def test_dojo_fights_while_there_are_tickets_and_claims_the_chest(monkeypatch):
     monkeypatch.setattr(routine, "parse_dojo", fake_dojo)
     monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
     victory = [Text("VICTORIA", 600, 1000, 830, 1055), Text("Confirmar", 534, 2280, 905, 2367)]
-    r = make([dojo(2), victory, dojo(1), victory, dojo(0, chest=True), CLAIM_ES, dojo(0)])
+    r = make([dojo(2), LOADING, victory, dojo(1), LOADING, victory, dojo(0, chest=True), CLAIM_ES, dojo(0)])
     monkeypatch.setattr(r, "_open_mode", lambda label: True)
     assert r.dojo() == routine.DONE
     challenge, confirm, chest = (720, 2415), (719, 2323), (388, 2148)
@@ -434,7 +435,7 @@ def test_dive_plays_a_level_per_ticket_win_or_lose(monkeypatch):
     labels.set_language("es")
     from roguebot.screens import LevelScreen
     results = iter([LevelScreen.DEFEAT, LevelScreen.VICTORY])
-    r = make([dive(2), dive(1), dive(0)])
+    r = make([dive(2), LOADING, dive(1), LOADING, dive(0)])
     r.play_level = lambda: next(results)
     monkeypatch.setattr(r, "_open_mode", lambda label: True)
     assert r.dive() == routine.DONE
@@ -488,3 +489,140 @@ def test_mail_claims_all_and_never_deletes(monkeypatch):
     r = make([ES_LOBBY, ES_MENU, MAIL, CLAIM_ES, MAIL])
     assert r.mail() == routine.DONE
     assert r.device.taps == [routine.config.MENU_BUTTON, (398, 473), (942, 1847), (720, 2320)]
+
+
+def tower(tickets):
+    return [Text("Tower of Heroes 16", 560, 245, 880, 290), Text(f"{tickets}/10", 800, 65, 905, 100),
+            Text("Challenge", 620, 2395, 820, 2440)]
+
+
+def tower_win(next_floor=True):
+    return [Text("VICTORY!", 600, 1000, 840, 1055), Text("Confirm", 290, 1925, 640, 2005)] + (
+        [Text("Next Floor", 760, 1925, 1190, 2005)] if next_floor else [])
+
+
+def test_tower_goes_on_with_next_floor_while_another_ticket_is_left(monkeypatch):
+    r = make([tower(3), LOADING, tower_win(), LOADING, tower_win(), LOADING, tower_win(), tower(0)])
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    assert r.tower() == routine.DONE
+    challenge, confirm, next_floor = (720, 2417), (465, 1965), (975, 1965)
+    # 3 tickets: Challenge, next floor, next floor; the last ticket's win is confirmed (never "next" at 0)
+    assert r.device.taps == [challenge, next_floor, next_floor, confirm]
+
+
+def test_tower_next_floor_then_defeat_ends_the_tower(monkeypatch):
+    r = make([tower(5), LOADING, tower_win(), LOADING, DEFEAT])
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    assert r.tower() == routine.DONE
+    assert r.device.taps == [(720, 2417), (975, 1965), (717, 2330)]
+
+
+def test_tower_win_without_next_floor_reads_the_tower_screen_again(monkeypatch):
+    r = make([tower(2), LOADING, tower_win(next_floor=False), tower(1), LOADING, DEFEAT])
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    assert r.tower() == routine.DONE
+    assert r.device.taps == [(720, 2417), (465, 1965), (720, 2417), (717, 2330)]
+
+
+def test_press_taps_again_when_the_tap_did_not_register(monkeypatch):
+    monkeypatch.setattr(routine, "PRESS_RETAP_AFTER", 0)
+    r = make([tower(2), tower(2), LOADING])
+    r._press(Text("Challenge", 620, 2395, 820, 2440))
+    assert r.device.taps == [(720, 2417), (720, 2417), (720, 2417)]
+
+
+def test_press_does_not_tap_again_once_the_next_screen_shows(monkeypatch):
+    monkeypatch.setattr(routine, "PRESS_RETAP_AFTER", 0)
+    panel = tower(2) + [Text("Arena Challenge", 500, 300, 900, 350)]  # the button stays visible under it
+    r = make([panel])
+    r._press(Text("Challenge", 620, 2395, 820, 2440), lambda texts: any(t.text == "Arena Challenge" for t in texts))
+    assert r.device.taps == [(720, 2417)]
+
+
+def named_skill_screen(chosen, needed, cards):
+    """Skill pick with (rarity, name, description) cards."""
+    texts = [Text("Select a Skill to learn!", 400, 560, 1040, 600)]
+    for i, (rarity, name, desc) in enumerate(cards):
+        y = 755 + 306 * i
+        texts += [Text(rarity, 280, y - 15, 360, y + 15), Text(name, 465, y + 20, 900, y + 60),
+                  Text(desc, 465, y + 90, 1000, y + 130)]
+    return texts + [Text(f"Learn Skills ({chosen}/{needed})", 700, 2130, 1080, 2170)]
+
+
+def test_dojo_and_raid_skill_picks_follow_the_build(tmp_path):
+    from roguebot.build import Build
+    from roguebot.skills import Catalog, MAGIC
+    cards = [("Mythic", "Super Flash", "At the start of combat, Stun all enemies."),
+             ("Common", "Fire Ball", "Every 2 rounds, cast a Fireball."),
+             ("Legendary", "Glass Cannon", "ATK up, Max HP down."),
+             ("Common", "Ice Shard", "Every 2 rounds, cast an Icicle.")]
+    r = make([named_skill_screen(0, 2, cards), named_skill_screen(1, 2, cards), named_skill_screen(2, 2, cards),
+              [Text("DEFEAT", 600, 880, 840, 940), Text("OK", 680, 2300, 760, 2350)]])
+    r.build = Build(nature=MAGIC, order=("fire", "ice", "lightning", "shuriken", "venom", "bleed"))
+    r.catalog = Catalog(tmp_path / "skills.json")
+    r._fight()
+    fire_y, ice_y = 755 + 306 + 90, 755 + 306 * 3 + 90
+    assert r.device.taps[:2] == [(800, fire_y), (800, ice_y)]  # magic, fire first: not the rarest cards
+    assert set(r.catalog.skills) >= {"fireball", "iceshard", "superflash", "glasscannon"}  # learned by the catalog
+
+
+def test_run_parts_resumes_after_a_restart_at_the_part_that_broke(monkeypatch):
+    r = make([MODES_TOP] * 20)
+    calls = []
+
+    def part(name, error=None):
+        def run():
+            calls.append(name)
+            if error:
+                raise error
+            return routine.DONE
+        return run
+    for name in ("vip", "daily", "mail", "arena", "dojo", "dive", "patrol", "raid", "donate"):
+        monkeypatch.setattr(r, name, part(name))
+    monkeypatch.setattr(r, "tower", part("tower", RuntimeError("emulator froze")))
+    monkeypatch.setattr(r, "dungeon", lambda label: routine.DONE)
+    progress = {}
+    with pytest.raises(RuntimeError):
+        r.run_parts(progress)  # first attempt: the emulator froze in the tower
+    assert progress["parts"][-1] == ("dojo", "done") and calls[-1] == "tower"
+    calls.clear()
+    monkeypatch.setattr(r, "tower", part("tower"))
+    results = r.run_parts(progress)  # after the restart: from the tower on, nothing done twice
+    assert calls == ["tower", "dive", "patrol", "raid", "donate"]
+    assert [p for p, _ in results] == list(routine.PARTS)
+
+
+def test_a_part_that_keeps_breaking_the_run_is_marked_failed(monkeypatch):
+    r = make([MODES_TOP] * 40)
+    for name in ("vip", "daily", "mail", "arena", "dojo", "dive", "patrol", "raid", "donate", "tower"):
+        monkeypatch.setattr(r, name, lambda: routine.DONE)
+    monkeypatch.setattr(r, "dungeon", lambda label: (_ for _ in ()).throw(RuntimeError("frozen")))
+    progress = {}
+    for _ in range(routine.PART_RESTARTS + 1):
+        with pytest.raises(RuntimeError):
+            r.run_parts(progress)
+    with pytest.raises(RuntimeError):  # mines skipped as failed; pets (same fake) breaks next
+        r.run_parts(progress)
+    assert ("mines", "failed") in progress["parts"]
+
+
+def test_a_failed_part_left_stuck_restarts_and_resumes_at_the_next_part(monkeypatch):
+    """A part that fails where the lobby can't be reached any more (a screen nothing recognizes) used to
+    make every following part fail too; now the run restarts the emulator and goes on with the next part."""
+    r = make([])
+    for part in ("vip", "daily", "mail", "dojo", "tower", "dive", "patrol", "raid", "donate"):
+        monkeypatch.setattr(r, part, lambda: routine.DONE)
+    monkeypatch.setattr(r, "dungeon", lambda label: routine.DONE)
+    monkeypatch.setattr(r, "arena", lambda: (_ for _ in ()).throw(NavigationError("Expected the arena screen")))
+    monkeypatch.setattr(r, "_back_to_modes", lambda: False)
+
+    def stuck():
+        raise NavigationError("Could not reach the Aventura lobby")
+    r.nav.go_to_lobby = stuck
+    progress = {}
+    with pytest.raises(routine.StuckError):
+        r.run_parts(progress)
+    assert progress["parts"][-1] == ("arena", "failed")
+    r.nav.go_to_lobby = lambda: None  # after the restart
+    results = r.run_parts(progress)
+    assert [p for p, _ in results] == list(routine.PARTS)

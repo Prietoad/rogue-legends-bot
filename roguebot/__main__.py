@@ -25,6 +25,7 @@ from roguebot.vision import Ocr
 
 log = logging.getLogger("roguebot")
 ENERGY_READS = 3
+LOG_FILE_BYTES = 5_000_000
 PATROL_FAILS_TO_BACK_OFF = 2  # after-level patrol failures in a row before trying it only hours later
 
 def _start_level(nav: Navigator, request: RunRequest) -> int | None:
@@ -114,10 +115,14 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         serial, adb, launched = Emulator(request.mumu_folder, stop).start()
         device = Device(serial, stop=stop, adb=adb)
         ocr = ocr or Ocr()
+        catalog = catalog or Catalog()
         nav = Navigator(device, ocr, dry_run=dry_run, ads=request.ads)
-        play_level = lambda: Player(device, ocr, request.build, catalog or Catalog(), request.ads).play_level()
+        play_level = lambda: Player(device, ocr, request.build, catalog, request.ads).play_level()
         nav.resume_level = play_level
-        if launched:
+        if not launched and nav.level_in_progress():  # left running by a stopped bot: play it out first
+            log.info("A level is in progress: playing it out")
+            play_level()
+        elif launched:
             nav.wait_for_lobby(config.GAME_LOAD_TIMEOUT)
         nav.detect_language()
         if dry_run:
@@ -127,8 +132,8 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         cycle = 0
         while True:
             cycle += 1
-            if request.full and not state["routine_done"]:  # a retry after an error skips what was done
-                state["parts"] = Routine(device, ocr, nav, request.ads, play_level).run_parts()
+            if request.full and not state["routine_done"]:  # a retry after an error resumes at the part that broke
+                Routine(device, ocr, nav, request.ads, play_level, request.build, catalog).run_parts(state)
             state["routine_done"] = True
             while True:
                 if not request.repeat and results:  # a retry after an error must not replay the one level
@@ -143,7 +148,6 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                     state["no_stars"] = True  # remembered: no pinning, no more star list attempts
                     request = state["request"] = replace(request, level=None, last_beaten=False, pending_stars=False)
                     played = nav.start_latest(request.mode)
-                catalog = catalog or Catalog()
                 results.append(Player(device, ocr, request.build, catalog, request.ads).play_level())
                 if (request.level is None and not request.last_beaten and results[-1] is LevelScreen.VICTORY
                         and played is not None and not state.get("no_stars")):
@@ -158,7 +162,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                 break
             log.info("Cycle %d finished (%d runs so far), waiting for energy", cycle, len(results))
             _wait_for_energy(nav, device)
-            state["routine_done"] = False
+            state.update(routine_done=False, parts=[], part_tries={})
         if not results and not request.full:
             raise NoEnergyError("Not enough energy to start a run, and no free energy to claim")
         return Report(results, repeat=True, parts=state["parts"])
@@ -166,7 +170,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
     def run(request: RunRequest) -> Report:
         """attempt() until it finishes. On an error the emulator is closed and the next attempt starts
         it again (frozen emulator or game, crash, stuck screen). The same error more than
-        MAX_SAME_ERROR times in a row (no level finished in between) stops the bot with that error."""
+        MAX_SAME_ERROR times in a row (no level or routine part finished in between) stops the bot with that error."""
         if stop is not None:
             stop.clear()
         state = {"request": request, "results": [], "parts": [], "routine_done": False}
@@ -181,9 +185,10 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                 if dry_run or isinstance(e, (NoEnergyError, LevelUnavailable)) or (
                         isinstance(e, EmulatorError) and e.key in PERMANENT_ERRORS):
                     raise
-                if len(state["results"]) > progress:  # a level finished since the last error: start counting again
+                done = len(state["results"]) + len(state["parts"])
+                if done > progress:  # a level or routine part finished since the last error: start counting again
                     errors.clear()
-                    progress = len(state["results"])
+                    progress = done
                 key = _error_key(e)
                 errors[key] = errors.get(key, 0) + 1
                 if errors[key] > config.MAX_SAME_ERROR:
@@ -196,6 +201,20 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
     return run
 
 
+def _log_to_file(level: int) -> None:
+    """Also keep the log in debug/bot.log (rotated), to see afterwards why a run stopped or restarted."""
+    from logging.handlers import RotatingFileHandler
+    try:
+        Path("debug").mkdir(exist_ok=True)
+        handler = RotatingFileHandler(Path("debug") / "bot.log", maxBytes=LOG_FILE_BYTES, backupCount=2, encoding="utf-8")
+    except OSError as e:  # a read-only folder: the window still shows the log
+        log.warning("No log file: %s", e)
+        return
+    handler.setLevel(level)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-5s %(name)s: %(message)s"))
+    logging.getLogger().addHandler(handler)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="roguebot")
     parser.add_argument("--dry-run", action="store_true",
@@ -205,6 +224,7 @@ def main() -> int:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)-5s %(name)s: %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    _log_to_file(logging.DEBUG if args.verbose else logging.INFO)
 
     try:
         from roguebot.ui import App

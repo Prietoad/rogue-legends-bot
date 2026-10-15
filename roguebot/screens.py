@@ -310,10 +310,11 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
     double = find(texts, L.DOUBLE_REWARD)
     if proceed and double:  # always double the reward with the (VIP-skipped) ad before continuing
         return LevelState(LevelScreen.DOUBLE_REWARD, double.center)
-    if proceed and find(texts, L.DEFEAT):
-        return LevelState(LevelScreen.DEFEAT, proceed.center)
-    if proceed and find(texts, L.VICTORY):
-        return LevelState(LevelScreen.VICTORY, proceed.center)
+    end = proceed or find(texts, L.CONFIRM, exact=True)  # Dungeon Dive ends with "Confirmar"
+    if end and find(texts, L.DEFEAT):
+        return LevelState(LevelScreen.DEFEAT, end.center)
+    if end and find(texts, L.VICTORY):
+        return LevelState(LevelScreen.VICTORY, end.center)
     pick = find(texts, L.SKILL_PROMPT)
     if pick:
         # First card = topmost rarity tag ("Común", "Legendario"...) in the cards' top-left
@@ -421,14 +422,14 @@ class SkillCard:
         return int(self.price.norm) if self.price else None
 
 
-def _rarity_name(t: Text) -> str | None:
+def rarity_name(t: Text) -> str | None:
     return next((RARITY_NAMES[i] for i, r in enumerate(L.RARITIES) if matches(t, r, exact=True)), None)
 
 
 def parse_skill_cards(texts: list[Text]) -> list[SkillCard]:
     """Skill cards top to bottom: rarity tag, name (first line right of the icon), description (the
     rest), and in the shop the price and SOLD OUT state."""
-    tags = sorted((t for t in texts if _in_range(t.center[0], config.SKILL_RARITY_X) and _rarity_name(t)),
+    tags = sorted((t for t in texts if _in_range(t.center[0], config.SKILL_RARITY_X) and rarity_name(t)),
                   key=lambda t: t.center[1])
     cards = []
     for i, tag in enumerate(tags):
@@ -442,7 +443,7 @@ def parse_skill_cards(texts: list[Text]) -> list[SkillCard]:
         if not words or not lo <= words[0].center[1] - tag.center[1] <= hi:
             continue  # name not read: skip the card rather than store a description line as its name
         prices = [t for t in band if t.center[0] >= config.SHOP_PRICE_MIN_X and t.norm.isdigit()]
-        cards.append(SkillCard(_rarity_name(tag), words[0].text, " ".join(t.text for t in words[1:]), tag,
+        cards.append(SkillCard(rarity_name(tag), words[0].text, " ".join(t.text for t in words[1:]), tag,
                                max(prices, key=lambda t: t.center[1]) if prices else None,
                                any(matches(t, L.SOLD_OUT) for t in band)))
     return cards

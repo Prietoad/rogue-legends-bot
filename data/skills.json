@@ -369,6 +369,16 @@
   "description": "When taking damage that leaves you below <35% HP for the first time, apply Poison 5 times on all enemies and Stun them for 1 turn.",
   "auto": true
  },
+ "critica": {
+  "name": "Critica",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "e Critico , Daño de , Daño sin Critico",
+  "auto": true
+ },
  "criticalhitdamageup": {
   "name": "Critical Hit Damage Up",
   "lang": "en",
@@ -517,6 +527,16 @@
   "nature": "magic",
   "role": "damage",
   "description": "Cada turno, en vez de atacar con tu arma, obtienes un Escudo pequeño, obtienes Carga Definitiva y lanzas X Descargas, donde X es el número de la ronda actual.",
+  "auto": true
+ },
+ "disin": {
+  "name": "Disin",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "os del Las y los menos efectivos enemigo son",
   "auto": true
  },
  "disipar": {
@@ -1159,6 +1179,16 @@
   "description": "Your Weapon Attacks deal additional ice damage and have a chance to cast Icicle.",
   "auto": true
  },
+ "ientorapido": {
+  "name": "iento Rápido",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Todos los tiempos de reutilización en se reducen en 1 turno.",
+  "auto": true
+ },
  "imperecedero": {
   "name": "Imperecedero",
   "lang": "es",
@@ -1167,6 +1197,16 @@
   "nature": "physical",
   "role": "support",
   "description": "Cuando el HP <50%, los efectos de Curación de HP son +100% más efectivos.",
+  "auto": true
+ },
+ "incendiario": {
+  "name": "Incendiario",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Después de lanzar Bola de fuego, tienes una probabilidad de lanzar Ola de fuego 2 veces.",
   "auto": true
  },
  "inferno": {
@@ -1707,6 +1747,16 @@
   "nature": "magic",
   "role": "damage",
   "description": "Bolts have a chance to trigger another Bolt.",
+  "auto": true
+ },
+ "resistencia": {
+  "name": "Resistencia",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Recibes 40% menos daño de los Ataques  del enemi",
   "auto": true
  },
  "resistenciaaladefinitiva": {

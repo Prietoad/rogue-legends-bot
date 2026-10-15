@@ -86,6 +86,9 @@ class FakeNav:
     def go_to_lobby(self):
         return FakeLobby(self.energy)
 
+    def level_in_progress(self):
+        return getattr(self, "in_level", False)
+
     def detect_language(self):
         self.started.append("detect")
         return "es"
@@ -160,14 +163,18 @@ class FakeRoutine:
     calls = patrols = 0
     patrol_wait = None  # unreadable counter: the patrol is opened after every level
 
-    def __init__(self, device=None, ocr=None, nav=None, ads=False, play_level=None):
+    def __init__(self, device=None, ocr=None, nav=None, ads=False, play_level=None, build=None, catalog=None):
         self.play_level = play_level
         self.nav = nav
+        self.build = build
 
-    def run_parts(self):
+    def run_parts(self, progress=None):
         FakeRoutine.calls += 1
         FakeRoutine.had_player = self.play_level is not None  # Dungeon Dive plays levels with the Player
-        return [("arena", "done"), ("raid", "skipped")]
+        FakeRoutine.had_build = self.build is not None  # Dojo / raid skill picks follow the build
+        progress = {} if progress is None else progress
+        progress.setdefault("parts", []).extend([("arena", "done"), ("raid", "skipped")])
+        return progress["parts"]
 
     def patrol(self):
         FakeRoutine.patrols += 1
@@ -179,7 +186,7 @@ def test_full_routine_runs_parts_then_levels(monkeypatch):
     monkeypatch.setattr(main, "Routine", FakeRoutine)
     nav = FakeNav(energy=10)
     report = run_with(monkeypatch, nav, [V, V], RunRequest(Mode.NORMAL, 4, repeat=True, full=True))
-    assert FakeRoutine.calls == 1 and FakeRoutine.had_player
+    assert FakeRoutine.calls == 1 and FakeRoutine.had_player and FakeRoutine.had_build
     assert report.parts == [("arena", "done"), ("raid", "skipped")]
     assert report.results == [V, V] and report.repeat
 
@@ -538,3 +545,30 @@ def test_failed_patrol_is_retried_much_later(monkeypatch):
     clock[0] += 3600
     main._claim_patrol(R(nav=Nav()), state)  # two in a row: not before the reward could be due
     assert FakeRoutine.patrols == 2
+
+
+def test_a_restart_during_the_routine_resumes_it_with_the_parts_done_so_far(monkeypatch):
+    """The routine gets the run's state: after an emulator restart it continues at the part that broke."""
+    seen = []
+
+    class Breaks(FakeRoutine):
+        def run_parts(self, progress=None):
+            seen.append(list(progress.get("parts", [])))
+            if len(seen) == 1:
+                progress.setdefault("parts", []).append(("vip", "done"))
+                raise main.NavigationError("the emulator froze in the arena")  # not a part failure: a restart
+            return super().run_parts(progress)
+    monkeypatch.setattr(main, "Routine", Breaks)
+    report = run_with(monkeypatch, FakeNav(energy=10), [V], RunRequest(Mode.NORMAL, 4, repeat=True, full=True))
+    assert seen == [[], [("vip", "done")]]  # the second try knows VIP is done
+    assert report.parts == [("vip", "done"), ("arena", "done"), ("raid", "skipped")]
+
+
+def test_a_level_left_running_is_played_out_first(monkeypatch):
+    """Live 2026-10-15: started while a level was running (bot stopped mid-level), go_to_lobby could not leave
+    the level board and MuMu was restarted. Now the level is played out first."""
+    nav = FakeNav(energy=10)
+    nav.in_level = True
+    report = run_with(monkeypatch, nav, [D, V], RunRequest(Mode.NORMAL, 4))
+    assert report.results == [V]  # the leftover level (D) is played, then the requested run
+    assert nav.started == ["detect", ("stars", 4)]

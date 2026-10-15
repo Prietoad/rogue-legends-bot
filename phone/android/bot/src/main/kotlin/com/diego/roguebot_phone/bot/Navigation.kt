@@ -25,7 +25,7 @@ const val LANGUAGE_ATTEMPTS = 3
 
 private fun samePlace(a: Text, b: Text) = abs(a.center.x - b.center.x) < 20 && abs(a.center.y - b.center.y) < 20
 
-private fun stillThere(button: Text, texts: List<Text>) = texts.any {
+internal fun stillThere(button: Text, texts: List<Text>) = texts.any {
     it.norm == button.norm && abs(it.center.x - button.center.x) < 40 && abs(it.center.y - button.center.y) < 40
 }
 
@@ -138,6 +138,12 @@ open class Navigator(
             val c = capture()
             img = c.first
             val texts = c.second
+            // The claimed energy shows over the popup and hides its video button and counter: claim it first.
+            val reward = if (Screens.popupClose(texts) == null) find(texts, L.TAP_TO_CLAIM) else null
+            if (reward != null) {
+                tapText(reward)
+                return@repeat
+            }
             val offers = Screens.parseEnergyPopup(c.first, texts)
             if (offers == null) {
                 val close = Screens.popupClose(texts)
@@ -212,10 +218,13 @@ open class Navigator(
             val closeText = Screens.popupClose(texts)
             val closeX by lazy { Screens.closeButton(c.first) }  // template matching: only when needed
             val back by lazy { ModeScreens.backArrow(c.first) }
+            val end by lazy { endButton(c.first, texts) }
             when {
                 Screens.isLoading(texts) -> clock.sleep(Config.UI_SETTLE)
                 closeText != null -> { Log.info("Closing popup"); tapText(closeText) }
                 closeX != null -> { Log.info("Closing popup (✕)"); device.tap(closeX!!) }
+                // A level or mode fight ended and nothing took its result (a part that failed in it).
+                end != null -> { Log.info("Leaving a result screen"); device.tap(end!!) }
                 Screens.isStarList(texts) -> { Log.info("In star challenge list, going back"); device.tap(Config.LIST_BACK) }
                 back != null -> { Log.info("In a menu, going back"); device.tap(back!!) }
                 Screens.footerVisible(c.first) -> { Log.info("Not in Aventura lobby, tapping footer tab"); device.tap(Config.AVENTURA_TAB) }
@@ -223,6 +232,13 @@ open class Navigator(
             }
         }
         fail("Could not reach the Aventura lobby", img!!)
+    }
+
+    /** The button of a level end (VICTORIA/DERROTA + Continuar/Confirmar) or mode fight result screen. */
+    fun endButton(img: Frame, texts: List<Text>): P? {
+        val state = Screens.classifyLevelScreen(img, texts)
+        if (state.kind == LevelScreen.VICTORY || state.kind == LevelScreen.DEFEAT) return state.tap
+        return ModeScreens.parseFightResult(texts)?.button?.center
     }
 
     /** Another app is in front of the game (an ad for another app, or the page it opened): Back, bring the

@@ -356,6 +356,7 @@ def parse_skill_choice(texts: list[Text]) -> SkillChoice | None:
 class FightResult:
     victory: bool
     button: Text                 # OK / Tap to Continue
+    next_floor: Text | None = None  # tower victory: "Próximo piso" (the next fight right away, one more ticket)
 
 
 def parse_fight_result(texts: list[Text]) -> FightResult | None:
@@ -364,7 +365,7 @@ def parse_fight_result(texts: list[Text]) -> FightResult | None:
     if not button:
         return None
     if find(texts, L.VICTORY):
-        return FightResult(True, button)
+        return FightResult(True, button, find(texts, L.TOWER_NEXT_FLOOR))
     if find(texts, L.DEFEAT):
         return FightResult(False, button)
     return None

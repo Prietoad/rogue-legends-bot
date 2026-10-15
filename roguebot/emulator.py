@@ -129,10 +129,19 @@ class Emulator:
         return serial, self.adb, True
 
     def shutdown(self) -> None:
-        """Close the emulator (recovery from a frozen emulator or game); start() boots it again."""
+        """Close the emulator (recovery from a frozen emulator or game); start() boots it again. A frozen
+        player can ignore "shutdown": then its processes are killed, or start() would reconnect to it."""
         log.info("Closing MuMu Player")
+        info = self._info()
         self.run([self.manager, "control", "-v", "0", "shutdown"], 60)
-        self._wait(lambda: not self._info().get("is_android_started"), config.EMULATOR_BOOT_TIMEOUT)
+        if self._wait(lambda: not self._info().get("is_android_started"), config.EMULATOR_SHUTDOWN_TIMEOUT):
+            return
+        pids = [str(info[k]) for k in ("pid", "headless_pid") if info.get(k)]
+        log.warning("MuMu Player did not close, killing it (pids %s)", ", ".join(pids) or "unknown")
+        for pid in pids:
+            self.run(["taskkill", "/F", "/T", "/PID", pid], 30)
+        if not self._wait(lambda: not self._info().get("is_android_started"), config.EMULATOR_SHUTDOWN_TIMEOUT):
+            log.error("MuMu Player is still running after the kill")
 
     def _info(self) -> dict:
         try:

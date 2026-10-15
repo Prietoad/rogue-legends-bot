@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.0 (2026-10-15)
+- Frozen emulator: if the screen stays exactly the same with no input for 60 seconds (also during auto-play or fights), MuMu Player is restarted. If MuMu ignores the shutdown, its processes are closed.
+- After a restart the full routine continues at the part it was doing, instead of starting over or giving up. A part that keeps breaking the run is marked failed and the routine moves on.
+- Tower: after a win the bot taps "Próximo piso" and goes straight to the next floor (one ticket each, like before), skipping the loading screens and the tower screen. It never uses it for the last ticket.
+- Dojo and guild raid skill picks now follow your build (nature, damage types, support), like levels.
+- Dungeon Dive: its end screen ("DERROTA/VICTORIA" + "Confirmar") is recognized; a run used to get stuck there.
+- Challenge buttons that the game ignored (right after a screen appears) are tapped again.
+- If a part fails and leaves the game on a screen the bot can't leave, the bot restarts instead of failing every remaining part.
+- Free energy: after claiming the Daily Pack or a video, the bot takes the reward first and then reads the popup again, so it no longer stops with energy videos left.
+- Starting the bot while a level is still running (after Stop) plays that level out first instead of restarting MuMu.
+- The log is also saved to `debug/bot.log`.
+
 ## 1.4.2 (2026-10-13)
 - The bot finds its way back to the lobby from the Mascotas and Tienda tabs too (it didn't recognize the bottom tab bar there and got stuck).
 

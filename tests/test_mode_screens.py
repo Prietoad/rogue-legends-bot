@@ -146,6 +146,29 @@ def test_fight_result(ocr, name, victory, button):
     _, texts = load(ocr, name)
     result = parse_fight_result(texts)
     assert result is not None and result.victory == victory and result.button.text == button
+    assert result.next_floor is None
+
+
+def test_tower_victory_offers_the_next_floor(ocr):
+    _, texts = load(ocr, "tower_victory_next_floor.png")
+    result = parse_fight_result(texts)
+    assert result.victory and result.button.text == "Confirmar"
+    assert abs(result.next_floor.center[0] - 972) < 30 and abs(result.next_floor.center[1] - 1965) < 30
+
+
+def test_tower_screen_with_the_auto_advance_box(ocr):
+    """The "Avance automático al siguiente nivel" box (a paid VIP card feature, never tapped) does not
+    change the tower screen."""
+    _, texts = load(ocr, "tower_auto_advance.png")
+    screen = parse_tower(texts)
+    assert screen.tickets == 14 and screen.challenge.center[1] > 2350
+
+
+def test_auto_advance_vip_offer_closes_by_its_text(ocr):
+    from roguebot.screens import popup_close
+    _, texts = load(ocr, "tower_auto_advance_vip_offer.png")
+    assert parse_tower(texts) is None
+    assert popup_close(texts).center[1] > 2400
 
 
 @pytest.mark.parametrize("name", ["en_arena_fight.png", "en_tower_fight.png", "en_raid_fight.png", "en_raid_skills.png"])
@@ -417,3 +440,16 @@ def test_mail_claims_all_never_deletes(ocr):
     assert mail_claim_all(texts).text == "Reclamar todo"
     _, texts = load(ocr, "lobby_menu.png")
     assert mail_claim_all(texts) is None
+
+
+@pytest.mark.parametrize("name, tap", [
+    ("dive_defeat.png", (720, 2144)),        # a Dungeon Dive run left on its end screen
+    ("tower_victory.png", (720, 1967)),      # mode fight result
+    ("level_victory.png", (720, 2220)),
+    ("en_lobby_normal.png", None), ("en_tower.png", None), ("level_board_ready.png", None),
+])
+def test_go_to_lobby_leaves_result_screens(ocr, name, tap):
+    from roguebot.navigation import Navigator
+    img, texts = load(ocr, name)
+    found = Navigator._end_button(img, texts)
+    assert (found is None) if tap is None else (abs(found[0] - tap[0]) < 20 and abs(found[1] - tap[1]) < 20)

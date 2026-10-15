@@ -183,8 +183,9 @@ object Screens {
         val proceed = find(texts, L.CONTINUE, exact = true)
         val double = find(texts, L.DOUBLE_REWARD)
         if (proceed != null && double != null) return LevelState(LevelScreen.DOUBLE_REWARD, double.center)
-        if (proceed != null && find(texts, L.DEFEAT) != null) return LevelState(LevelScreen.DEFEAT, proceed.center)
-        if (proceed != null && find(texts, L.VICTORY) != null) return LevelState(LevelScreen.VICTORY, proceed.center)
+        val end = proceed ?: find(texts, L.CONFIRM, exact = true)  // Dungeon Dive ends with "Confirmar"
+        if (end != null && find(texts, L.DEFEAT) != null) return LevelState(LevelScreen.DEFEAT, end.center)
+        if (end != null && find(texts, L.VICTORY) != null) return LevelState(LevelScreen.VICTORY, end.center)
         val pick = find(texts, L.SKILL_PROMPT)
         if (pick != null) {
             val tags = texts.filter { it.center.y > pick.center.y && it.center.x in Config.SKILL_RARITY_X }
@@ -252,7 +253,7 @@ object Screens {
         val cost: Int? get() = price?.norm?.toInt()
     }
 
-    private fun rarityName(t: Text): String? = L.RARITIES.indexOfFirst { matches(t, it, exact = true) }.let { if (it < 0) null else Skills.RARITY_NAMES[it] }
+    fun rarityName(t: Text): String? = L.RARITIES.indexOfFirst { matches(t, it, exact = true) }.let { if (it < 0) null else Skills.RARITY_NAMES[it] }
 
     private val TWO_LETTERS = Regex("[a-z]{2}")
 

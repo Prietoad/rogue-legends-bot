@@ -96,6 +96,7 @@ def test_star_list(ocr, name, playable, locked):
     ("level_reward_claim.png", LevelScreen.CONTINUE, (717, 2349)),
     ("level_defeat.png", LevelScreen.DEFEAT, (720, 2221)),
     ("level_victory.png", LevelScreen.VICTORY, (720, 2220)),
+    ("dive_defeat.png", LevelScreen.DEFEAT, (720, 2144)),  # Dungeon Dive: "DERROTA" + "Confirmar"
     ("level_event_result.png", LevelScreen.CONTINUE, (719, 2462)),
     ("level_flip_cards.png", LevelScreen.FLIP_CARDS, (299, 1280)),
     ("level_flip_cards_one_up.png", LevelScreen.FLIP_CARDS, (579, 1280)),  # skips the flipped card
@@ -262,6 +263,14 @@ def test_energy_popup_ignores_non_yellow_button(ocr):
     offers = parse_energy_popup(grey, texts)
     assert offers.video is None
     assert offers.videos_left == 3  # e.g. a cooldown after a video: chances still left (the bot re-reads)
+
+
+def test_energy_reward_over_the_popup_is_found(ocr):
+    """The Daily Pack reward banner covers the video button: it is claimed before reading the popup."""
+    from roguebot import labels as L
+    from roguebot.vision import find
+    _, texts = load(ocr, "energy_popup_pack_reward.png")
+    assert find(texts, L.TAP_TO_CLAIM).center[1] > 2250
 
 
 def test_energy_popup_absent_in_lobby(ocr):
@@ -455,3 +464,15 @@ def test_star_list_cards_know_their_stars(ocr):
     assert cards[12].stars == 2 and cards[12].button
     assert cards[13].stars == 3
     assert cards[14].button is None
+
+
+@pytest.mark.parametrize("name, in_level", [
+    ("level_board_ready.png", True), ("en_level_fight.png", True), ("en_level_skill_levelup.png", True),
+    ("en_lobby_normal.png", False), ("en_tower.png", False), ("en_level_event_result.png", False),
+])
+def test_level_in_progress(ocr, name, in_level):
+    from roguebot.navigation import Navigator
+    img, texts = load(ocr, name)
+    nav = Navigator(None, ocr)
+    nav._capture = lambda: (img, texts)
+    assert nav.level_in_progress() is in_level

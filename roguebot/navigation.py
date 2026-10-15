@@ -9,11 +9,11 @@ import cv2
 
 from roguebot import config, labels
 from roguebot.device import Device
-from roguebot.mode_screens import back_arrow
+from roguebot.mode_screens import back_arrow, parse_fight_result
 from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, footer_visible, is_loading, is_star_list,
                               parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list, popup_close,
                               resume_prompt, tutorial_hand, update_required)
-from roguebot.vision import Ocr, Text, parse_level_number
+from roguebot.vision import Ocr, Text, find, parse_level_number
 
 log = logging.getLogger(__name__)
 
@@ -28,6 +28,11 @@ LEVEL_LOAD_TIMEOUT = 20  # seconds
 START_RETAP_AFTER = 4    # seconds with the start button still in place before tapping it again
 START_RETAPS = 2
 LANGUAGE_ATTEMPTS = 3
+
+
+IN_LEVEL = (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.FIGHT, LevelScreen.SKILL_PICK, LevelScreen.SHOP,
+            LevelScreen.EVENT, LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.VICTORY,
+            LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD)  # only seen inside a level (not Continue/Leave buttons)
 
 
 class NavigationError(Exception):
@@ -127,6 +132,12 @@ class Navigator:
         if not is_star_list(texts):
             self._fail("Desafio de Estrellas list did not open", img)
 
+    def level_in_progress(self) -> bool:
+        """A level is on screen: the bot was stopped or restarted mid-level while the game kept running
+        (go_to_lobby can't leave a level board)."""
+        img, texts = self._capture()
+        return classify_level_screen(img, texts).kind in IN_LEVEL
+
     def wait_for_lobby(self, timeout: float) -> Lobby:
         """Just after opening the game (splash, loading, login popups): retry until the lobby shows."""
         from roguebot.emulator import EmulatorError
@@ -164,6 +175,10 @@ class Navigator:
         reopened = rereads = 0
         for _ in range(MAX_ENERGY_CLAIMS):
             img, texts = self._capture()
+            reward = None if popup_close(texts) else find(texts, labels.TAP_TO_CLAIM)
+            if reward:  # the claimed energy shows over the popup and hides its video button and counter
+                self._tap_text(reward)
+                continue
             offers = parse_energy_popup(img, texts)
             if offers is None:
                 close = popup_close(texts)
@@ -226,6 +241,7 @@ class Navigator:
                 return lobby
             # Never tap blindly: popups can hold purchase buttons.
             close_text, close_x = popup_close(texts), close_button(img)
+            end = self._end_button(img, texts)
             if is_loading(texts):
                 time.sleep(config.UI_SETTLE)
             elif close_text:
@@ -234,6 +250,9 @@ class Navigator:
             elif close_x:
                 log.info("Closing popup (✕)")
                 self.device.tap(*close_x)
+            elif end:  # a level or mode fight ended and nothing took its result (a part that failed in it)
+                log.info("Leaving a result screen")
+                self.device.tap(*end)
             elif is_star_list(texts):
                 log.info("In star challenge list, going back")
                 self.device.tap(*config.LIST_BACK)
@@ -247,6 +266,15 @@ class Navigator:
             elif not self._leave_other_app():  # loading, animation or a screen we don't know: wait, never guess
                 time.sleep(config.UI_SETTLE)
         self._fail("Could not reach the Aventura lobby", img)
+
+    @staticmethod
+    def _end_button(img, texts: list[Text]) -> tuple[int, int] | None:
+        """The button of a level end (VICTORIA/DERROTA + Continuar/Confirmar) or mode fight result screen."""
+        state = classify_level_screen(img, texts)
+        if state.kind in (LevelScreen.VICTORY, LevelScreen.DEFEAT):
+            return state.tap
+        result = parse_fight_result(texts)
+        return result.button.center if result else None
 
     def _leave_other_app(self) -> bool:
         """Another app is in front of the game: an ad the emulator shows for other apps, or the page such

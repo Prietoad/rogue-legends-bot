@@ -3,10 +3,14 @@
 ADB_PATH = r"C:\Program Files\Netease\MuMuPlayer\nx_main\adb.exe"
 SERIAL = "127.0.0.1:16384"          # default; the real one comes from MuMuManager (adb_host_ip:adb_port)
 EMULATOR_BOOT_TIMEOUT = 240          # seconds for MuMu Player to boot Android
+EMULATOR_SHUTDOWN_TIMEOUT = 60       # seconds for "shutdown" to close it before its processes are killed
 GAME_OPEN_TIMEOUT = 60               # seconds for Rogue Legend to come to the front after launching it
 GAME_LOAD_TIMEOUT = 180              # seconds from launching the game to its lobby (splash, loading, popups)
 EMULATOR_POLL = 3
 ADB_TIMEOUT = 30                     # seconds for one screenshot/tap/swipe; a frozen emulator raises instead of hanging
+FREEZE_TIMEOUT = 60                  # no input and the same frame this long: frozen emulator/game -> restart MuMu
+FREEZE_THUMB = (36, 64)              # frames are compared at this size (width, height), grey
+FREEZE_MIN_DIFF = 0.05               # mean grey difference that counts as a screen change (frozen: 0; sparkles only: ~0.3)
 MAX_SAME_ERROR = 3                   # recoveries (MuMu restart) for one error before the bot gives up
 PACKAGE = "com.pockethaven.roguelegend"
 SCREEN_SIZE = (1440, 2560)  # (width, height) reference resolution; other 9:16 screens are scaled

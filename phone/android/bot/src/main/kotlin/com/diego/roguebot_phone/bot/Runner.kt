@@ -82,7 +82,7 @@ class Runner(
 ) {
     private class State(var request: RunRequest) {
         val results = ArrayList<LevelScreen>()
-        var parts: List<Pair<String, String>> = emptyList()
+        var progress = RoutineProgress()  // routine parts done: a recovery resumes at the part that broke
         var routineDone = false
         var noStars = false
         var patrolNext = 0.0
@@ -100,9 +100,10 @@ class Runner(
                 throw e
             } catch (e: Exception) {
                 if (dryRun || e is NoEnergyError || e is LevelUnavailable || (e is BotError && e.key in PERMANENT_ERRORS)) throw e
-                if (state.results.size > progress) {
+                val done = state.results.size + state.progress.parts.size
+                if (done > progress) {  // a level or routine part finished since the last error
                     errors.clear()
-                    progress = state.results.size
+                    progress = done
                 }
                 val key = errorKey(e)
                 errors[key] = (errors[key] ?: 0) + 1
@@ -187,7 +188,9 @@ class Runner(
         var cycle = 0
         while (true) {
             cycle++
-            if (request.full && !state.routineDone) state.parts = Routine(device, ocr, nav, request.ads, playLevel, clock).runParts()
+            if (request.full && !state.routineDone) {
+                Routine(device, ocr, nav, request.ads, playLevel, clock, request.build, catalog).runParts(state.progress)
+            }
             state.routineDone = true
             while (true) {
                 if (!request.repeat && results.isNotEmpty()) return Report(results.toList())
@@ -217,8 +220,9 @@ class Runner(
             Log.info("Cycle $cycle finished (${results.size} runs so far), waiting for energy")
             waitForEnergy(nav)
             state.routineDone = false
+            state.progress = RoutineProgress()
         }
         if (results.isEmpty() && !request.full) throw NoEnergyError("Not enough energy to start a run, and no free energy to claim")
-        return Report(results.toList(), repeat = true, parts = state.parts)
+        return Report(results.toList(), repeat = true, parts = state.progress.parts.toList())
     }
 }

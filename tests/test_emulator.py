@@ -50,6 +50,7 @@ def fast(monkeypatch):
     monkeypatch.setattr(config, "EMULATOR_POLL", 0)
     monkeypatch.setattr(config, "EMULATOR_BOOT_TIMEOUT", 0.05)
     monkeypatch.setattr(config, "GAME_OPEN_TIMEOUT", 0.05)
+    monkeypatch.setattr(config, "EMULATOR_SHUTDOWN_TIMEOUT", 0.05)
 
 
 class FakeMuMu:
@@ -139,3 +140,32 @@ def test_shutdown_closes_the_player_and_waits(tmp_path):
         return mumu(args, timeout)
     Emulator(install(tmp_path), run=run).shutdown()
     assert "control -v 0 shutdown" in mumu.calls and not mumu.started
+
+
+def test_shutdown_kills_a_player_that_ignores_it(tmp_path):
+    """A frozen MuMu ignores "shutdown": its processes are killed, or start() would reconnect to it."""
+    mumu = FakeMuMu()
+
+    def run(args, timeout):
+        if args[0] == "taskkill":
+            mumu.calls.append(" ".join(args))
+            mumu.started = False
+            return ""
+        out = mumu(args, timeout)
+        if args[1:] == ["info", "-v", "0"] and mumu.started:
+            out = json.dumps({**json.loads(out), "pid": 2168, "headless_pid": 12564})
+        return out
+    Emulator(install(tmp_path), run=run).shutdown()
+    assert "taskkill /F /T /PID 2168" in mumu.calls and "taskkill /F /T /PID 12564" in mumu.calls
+    assert not mumu.started
+
+
+def test_shutdown_does_not_kill_a_player_that_closes(tmp_path):
+    mumu = FakeMuMu()
+
+    def run(args, timeout):
+        if args[1:] == ["control", "-v", "0", "shutdown"]:
+            mumu.started = False
+        return mumu(args, timeout)
+    Emulator(install(tmp_path), run=run).shutdown()
+    assert not any(c.startswith("taskkill") for c in mumu.calls)

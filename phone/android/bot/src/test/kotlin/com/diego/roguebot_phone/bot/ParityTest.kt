@@ -87,7 +87,7 @@ class ParityTest {
             "parse_skill_choice" to nul(ModeScreens.parseSkillChoice(texts)) {
                 obj("cards" to JSONArray(it.cards.map(::p)), "chosen" to it.chosen, "needed" to it.needed, "learn" to text(it.learn))
             },
-            "parse_fight_result" to nul(ModeScreens.parseFightResult(texts)) { obj("victory" to it.victory, "button" to text(it.button)) },
+            "parse_fight_result" to nul(ModeScreens.parseFightResult(texts)) { obj("victory" to it.victory, "button" to text(it.button), "next_floor" to text(it.nextFloor)) },
         )
         for ((name, label) in listOf("ARENA" to L.ARENA, "DOJO" to L.DOJO, "TOWER" to L.TOWER, "DIVE" to L.DIVE, "MINES" to L.MINES, "PETS" to L.PETS)) {
             val entry = ModeScreens.modeEntry(texts, label)

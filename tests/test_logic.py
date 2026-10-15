@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from roguebot import config, labels
-from roguebot.device import DeviceError, device_scale
+from roguebot.device import Device, DeviceError, Frozen, device_scale, focused_package
 from roguebot.navigation import NavigationError, Navigator
 from roguebot.play import Player
 from roguebot.screens import Card, Mode
@@ -55,6 +55,70 @@ def test_device_scale(w, h, scale):
 def test_device_scale_rejects_other_aspect_ratios(w, h):
     with pytest.raises(DeviceError):
         device_scale(w, h)
+
+
+class _Clock:
+    def __init__(self):
+        self.t = 1000.0
+
+    def __call__(self):
+        return self.t
+
+
+def _watched_device(monkeypatch) -> tuple[Device, _Clock]:
+    """A Device without adb: only its freeze watchdog."""
+    clock = _Clock()
+    monkeypatch.setattr("roguebot.device.time.monotonic", clock)
+    device = Device.__new__(Device)
+    device._thumb, device._active = None, clock()
+    return device, clock
+
+
+def _frame(value: int):
+    import numpy as np
+    return np.full((2560, 1440, 3), value, np.uint8)
+
+
+def test_freeze_watchdog_raises_on_the_same_frame_with_no_input(monkeypatch):
+    device, clock = _watched_device(monkeypatch)
+    device._watch(_frame(50))
+    clock.t += config.FREEZE_TIMEOUT - 1
+    device._watch(_frame(50))
+    clock.t += 2
+    with pytest.raises(Frozen):
+        device._watch(_frame(50))
+
+
+def test_freeze_watchdog_screen_changes_and_input_keep_it_alive(monkeypatch):
+    device, clock = _watched_device(monkeypatch)
+    for i in range(5):  # auto-play: no input, but the screen moves
+        clock.t += config.FREEZE_TIMEOUT - 1
+        device._watch(_frame(50 + 10 * (i % 2)))
+    clock.t += config.FREEZE_TIMEOUT - 1
+    device._touch()  # a tap
+    clock.t += config.FREEZE_TIMEOUT - 1
+    device._watch(_frame(50))
+
+
+def test_freeze_watchdog_ignores_sparkles():
+    import cv2
+    from roguebot.device import frame_changed
+    thumb = lambda n: cv2.resize(cv2.cvtColor(cv2.imread(str(Path(__file__).parent / "fixtures" / n)), cv2.COLOR_BGR2GRAY),
+                                 config.FREEZE_THUMB, interpolation=cv2.INTER_AREA)
+    # Two frames of the revive countdown differ; the same frame does not.
+    assert frame_changed(thumb("level_revive.png"), thumb("level_revive_last_second.png"))
+    assert not frame_changed(thumb("level_revive.png"), thumb("level_revive.png"))
+
+
+@pytest.mark.parametrize("dump, package", [
+    ("  mCurrentFocus=Window{450bd u0 app.lawnchair/app.lawnchair.LawnchairLauncher}\n"
+     "  mFocusedApp=ActivityRecord{c2e9e40 u0 app.lawnchair/.LawnchairLauncher t2}", "app.lawnchair"),
+    ("  mCurrentFocus=null\n  mFocusedApp=ActivityRecord{c2 u0 com.pockethaven.roguelegend/com.unity3d.A t9}",
+     "com.pockethaven.roguelegend"),
+    ("  mCurrentFocus=null\n  mFocusedApp=null", ""),
+])
+def test_focused_package(dump, package):
+    assert focused_package(dump) == package
 
 
 class FakeDevice:
@@ -545,7 +609,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.4.2"
+    assert roguebot.__version__ == "1.5.0"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -786,3 +850,29 @@ def test_go_to_lobby_waits_on_an_unknown_game_screen(monkeypatch):
     device.foreground_package = lambda: config.PACKAGE
     _other_app_nav(monkeypatch, device).go_to_lobby()
     assert device.actions == [] and device.taps == []  # the game's own screen: never tap blindly
+
+
+def test_energy_claim_takes_the_reward_shown_over_the_popup_before_reading_it(monkeypatch, tmp_path):
+    """Live 2026-10-15: the Daily Pack's "x15 / Toca en cualquier lugar para reclamar" banner covered the
+    video button and its counter, and the bot stopped with 3 videos left (fixture energy_popup_pack_reward)."""
+    import numpy as np
+    from roguebot import navigation
+    from roguebot.screens import EnergyOffers
+    monkeypatch.setattr(navigation.time, "sleep", lambda s: None)
+    monkeypatch.setattr(navigation, "DEBUG_DIR", tmp_path)
+    offers = iter([EnergyOffers(Text("Gratis", 900, 1650, 1100, 1720), None, 3), EnergyOffers(None, (480, 1390), 3),
+                   EnergyOffers(None, None, 0)])
+    monkeypatch.setattr(navigation, "parse_energy_popup", lambda img, texts: next(offers))
+    reward = [Text("Toca en cualquier lugar para reclamar", 320, 2300, 1120, 2345)]
+    lobby = [Text("Patrulla", 650, 1900, 790, 1945), Text("APAGADO", 880, 2060, 990, 2095),
+             Text("INICIO", 600, 2070, 716, 2115), Text("de Estrellas", 840, 1910, 960, 1945), Text("47/34", 820, 70, 890, 100)]
+    frames = iter([lobby, lobby, reward, lobby, reward, lobby, lobby])  # lobby: the popup (offers are faked)
+    nav = Navigator(_TapLog(), None, ads=True)
+    nav._capture = lambda: (np.zeros((2560, 1440, 3), np.uint8), next(frames))
+    labels.set_language("es")
+    try:
+        assert nav.claim_free_energy() == 47
+    finally:
+        labels.set_language(None)
+    claim = (720, 2322)
+    assert nav.device.taps == [config.ENERGY_ICON, (1000, 1685), claim, (480, 1390), claim, config.ENERGY_POPUP_CLOSE]

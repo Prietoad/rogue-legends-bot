@@ -57,6 +57,7 @@ object L {
 
     // Level end
     val CONTINUE = l("continuar", "continue")
+    val CONFIRM = l("confirmar", "confirm")  // Dungeon Dive end screen button (English guessed)
     val DEFEAT = l("derrota", "defeat")
     val VICTORY = l("victoria", "victory")
     val DOUBLE_REWARD = l(en = "x2 rewards")
@@ -97,6 +98,7 @@ object L {
     val ARENA_PANEL = l("desafio de la arena", "arena challenge")
     val FREE_REFRESH = l("recarga gratis", "free refresh")
     val TOWER_TITLE = l("torre de los heroes", "tower of heroes")
+    val TOWER_NEXT_FLOOR = l("proximo piso", "next floor")  // tower victory: the next floor right away; en guessed
     val TOWER_CLEARED = l(listOf("felicidades", "enhorabuena"), "congratulations on clearing")
     val DIFFICULTY = l("dificultad", "difficulty")
     val SWEEP = l("barrer", "sweep previous")

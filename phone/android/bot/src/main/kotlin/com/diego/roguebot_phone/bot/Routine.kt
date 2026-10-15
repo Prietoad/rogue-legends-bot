@@ -17,6 +17,18 @@ object Parts {
 const val MAX_BACK_STEPS = 8
 const val LOBBY_RETRIES = 3
 const val SCREEN_TIMEOUT = 20.0
+const val PART_RESTARTS = 2       // recoveries a part may cause before the routine marks it failed and moves on
+const val PRESS_RETAP_AFTER = 4.0  // seconds with a pressed button still in place before tapping it again
+const val PRESS_RETAPS = 2
+
+/** A part failed and the lobby can't be reached: the run recovers and resumes the routine at the next part. */
+class StuckError(msg: String) : NavigationError(msg)
+
+/** Survives a recovery (Runner's state): finished parts, and how often each part was started. */
+class RoutineProgress {
+    val parts = ArrayList<Pair<String, String>>()
+    val tries = HashMap<String, Int>()
+}
 
 open class Routine(
     val device: Device,
@@ -25,19 +37,32 @@ open class Routine(
     val ads: Boolean = false,
     val playLevel: (() -> LevelScreen)? = null,
     val clock: Clock = SystemClock,
+    val build: Build = Build(),       // skill picks in Dojo / raid fights follow the build, like levels
+    var catalog: Catalog? = null,
 ) {
     var patrolWait: Double? = null  // set by patrol(): seconds until it is worth opening again
 
-    fun runParts(): List<Pair<String, String>> {
+    /** Every part in order. `progress` outlives a recovery: finished parts are not run again, and a part
+     * that keeps breaking the run (more than PART_RESTARTS times) is marked failed and skipped. */
+    fun runParts(progress: RoutineProgress = RoutineProgress()): List<Pair<String, String>> {
         val steps = mapOf<String, () -> String>(
             "arena" to ::arena, "dojo" to ::dojo, "dive" to ::dive, "daily" to ::daily, "mail" to ::mail, "tower" to ::tower,
             "mines" to { dungeon(L.MINES) }, "pets" to { dungeon(L.PETS) }, "raid" to ::raid, "vip" to ::vip,
             "patrol" to ::patrol, "donate" to ::donate,
         )
-        val results = ArrayList<Pair<String, String>>()
+        val results = progress.parts
+        val finished = results.map { it.first }.toSet()
         for ((i, part) in Parts.ALL.withIndex()) {
             val following = Parts.ALL.getOrNull(i + 1)
-            Log.info("Routine: $part")
+            if (part in finished) continue
+            val tries = (progress.tries[part] ?: 0) + 1
+            progress.tries[part] = tries
+            if (tries > PART_RESTARTS + 1) {
+                Log.error("Routine: $part broke the run ${tries - 1} times, skipping it")
+                results.add(part to Parts.FAILED)
+                continue
+            }
+            Log.info("Routine: $part" + if (tries > 1) " (again after a recovery, try $tries)" else "")
             val status = try {
                 steps.getValue(part)()
             } catch (e: NavigationError) {
@@ -51,6 +76,8 @@ open class Routine(
                     nav.goToLobby()
                 } catch (e: NavigationError) {
                     Log.error("Routine: could not get back to the lobby after $part: ${e.message}")
+                    // Stuck where the part broke: every next part would fail the same way.
+                    if (status == Parts.FAILED) throw StuckError("Stuck after $part failed: ${e.message}")
                 }
             }
         }
@@ -70,7 +97,7 @@ open class Routine(
                 Log.info("Arena: no tickets left")
                 return Parts.DONE
             }
-            tap(screen.challenge)
+            press(screen.challenge) { ModeScreens.parseArenaOpponents(it) != null }
             var panel = waitFor("arena opponent list") { _, texts -> claimOr(texts, ModeScreens::parseArenaOpponents) }
             var choice = ModeScreens.pickOpponent(panel.ownPower, panel.opponents)
             if (choice == null && panel.freeRefresh != null) {
@@ -91,16 +118,26 @@ open class Routine(
         fail("Arena did not run out of tickets")
     }
 
+    /** Climb until the first defeat or no tickets. After a win, "Próximo piso" starts the next floor right
+     * away while another ticket is left; never for the last ticket (it could offer tickets for gems). */
     open fun tower(): String {
         openMode(L.TOWER)
+        var tickets = 0
         repeat(Config.MAX_MODE_ACTIONS) {
-            val screen = waitFor("tower screen") { _, texts -> claimOr(texts, ::towerOrChest) }
-            if (screen.tickets < 1) {
-                Log.info("Tower: no tickets left")
-                return Parts.DONE
+            if (tickets < 1) {  // read the tower screen (at the start, or after "Confirmar")
+                val screen = waitFor("tower screen") { _, texts -> claimOr(texts, ::towerOrChest) }
+                tickets = screen.tickets
+                if (tickets < 1) {
+                    Log.info("Tower: no tickets left")
+                    return Parts.DONE
+                }
+                Log.info("Tower: challenge ($tickets tickets)")
+                press(screen.challenge)
             }
-            tap(screen.challenge)
-            if (!fight().victory) return Parts.DONE
+            val result = fight(nextFloor = tickets > 1)
+            if (!result.victory) return Parts.DONE
+            tickets = if (result.nextFloor != null) tickets - 1 else 0  // 0: back on the tower screen
+            if (tickets > 0) Log.info("Tower: next floor ($tickets tickets)")
         }
         fail("Tower did not finish")
     }
@@ -128,7 +165,7 @@ open class Routine(
                 else -> {
                     val challenge = popup.challenge ?: fail("Challenge button not found")
                     Log.info("$name: challenging difficulty ${popup.difficulty}")
-                    tap(challenge)
+                    press(challenge)
                     lost = !fight().victory
                 }
             }
@@ -155,7 +192,7 @@ open class Routine(
                 }
                 else -> {
                     Log.info("Dojo: challenge (${screen.tickets} tickets)")
-                    tap(screen.challenge)
+                    press(screen.challenge)
                     fight()
                 }
             }
@@ -175,7 +212,7 @@ open class Routine(
                 return Parts.DONE
             }
             Log.info("Dungeon Dive: challenge (${screen.tickets} tickets)")
-            tap(screen.challenge)
+            press(screen.challenge)
             Log.info("Dungeon Dive finished: ${playLevel!!().value}")
         }
         fail("Dungeon Dive did not run out of tickets")
@@ -219,7 +256,7 @@ open class Routine(
                 return Parts.DONE
             }
             Log.info("Raid: ${screen.attempts} attempts left")
-            tap(screen.challenge)
+            press(screen.challenge)
             fight()
         }
         fail("Raid did not run out of attempts")
@@ -387,30 +424,63 @@ open class Routine(
         return false
     }
 
-    /** Wait out a mode/raid fight, picking skills (highest rarity). Never taps "Skip" (paid VIP offer). */
-    internal fun fight(): ModeScreens.FightResult {
+    /** Wait out a mode/raid fight, picking skills (Dojo, raid) by the build. Never taps "Skip" (paid VIP
+     * offer). With `nextFloor`, a tower win goes on with "Próximo piso" (when shown) instead of "Confirmar";
+     * the result's nextFloor says which one was tapped. */
+    internal fun fight(nextFloor: Boolean = false): ModeScreens.FightResult {
         val deadline = clock.now() + Config.MODE_FIGHT_TIMEOUT
         var img: Frame? = null
+        val state = BuildState()  // skills taken in this fight
+        var learned: List<String>? = null  // the last offer learned
         while (clock.now() < deadline) {
             val c = capture()
             img = c.first
-            val result = ModeScreens.parseFightResult(c.second)
+            var result = ModeScreens.parseFightResult(c.second)
             if (result != null) {
                 Log.info("Fight finished: ${if (result.victory) "victory" else "defeat"}")
-                tap(result.button)
+                if (!(nextFloor && result.victory)) result = ModeScreens.FightResult(result.victory, result.button)
+                tap(result.nextFloor ?: result.button)
+                // The next fight follows: never read this win again on a stale frame.
+                if (result.nextFloor != null) waitChange { ModeScreens.parseFightResult(it) == null }
                 return result
             }
             val choice = ModeScreens.parseSkillChoice(c.second)
-            when {
-                choice != null && choice.chosen < choice.needed -> {
-                    if (choice.chosen >= choice.cards.size) fail("Skill cards not recognized", c.first)
-                    device.tap(choice.cards[choice.chosen])
-                }
-                choice != null -> tap(choice.learn)
-                else -> clock.sleep(Config.POLL_INTERVAL)
+            if (choice == null) {
+                clock.sleep(Config.POLL_INTERVAL)
+                continue
+            }
+            val skills = choiceSkills(c.second, choice)
+            val order = Choice.shopOrder(skills, build, state, canReroll = false)!!  // wanted first, then rarest
+            if (choice.chosen < choice.needed) {
+                if (choice.chosen >= choice.cards.size) fail("Skill cards not recognized", c.first)
+                val skill = skills[order[choice.chosen]]
+                Log.info("Skill: ${skill.name} (${skill.rarity}, ${skill.damageType ?: "-"}, ${skill.role.ifEmpty { "-" }})")
+                device.tap(choice.cards[order[choice.chosen]])
+            } else {
+                val offer = skills.map { it.name }
+                if (offer != learned) order.take(choice.needed).forEach { state.take(skills[it]) }  // a repeat: the Learn tap did not land
+                learned = offer
+                tap(choice.learn)
             }
         }
         fail("Fight did not finish", img)
+    }
+
+    /** The skills on a Dojo / raid pick, in the order of choice.cards. A card whose name was not read counts
+     * by its rarity only (the build never wants it). */
+    private fun choiceSkills(texts: List<Text>, choice: ModeScreens.SkillChoice): List<Skill> {
+        val below = Config.SKILL_CARD_TAP_BELOW_RARITY
+        val named = Screens.parseSkillCards(texts).associateBy { it.tag.center.y + below }
+        val rarities = texts.mapNotNull { t -> Screens.rarityName(t)?.let { t.center.y + below to it } }.toMap()
+        return choice.cards.map { p ->
+            val card = named[p.y]
+            if (card != null) {
+                val cat = catalog ?: Catalog(null).also { catalog = it }
+                cat.lookup(card.name, card.description, card.rarity, L.active)
+            } else {
+                Skill("?", null, rarities[p.y] ?: "", null, "", "")
+            }
+        }
     }
 
     private fun towerOrChest(texts: List<Text>): ModeScreens.TowerScreen? {
@@ -462,6 +532,27 @@ open class Routine(
     private fun capture(): Pair<Frame, List<Text>> = nav.capture()
 
     private fun tap(t: Text) = device.tap(t.center)
+
+    /** Tap a button that leaves the screen (a mode's Challenge). A tap the game ignored (a toast, still
+     * settling) is tapped again while the button is still in place after PRESS_RETAP_AFTER s; a tap that
+     * registered leaves the screen, so this never spends twice. `left` tells it worked when the button
+     * stays visible under the next screen. */
+    internal fun press(button: Text, left: ((List<Text>) -> Boolean)? = null) {
+        tap(button)
+        repeat(PRESS_RETAPS) {
+            val deadline = clock.now() + PRESS_RETAP_AFTER
+            var texts: List<Text>
+            while (true) {
+                texts = capture().second
+                if (if (left != null) left(texts) else !stillThere(button, texts)) return
+                if (clock.now() > deadline) break
+                clock.sleep(Config.POLL_INTERVAL)
+            }
+            if (!stillThere(button, texts)) return  // another screen (popup, loading): the caller's wait handles it
+            Log.info("The tap on ${button.text} did not register, tapping again")
+            tap(button)
+        }
+    }
 
     private fun fail(msg: String, img: Frame? = null): Nothing = nav.fail(msg, img ?: device.screenshot())
 }

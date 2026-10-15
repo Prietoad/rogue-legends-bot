@@ -221,11 +221,12 @@ object ModeScreens {
         return SkillChoice(cards, m.groupValues[1].toInt(), m.groupValues[2].toInt(), learn)
     }
 
-    data class FightResult(val victory: Boolean, val button: Text)
+    /** nextFloor: tower victory "Próximo piso" (the next fight right away, one more ticket). */
+    data class FightResult(val victory: Boolean, val button: Text, val nextFloor: Text? = null)
 
     fun parseFightResult(texts: List<Text>): FightResult? {
         val button = find(texts, L.OK, exact = true) ?: find(texts, L.TAP_TO_CONTINUE) ?: return null
-        if (find(texts, L.VICTORY) != null) return FightResult(true, button)
+        if (find(texts, L.VICTORY) != null) return FightResult(true, button, find(texts, L.TOWER_NEXT_FLOOR))
         if (find(texts, L.DEFEAT) != null) return FightResult(false, button)
         return null
     }

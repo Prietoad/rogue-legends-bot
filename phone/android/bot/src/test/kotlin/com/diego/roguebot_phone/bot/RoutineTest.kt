@@ -102,7 +102,7 @@ class RoutineTest {
 
     @Test
     fun dungeonChallengesThenSweepsAfterDefeatAndWatchesAds() {
-        val r = noOpenMode(script = Script.texts(dungeon(1), DEFEAT, dungeon(1), CLAIM, dungeon(0, ad = true, buttons = false), CLAIM,
+        val r = noOpenMode(script = Script.texts(dungeon(1), LOADING, DEFEAT, dungeon(1), CLAIM, dungeon(0, ad = true, buttons = false), CLAIM,
             dungeon(1), CLAIM, dungeon(0)), ads = true)
         assertEquals(Parts.DONE, r.dungeon(L.MINES))
         val challenge = P(943, 1847); val sweep = P(495, 1820); val ad = P(720, 1812); val cont = P(717, 2330); val claim = P(720, 2322)
@@ -164,7 +164,7 @@ class RoutineTest {
     fun towerOpensTheClearedTowerChest() {
         val tower = listOf(t("Tower of Heroes 16", 560, 245, 880, 290), t("11/10", 800, 65, 905, 100), t("Challenge", 620, 2395, 820, 2440))
         val congrats = listOf(t("Tower of Heroes 15", 560, 435, 880, 480), t("Congratulations on clearing", 480, 685, 960, 720))
-        val r = noOpenMode(script = Script.texts(congrats, congrats + CLAIM, tower, DEFEAT, tower))
+        val r = noOpenMode(script = Script.texts(congrats, congrats + CLAIM, tower, LOADING, DEFEAT, tower))
         assertEquals(Parts.DONE, r.tower())
         assertEquals(listOf(Config.TOWER_CHEST, P(720, 2322), P(720, 2417)), device.taps.take(3))
     }
@@ -305,6 +305,135 @@ class RoutineTest {
         assertTrue(results.all { it.second == Parts.DONE })
     }
 
+    // --- tower "Próximo piso", re-tapped challenges, build skill picks, resume after a recovery ---
+
+    private fun tower(tickets: Int) = listOf(t("Tower of Heroes 16", 560, 245, 880, 290), t("$tickets/10", 800, 65, 905, 100),
+        t("Challenge", 620, 2395, 820, 2440))
+
+    private fun towerWin(nextFloor: Boolean = true) = listOf(t("VICTORY!", 600, 1000, 840, 1055), t("Confirm", 290, 1925, 640, 2005)) +
+        if (nextFloor) listOf(t("Next Floor", 760, 1925, 1190, 2005)) else emptyList()
+
+    @Test
+    fun towerGoesOnWithNextFloorWhileAnotherTicketIsLeft() {
+        val r = noOpenMode(script = Script.texts(tower(3), LOADING, towerWin(), LOADING, towerWin(), LOADING, towerWin(), tower(0)))
+        assertEquals(Parts.DONE, r.tower())
+        val challenge = P(720, 2417); val confirm = P(465, 1965); val next = P(975, 1965)
+        assertEquals(listOf(challenge, next, next, confirm), device.taps)  // the last ticket's win is confirmed
+    }
+
+    @Test
+    fun towerNextFloorThenDefeatEndsTheTower() {
+        val r = noOpenMode(script = Script.texts(tower(5), LOADING, towerWin(), LOADING, DEFEAT))
+        assertEquals(Parts.DONE, r.tower())
+        assertEquals(listOf(P(720, 2417), P(975, 1965), P(717, 2330)), device.taps)
+    }
+
+    @Test
+    fun towerWinWithoutNextFloorReadsTheTowerScreenAgain() {
+        val r = noOpenMode(script = Script.texts(tower(2), LOADING, towerWin(nextFloor = false), tower(1), LOADING, DEFEAT))
+        assertEquals(Parts.DONE, r.tower())
+        assertEquals(listOf(P(720, 2417), P(465, 1965), P(720, 2417), P(717, 2330)), device.taps)
+    }
+
+    @Test
+    fun pressTapsAgainWhenTheTapDidNotRegister() {
+        val r = make(*(List(40) { tower(2) } + listOf(LOADING)).toTypedArray())  // still there for 2 rounds, then gone
+        r.press(t("Challenge", 620, 2395, 820, 2440))
+        assertEquals(List(3) { P(720, 2417) }, device.taps)
+    }
+
+    @Test
+    fun pressDoesNotTapAgainOnceTheNextScreenShows() {
+        val panel = tower(2) + t("Arena Challenge", 500, 300, 900, 350)  // the button stays visible under it
+        val r = make(panel)
+        r.press(t("Challenge", 620, 2395, 820, 2440)) { texts -> texts.any { it.text == "Arena Challenge" } }
+        assertEquals(listOf(P(720, 2417)), device.taps)
+    }
+
+    private fun namedSkillScreen(chosen: Int, needed: Int, cards: List<Triple<String, String, String>>): List<Text> {
+        val texts = mutableListOf(t("Select a Skill to learn!", 400, 560, 1040, 600))
+        cards.forEachIndexed { i, (rarity, name, desc) ->
+            val y = 755 + 306 * i
+            texts += listOf(t(rarity, 280, y - 15, 360, y + 15), t(name, 465, y + 20, 900, y + 60), t(desc, 465, y + 90, 1000, y + 130))
+        }
+        return texts + t("Learn Skills ($chosen/$needed)", 700, 2130, 1080, 2170)
+    }
+
+    @Test
+    fun dojoAndRaidSkillPicksFollowTheBuild() {
+        val cards = listOf(Triple("Mythic", "Super Flash", "At the start of combat, Stun all enemies."),
+            Triple("Common", "Fire Ball", "Every 2 rounds, cast a Fireball."),
+            Triple("Legendary", "Glass Cannon", "ATK up, Max HP down."),
+            Triple("Common", "Ice Shard", "Every 2 rounds, cast an Icicle."))
+        val n = nav(Script.texts(namedSkillScreen(0, 2, cards), namedSkillScreen(1, 2, cards), namedSkillScreen(2, 2, cards),
+            listOf(t("DEFEAT", 600, 880, 840, 940), t("OK", 680, 2300, 760, 2350))))
+        val catalog = Catalog(null)
+        val r = Routine(device, FakeOcr(), n, clock = clock, build = Build(Skills.MAGIC, listOf("fire", "ice", "lightning", "shuriken", "venom", "bleed")),
+            catalog = catalog)
+        r.fight()
+        assertEquals(listOf(P(800, 755 + 306 + 90), P(800, 755 + 306 * 3 + 90)), device.taps.take(2))  // magic, fire first
+        assertTrue(catalog.lookup("Fire Ball", "", "common", "en").damageType == "fire")
+    }
+
+    private open inner class AllDone(n: Navigator) : Routine(device, FakeOcr(), n, clock = clock) {
+        val calls = ArrayList<String>()
+        private fun done(part: String) = Parts.DONE.also { calls.add(part) }
+        override fun arena() = done("arena")
+        override fun tower() = done("tower")
+        override fun dungeon(label: Label) = done(if (label == L.MINES) "mines" else "pets")
+        override fun raid() = done("raid")
+        override fun vip() = done("vip")
+        override fun donate() = done("donate")
+        override fun patrol() = done("patrol")
+        override fun daily() = done("daily")
+        override fun mail() = done("mail")
+        override fun dojo() = done("dojo")
+        override fun dive() = done("dive")
+        override fun backToModes() = true
+    }
+
+    @Test
+    fun runPartsResumesAfterARecoveryAtThePartThatBroke() {
+        var broken = true
+        val r = object : AllDone(nav(Script.texts(MODES_TOP))) {
+            override fun tower(): String = if (broken) throw IllegalStateException("frozen") else super.tower()
+        }
+        val progress = RoutineProgress()
+        assertThrows(IllegalStateException::class.java) { r.runParts(progress) }
+        assertEquals("dojo" to "done", progress.parts.last())
+        broken = false
+        r.calls.clear()
+        val results = r.runParts(progress)
+        assertEquals(listOf("tower", "dive", "mines", "pets", "patrol", "raid", "donate"), r.calls)
+        assertEquals(Parts.ALL, results.map { it.first })
+    }
+
+    @Test
+    fun aPartThatKeepsBreakingTheRunIsMarkedFailed() {
+        val r = object : AllDone(nav(Script.texts(MODES_TOP))) {
+            override fun tower(): String = throw IllegalStateException("frozen")
+        }
+        val progress = RoutineProgress()
+        repeat(PART_RESTARTS + 1) { assertThrows(IllegalStateException::class.java) { r.runParts(progress) } }
+        r.runParts(progress)
+        assertTrue("tower" to "failed" in progress.parts)
+        assertEquals(Parts.ALL, progress.parts.map { it.first })
+    }
+
+    @Test
+    fun aFailedPartLeftStuckRaisesAndTheRoutineResumesAtTheNextPart() {
+        val n = nav(Script.texts()).apply { lobbyError = NavigationError("Could not reach the Aventura lobby") }
+        val r = object : AllDone(n) {
+            override fun arena(): String = throw NavigationError("Expected the arena screen")
+            override fun backToModes() = false
+        }
+        val progress = RoutineProgress()
+        assertThrows(StuckError::class.java) { r.runParts(progress) }
+        assertEquals("arena" to "failed", progress.parts.last())
+        n.lobbyError = null
+        assertEquals(Parts.ALL, r.runParts(progress).map { it.first })
+    }
+
     // --- Dojo Battle, Dungeon Dive, daily rewards, mail ---
 
     private fun dojo(tickets: Int, chest: Boolean = false): List<Text> = listOf(
@@ -322,7 +451,7 @@ class RoutineTest {
         val counts = listOf(2, 1, 0, 0)
         val frames = counts.map { Frame(1, 1, IntArray(1)) }  // distinct frames: each one has its own ticket count
         val ocr = FakeOcr { img, _ -> listOf(t(counts[frames.indexOf(img)].toString(), 1300, 60, 1340, 110)) }
-        val script = Script(listOf(frames[0] to dojo(2), s(victory), frames[1] to dojo(1), s(victory),
+        val script = Script(listOf(frames[0] to dojo(2), s(LOADING), s(victory), frames[1] to dojo(1), s(LOADING), s(victory),
             frames[2] to dojo(0, chest = true), s(CLAIM_ES), frames[3] to dojo(0)))
         val r = noOpenMode(script = script, ocr = ocr)
         assertEquals(Parts.DONE, r.dojo())
@@ -346,7 +475,7 @@ class RoutineTest {
     fun divePlaysALevelPerTicketWinOrLose() {
         L.setLanguage("es")
         val results = ArrayDeque(listOf(LevelScreen.DEFEAT, LevelScreen.VICTORY))
-        val r = noOpenMode(script = Script.texts(dive(2), dive(1), dive(0)), play = { results.removeFirst() })
+        val r = noOpenMode(script = Script.texts(dive(2), LOADING, dive(1), LOADING, dive(0)), play = { results.removeFirst() })
         assertEquals(Parts.DONE, r.dive())
         assertEquals(listOf(P(720, 2415), P(720, 2415)), device.taps)
     }
@@ -399,6 +528,7 @@ class RoutineTest {
 
     companion object {
         val CLAIM = listOf(t("Tap anywhere to claim", 480, 2300, 960, 2345))
+        val LOADING = listOf(t("Loading...", 600, 1260, 840, 1300))  // right after a Challenge tap registered
         val DEFEAT = listOf(t("DEFEAT", 600, 1000, 830, 1055), t("Tap to Continue", 560, 2310, 875, 2350))
         val MODES_TOP = listOf(t("Arena", 1250, 240, 1360, 290), t("Tower Challenge", 1000, 1020, 1300, 1070))
         val MODES_SCROLLED = listOf(t("Tower Challenge", 1000, 410, 1300, 455), t("Pet Kingdom", 1080, 1605, 1330, 1650))

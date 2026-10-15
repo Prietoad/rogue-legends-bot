@@ -202,6 +202,19 @@ class NavigationTest {
     }
 
     @Test
+    fun energyClaimTakesTheRewardShownOverThePopupBeforeReadingIt() {
+        L.setLanguage("es")  // live 2026-10-15: the reward banner hid the video button and the bot stopped with videos left
+        val lobby = ES_LOBBY + t("35/32", 820, 70, 890, 100)
+        val popup = Canvas().fill(370, 1340, 610, 1410, 250, 200, 30).frame to listOf(t("Comprar", 660, 745, 780, 785),
+            t("Intentos Restantes Hoy: 2", 330, 1255, 650, 1290))
+        val reward = Script.BLANK to listOf(t("Comprar", 660, 745, 780, 785), t("Toca en cualquier lugar para reclamar", 320, 2300, 1120, 2345))
+        val noVideos = Script.BLANK to listOf(t("Comprar", 660, 745, 780, 785), t("Intentos Restantes Hoy: 0", 330, 1255, 650, 1290))
+        val device = FakeDevice()
+        assertEquals(35, nav(device, Script(listOf(Script.BLANK to lobby, popup, reward, noVideos, Script.BLANK to lobby)), ads = true).claimFreeEnergy())
+        assertEquals(listOf(Config.ENERGY_ICON, P(490, 1375), P(720, 2322), Config.ENERGY_POPUP_CLOSE), device.taps)
+    }
+
+    @Test
     fun eliteCostWaitsForTheNewCostBeforePressingAgain() {
         L.setLanguage("es")
         fun dialog(cost: Int) = listOf(t("Modo Élite", 560, 600, 880, 650), t("INICIO", 600, 1880, 840, 1930),
