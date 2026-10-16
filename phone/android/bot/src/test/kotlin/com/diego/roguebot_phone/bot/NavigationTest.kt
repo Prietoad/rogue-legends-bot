@@ -290,6 +290,14 @@ class NavigationTest {
     }
 
     @Test
+    fun aMissedHoldIsRetriedOnceAutoPlayWorkedInTheLevel() {
+        val misses = List(Config.AUTO_PLAY_RETRIES) { s(LevelScreen.BOARD_READY, dice) }
+        val actions = play(listOf(s(LevelScreen.BOARD_READY, dice), s(LevelScreen.AUTO_PLAY), s(LevelScreen.BOARD_READY, dice),
+            s(LevelScreen.AUTO_PLAY)) + misses + listOf(s(LevelScreen.BOARD_READY, dice), s(LevelScreen.VICTORY, P(720, 2220))))
+        assertEquals(List(2 + Config.AUTO_PLAY_RETRIES) { "hold" to dice } + listOf("tap" to dice, "tap" to P(720, 2220)), actions)
+    }
+
+    @Test
     fun withoutAutoPlayTheDiceIsTapped() {
         val actions = play(listOf(s(LevelScreen.BOARD_READY, dice), s(LevelScreen.BOARD_READY, dice), s(LevelScreen.FIGHT),
             s(LevelScreen.BOARD_READY, dice), s(LevelScreen.VICTORY, P(720, 2220))))

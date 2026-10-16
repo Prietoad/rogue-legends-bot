@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.2 (2026-10-16)
+- Auto-play: if one press-and-hold on the dice doesn't turn auto-play back on (after a shop, for example), the bot holds again instead of rolling by taps for the rest of the level. It only switches to taps if auto-play never worked in that level, or after 3 misses in a row.
+
 ## 1.5.1 (2026-10-16)
 - Interrupted level ("¿Continuar la aventura?" after the game was closed mid-level): the bot now recognizes the Spanish dialog and always taps "Confirmar" to resume the level (its energy is already spent), never "Abandonar".
 - MuMu's own store ads drawn over the game ("Claim Your Free SSR Goddess") are closed automatically. They blocked every tap and ignored Back.

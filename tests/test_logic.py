@@ -656,7 +656,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.5.1"
+    assert roguebot.__version__ == "1.5.2"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -734,6 +734,18 @@ def test_without_auto_play_the_dice_is_tapped(monkeypatch):
     actions = _play(monkeypatch, [(S.BOARD_READY, dice), (S.BOARD_READY, dice), (S.FIGHT, None),
                                   (S.BOARD_READY, dice), (S.VICTORY, (720, 2220))])
     assert actions == [("hold", dice), ("tap", dice), ("tap", dice), ("tap", (720, 2220))]
+
+
+def test_a_missed_hold_is_retried_once_auto_play_worked_in_the_level(monkeypatch):
+    """Seen live 2026-10-16: auto-play stopped after a shop, one hold brought the red dice back and the bot
+    tapped for the rest of the level. Auto-play exists there: hold again, up to AUTO_PLAY_RETRIES misses."""
+    from roguebot.screens import LevelScreen as S
+    dice = config.DICE_BUTTON
+    misses = [(S.BOARD_READY, dice)] * config.AUTO_PLAY_RETRIES
+    actions = _play(monkeypatch, [(S.BOARD_READY, dice), (S.AUTO_PLAY, None), (S.BOARD_READY, dice),
+                                  (S.AUTO_PLAY, None), *misses, (S.BOARD_READY, dice), (S.VICTORY, (720, 2220))])
+    holds = 2 + config.AUTO_PLAY_RETRIES  # the misses reset when auto-play shows again
+    assert actions == [("hold", dice)] * holds + [("tap", dice), ("tap", (720, 2220))]
 
 
 def test_without_ads_x2_rewards_is_skipped_and_revive_waits(monkeypatch):

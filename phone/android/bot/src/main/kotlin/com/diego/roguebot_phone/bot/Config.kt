@@ -69,6 +69,7 @@ object Config {
     const val DICE_RED_MIN_FRACTION = 0.4
     const val DICE_GREEN_MIN_FRACTION = 0.4
     const val AUTO_PLAY_HOLD = 2.0
+    const val AUTO_PLAY_RETRIES = 3  // missed holds in a row (after auto-play worked in the level) before tapping instead
     val SPEED_BUTTON = P(152, 2435)
     val SPEED_LABEL_X = 60..280
     val SPEED_LABEL_Y = 2390..2480

@@ -73,6 +73,7 @@ DICE_REGION = (520, 2020, 920, 2280)     # area sampled to tell red (ready) from
 DICE_RED_MIN_FRACTION = 0.4              # measured: 0.70 ready, ~0 otherwise
 DICE_GREEN_MIN_FRACTION = 0.4            # auto-play: lime-green dice, measured 0.50-0.66; normal boards <0.03
 AUTO_PLAY_HOLD = 2.0                     # holding the dice this long turns auto-play on (verified live at 2 s)
+AUTO_PLAY_RETRIES = 3                    # missed holds in a row (after auto-play worked in the level) before tapping instead
 SPEED_BUTTON = (152, 2435)               # bottom-left "» x2" toggle
 SPEED_LABEL_X = (60, 280)
 SPEED_LABEL_Y = (2390, 2480)

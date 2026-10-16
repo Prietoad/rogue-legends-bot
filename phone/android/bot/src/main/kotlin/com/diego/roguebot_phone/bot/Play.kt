@@ -31,6 +31,8 @@ class Player(
     private var speedLocked = false
     private var autoHeld = false
     private var autoMissing = false
+    private var autoSeen = false  // auto-play worked in this level: a hold that brings the red dice back was missed
+    private var autoMisses = 0    // such missed holds in a row
 
     /** Play until the level ends; returns VICTORY or DEFEAT. */
     fun playLevel(): LevelScreen {
@@ -65,10 +67,15 @@ class Player(
             if ((s.kind == LevelScreen.BOARD_READY || s.kind == LevelScreen.AUTO_PLAY) && ensureDoubleSpeed(texts)) continue
             if (s.kind == LevelScreen.AUTO_PLAY && autoHeld) {
                 Log.info("Auto-play on")
-                autoHeld = false
+                autoHeld = false; autoSeen = true; autoMisses = 0
             } else if (s.kind == LevelScreen.BOARD_READY && autoHeld) {
-                Log.info("Holding the dice did not start auto-play; rolling by taps")
-                autoHeld = false; autoMissing = true
+                autoHeld = false; autoMisses++
+                if (autoSeen && autoMisses < Config.AUTO_PLAY_RETRIES) {
+                    Log.info("Holding the dice did not start auto-play this time; holding again")
+                } else {
+                    Log.info("Holding the dice did not start auto-play; rolling by taps")
+                    autoMissing = true
+                }
             }
 
             if (s.kind == LevelScreen.VICTORY || s.kind == LevelScreen.DEFEAT) {

@@ -1,5 +1,8 @@
 # Changelog (phone app)
 
+## 0.2.2 (2026-10-16)
+- Same fix as the desktop bot 1.5.2: a missed press-and-hold on the dice is retried, so auto-play keeps running instead of switching to taps for the rest of the level.
+
 ## 0.2.1 (2026-10-16)
 - Same fixes as the desktop bot 1.5.1: the Spanish "¿Continuar la aventura?" dialog resumes the interrupted level, a level still running is played out instead of failing, and the guild castle is found even when its name reads badly.
 

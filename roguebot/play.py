@@ -49,6 +49,8 @@ class Player:
         self._speed_locked = False  # x2 is not unlocked on this account
         self._auto_held = False     # held the dice for auto-play and not seen it on yet
         self._auto_missing = False  # a hold brought the red dice back: no auto-play here, tap instead
+        self._auto_seen = False     # auto-play worked in this level: a hold that brings the red dice back was missed
+        self._auto_misses = 0       # such missed holds in a row
 
     def play_level(self) -> LevelScreen:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
@@ -81,10 +83,14 @@ class Player:
                 continue
             if state.kind is LevelScreen.AUTO_PLAY and self._auto_held:
                 log.info("Auto-play on")
-                self._auto_held = False
+                self._auto_held, self._auto_seen, self._auto_misses = False, True, 0
             elif state.kind is LevelScreen.BOARD_READY and self._auto_held:
-                log.info("Holding the dice did not start auto-play; rolling by taps")
-                self._auto_held, self._auto_missing = False, True
+                self._auto_held, self._auto_misses = False, self._auto_misses + 1
+                if self._auto_seen and self._auto_misses < config.AUTO_PLAY_RETRIES:
+                    log.info("Holding the dice did not start auto-play this time; holding again")
+                else:
+                    log.info("Holding the dice did not start auto-play; rolling by taps")
+                    self._auto_missing = True
 
             if state.kind in (LevelScreen.VICTORY, LevelScreen.DEFEAT):
                 log.info("Level finished: %s", state.kind.value)
