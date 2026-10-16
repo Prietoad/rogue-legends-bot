@@ -49,6 +49,15 @@ def vip_claim_all(texts: list[Text]) -> Text | None:
     return next((t for t in texts if matches(t, L.CLAIM_ALL, exact=True) and t.center[1] > 2300), None)
 
 
+def guild_hall(texts: list[Text]) -> Text | None:
+    """The guild map's castle label ("Sala de / Gremio", "GuildHall"). The castle's flag over "Sala de"
+    can garble it ("Sa Slde"), so its second line "Gremio" counts too, only in the castle's band
+    (the lobby's own "Gremio" button is far lower)."""
+    return find(texts, L.GUILD_HALL) or next(
+        (t for t in texts if matches(t, L.GUILD_HALL_LOWER, exact=True)
+         and config.GUILD_HALL_LABEL_Y[0] < t.center[1] < config.GUILD_HALL_LABEL_Y[1]), None)
+
+
 def guild_hall_donate(texts: list[Text]) -> Text | None:
     """The guild hall's bottom "Donar"/"Donate" button (with Registro and Gestionar)."""
     return next((t for t in texts if matches(t, L.DONATE, exact=True) and t.center[1] > 2100), None)

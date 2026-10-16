@@ -310,7 +310,7 @@ open class Routine(
             return Parts.SKIPPED
         }
         device.tap(Config.GUILD_BUTTON)
-        tap(waitFor("guild map") { _, t -> find(t, L.GUILD_HALL) })
+        tap(waitFor("guild map") { _, t -> ModeScreens.guildHall(t) })
         tap(waitFor("guild hall") { _, t -> ModeScreens.guildHallDonate(t) })
         waitFor("donation popup") { _, t -> find(t, L.DONATION_TITLE) }
         repeat(Config.DONATE_FREE_MAX) {

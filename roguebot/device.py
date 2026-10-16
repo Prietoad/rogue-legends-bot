@@ -53,6 +53,20 @@ def focused_package(dumpsys_window: str) -> str:
     return m.group(1) if m else ""
 
 
+def overlay_packages(dumpsys_windows: str) -> list[str]:
+    """Packages drawing a visible overlay window over everything (`dumpsys window windows`), e.g. MuMu's
+    store ad "Claim Your Free SSR Goddess" (com.mumu.store): the game keeps the focus, but the overlay
+    covers the screen and takes every tap. System UI and the game itself are never listed."""
+    found = []
+    for block in re.split(r"\n\s*Window #\d+ ", dumpsys_windows):
+        package = re.search(r"package=([\w.]+)", block)
+        if (package and "ty=APPLICATION_OVERLAY" in block and "mViewVisibility=0x0" in block
+                and "mHasSurface=true" in block and package.group(1) not in config.OVERLAY_KEEP
+                and package.group(1) not in found):
+            found.append(package.group(1))
+    return found
+
+
 class Device:
     def __init__(self, serial: str = config.SERIAL, stop: threading.Event | None = None, adb: str = config.ADB_PATH):
         self._stop = stop
@@ -65,6 +79,7 @@ class Device:
         log.info("Device %dx%d (scale %.3f)", size.width, size.height, self._scale)
         self._thumb = None                      # last frame, small (freeze watchdog)
         self._active = time.monotonic()         # last input, intentional wait or screen change
+        self._overlay_check = 0.0               # last overlay ad check
 
     def _touch(self) -> None:
         self._active = time.monotonic()
@@ -89,6 +104,20 @@ class Device:
         out = self._d.shell(["dumpsys", "window"], timeout=config.ADB_TIMEOUT)
         return focused_package(out)
 
+    def close_overlays(self) -> bool:
+        """Close ads another app draws over the game (they ignore Back and open a store when tapped):
+        force-stop that app. True if one was closed."""
+        self._overlay_check = time.monotonic()
+        out = self._d.shell(["dumpsys", "window", "windows"], timeout=config.ADB_TIMEOUT)
+        packages = overlay_packages(out)
+        for package in packages:
+            log.info("Closing an overlay ad from %s", package)
+            self._d.shell(["am", "force-stop", package], timeout=config.ADB_TIMEOUT)
+        if packages:
+            self._touch()
+            time.sleep(config.UI_SETTLE)
+        return bool(packages)
+
     def screenshot(self) -> np.ndarray:
         """Full frame as BGR, resized to the reference resolution."""
         self._check_stop()
@@ -96,6 +125,8 @@ class Device:
         if not png:
             raise DeviceError("Empty screenshot (the emulator is not responding)")
         img = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_COLOR)
+        if time.monotonic() - self._overlay_check > config.OVERLAY_CHECK_INTERVAL and self.close_overlays():
+            return self.screenshot()  # the frame showed the ad
         if self._scale != 1:
             img = cv2.resize(img, config.SCREEN_SIZE, interpolation=cv2.INTER_CUBIC)
         self._watch(img)

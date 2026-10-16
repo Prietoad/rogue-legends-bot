@@ -425,6 +425,15 @@ def test_resume_adventure_prompt(ocr):
     assert resume_prompt(lobby) is None
 
 
+def test_resume_adventure_prompt_spanish(ocr):
+    """"¿Continuar la aventura?" + Abandonar / Confirmar (the game was killed mid-level, seen 2026-10-16)."""
+    from roguebot.screens import resume_prompt
+    _, texts = load(ocr, "lobby_resume_adventure.png")
+    ok = resume_prompt(texts)
+    assert ok and ok.norm == "confirmar" and ok.center[0] > 720  # never "Abandonar" (left)
+    assert parse_lobby(texts) is None  # the lobby under the dialog is not usable
+
+
 def test_greyed_event_option_is_skipped_even_without_a_leave_option(ocr):
     """Forbidden Knowledge: after a failed "Read" the option is greyed and taps do nothing."""
     img, texts = load(ocr, "en_level_event_disabled_option.png")
@@ -476,3 +485,16 @@ def test_level_in_progress(ocr, name, in_level):
     nav = Navigator(None, ocr)
     nav._capture = lambda: (img, texts)
     assert nav.level_in_progress() is in_level
+
+
+@pytest.mark.parametrize("name, on_board", [
+    ("level_board_ready.png", True), ("level_board_auto.png", True), ("level_skill_levelup.png", True),
+    ("en_level_skill_levelup.png", True),
+    ("dojo_skills.png", False), ("en_raid_skills.png", False), ("raid_skill_choice.png", False),  # mode fights
+    ("level_fight.png", False), ("en_raid_fight.png", False), ("lobby_normal.png", False),
+])
+def test_go_to_lobby_plays_out_only_level_boards(ocr, name, on_board):
+    """go_to_lobby can't leave a running level: it plays it out, but never a dojo/raid fight."""
+    from roguebot.navigation import Navigator
+    img, texts = load(ocr, name)
+    assert Navigator._on_board(img, texts) is on_board

@@ -121,6 +121,40 @@ def test_focused_package(dump, package):
     assert focused_package(dump) == package
 
 
+def test_overlay_packages_finds_the_mumu_store_ad_only():
+    from roguebot.device import overlay_packages
+    dump = (Path(__file__).parent / "fixtures" / "dumpsys_windows_mumu_store_overlay.txt").read_text()
+    # Hidden system overlays and the game itself are never listed.
+    assert overlay_packages(dump) == ["com.mumu.store"]
+    assert overlay_packages(dump.replace("mViewVisibility=0x0 mHaveFrame=true mObscured=false\n    mHasSurface=true isReadyForDisplay()=true mWindowRemovalAllowed=false\n  Window #5",
+                                         "mViewVisibility=0x8 mHaveFrame=true mObscured=false\n    mHasSurface=false isReadyForDisplay()=false mWindowRemovalAllowed=false\n  Window #5")) == []
+
+
+def test_screenshot_force_stops_an_overlay_ad_and_takes_a_new_frame(monkeypatch):
+    import cv2
+    import numpy as np
+    dump = (Path(__file__).parent / "fixtures" / "dumpsys_windows_mumu_store_overlay.txt").read_text()
+    png = cv2.imencode(".png", np.zeros((2560, 1440, 3), np.uint8))[1].tobytes()
+    calls = []
+
+    class Adb:
+        def shell(self, cmd, encoding="utf-8", timeout=None):
+            calls.append(cmd)
+            if cmd == ["dumpsys", "window", "windows"]:
+                return dump if not any(c[:2] == ["am", "force-stop"] for c in calls) else ""
+            return png if cmd == "screencap -p" else ""
+
+    monkeypatch.setattr("roguebot.device.time.sleep", lambda s: None)
+    device = Device.__new__(Device)
+    device._d, device._stop, device._scale = Adb(), None, 1
+    device._thumb, device._active, device._overlay_check = None, 0.0, 0.0
+    device.screenshot()
+    assert ["am", "force-stop", "com.mumu.store"] in calls
+    assert calls.count("screencap -p") == 2  # the frame with the ad is dropped
+    device.screenshot()  # checked again only after OVERLAY_CHECK_INTERVAL
+    assert calls.count(["dumpsys", "window", "windows"]) == 1
+
+
 class FakeDevice:
     def __init__(self):
         self.taps = []
@@ -481,6 +515,19 @@ def test_go_to_lobby_resumes_an_interrupted_level(monkeypatch):
     assert nav.device.taps == [(890, 1417)] and played == ["level"]  # OK (resume), never Abandon
 
 
+def test_go_to_lobby_plays_out_a_level_left_on_screen(monkeypatch):
+    nav = _resume_nav(monkeypatch, [[], EN_LOBBY])
+    monkeypatch.setattr(Navigator, "_on_board", staticmethod(lambda img, texts: not texts))
+    played = []
+    nav.resume_level = lambda: played.append("level")
+    labels.set_language("en")
+    try:
+        nav.go_to_lobby()
+    finally:
+        labels.set_language(None)
+    assert played == ["level"] and nav.device.taps == []
+
+
 def test_go_to_lobby_without_a_player_stops_at_the_resume_prompt(monkeypatch):
     nav = _resume_nav(monkeypatch, [RESUME])
     labels.set_language("en")
@@ -609,7 +656,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.5.0"
+    assert roguebot.__version__ == "1.5.1"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):

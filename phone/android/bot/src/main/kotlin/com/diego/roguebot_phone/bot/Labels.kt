@@ -116,6 +116,7 @@ object L {
     val VIP_CARDS = l(listOf("tarjetas vip", "tarjetas", "vip"), listOf("vip cards", "cards", "vip"))
     val CLAIM_ALL = l("reclamar todo", "claim all")
     val GUILD_HALL = l("sala de", listOf("guildhall", "guild hall"))
+    val GUILD_HALL_LOWER = l("gremio", "guild hall")  // exact; its second line (the flag over "Sala de" garbles it)
     val DONATE = l("donar", "donate")
     val DONATION_TITLE = l("donacion de gremio", "guild donation")
     val RAID_BOSS = l("incursion", "raid boss")
@@ -123,7 +124,7 @@ object L {
     val RAID_ATTEMPTS = l("intentos diarios", "daily attempts left")
     val LEARN_SKILLS = l("aprender habilidades", "learn skills")
     val UPDATE_REQUIRED = l("nueva actualizacion", "new update")
-    val RESUME_ADVENTURE = l(listOf("continuar aventura", "aventura en curso"), listOf("continue adventure", "ongoing adventure"))
+    val RESUME_ADVENTURE = l(listOf("continuar la aventura", "aventura en curso"), listOf("continue adventure", "ongoing adventure"))  // buttons: Abandonar / Confirmar
     val OK = l(listOf("ok", "aceptar", "confirmar"), listOf("ok", "confirm"))
     val TAP_TO_CONTINUE = CONTINUE_BUTTONS[1]
     val TAP_TO_CLAIM = CONTINUE_BUTTONS[0]

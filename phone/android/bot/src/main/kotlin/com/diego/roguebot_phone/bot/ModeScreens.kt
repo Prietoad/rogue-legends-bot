@@ -26,6 +26,11 @@ object ModeScreens {
 
     fun vipClaimAll(texts: List<Text>): Text? = texts.firstOrNull { matches(it, L.CLAIM_ALL, exact = true) && it.center.y > 2300 }
 
+    /** The guild map's castle label; its second line "Gremio" counts too (the flag can garble "Sala de"). */
+    fun guildHall(texts: List<Text>): Text? = find(texts, L.GUILD_HALL) ?: texts.firstOrNull {
+        matches(it, L.GUILD_HALL_LOWER, exact = true) && it.center.y > Config.GUILD_HALL_LABEL_Y.first && it.center.y < Config.GUILD_HALL_LABEL_Y.second
+    }
+
     fun guildHallDonate(texts: List<Text>): Text? = texts.firstOrNull { matches(it, L.DONATE, exact = true) && it.center.y > 2100 }
 
     fun freeDonation(texts: List<Text>): Text? {

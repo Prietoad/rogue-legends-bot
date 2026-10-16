@@ -87,6 +87,7 @@ class Runner(
         var noStars = false
         var patrolNext = 0.0
         var patrolFails = 0
+        var resumed = 0  // interrupted levels played out (progress for the same-error count)
     }
 
     fun run(request: RunRequest): Report {
@@ -100,7 +101,7 @@ class Runner(
                 throw e
             } catch (e: Exception) {
                 if (dryRun || e is NoEnergyError || e is LevelUnavailable || (e is BotError && e.key in PERMANENT_ERRORS)) throw e
-                val done = state.results.size + state.progress.parts.size
+                val done = state.results.size + state.progress.parts.size + state.resumed
                 if (done > progress) {  // a level or routine part finished since the last error
                     errors.clear()
                     progress = done
@@ -162,7 +163,7 @@ class Runner(
         var request = state.request
         val nav = Navigator(device, ocr, dryRun, request.ads, clock, debug)
         val playLevel = { Player(device, ocr, request.build, catalog, request.ads, clock, debug).playLevel() }
-        nav.resumeLevel = playLevel
+        nav.resumeLevel = { playLevel().also { state.resumed++ } }
         var opened = false
         if (device.foregroundPackage() != Config.PACKAGE) {
             Log.info("Opening Rogue Legend")

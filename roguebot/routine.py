@@ -9,7 +9,7 @@ from typing import Callable
 from roguebot import config, labels as L
 from roguebot.build import Build, BuildState, shop_order
 from roguebot.device import Device
-from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, free_donation, parse_patrol, parse_quick_patrol, guild_hall_donate, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
+from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, free_donation, parse_patrol, parse_quick_patrol, guild_hall, guild_hall_donate, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
                                    parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
                                    parse_skill_choice, parse_tower, pick_opponent, vip_cards_icon, vip_claim_all)
 from roguebot.navigation import NavigationError, Navigator, _still_there
@@ -297,7 +297,7 @@ class Routine:
             log.info("Not in a guild, skipping the donation")
             return SKIPPED
         self.device.tap(*config.GUILD_BUTTON)
-        self._tap(self._wait_for(lambda img, texts: find(texts, L.GUILD_HALL), "guild map"))
+        self._tap(self._wait_for(lambda img, texts: guild_hall(texts), "guild map"))
         self._tap(self._wait_for(lambda img, texts: guild_hall_donate(texts), "guild hall"))
         self._wait_for(lambda img, texts: find(texts, L.DONATION_TITLE), "donation popup")
         for _ in range(config.DONATE_FREE_MAX):

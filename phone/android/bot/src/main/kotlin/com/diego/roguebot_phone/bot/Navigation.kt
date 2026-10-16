@@ -2,6 +2,17 @@ package com.diego.roguebot_phone.bot
 
 import kotlin.math.abs
 
+/** Level screens goToLobby plays out instead of failing (a level left running). */
+val ON_BOARD = setOf(LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.SHOP, LevelScreen.EVENT,
+    LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE)
+
+/** A level board (not fights or skill picks alone: dojo and raid fights have them too). */
+fun onBoard(img: Frame, texts: List<Text>): Boolean {
+    val kind = Screens.classifyLevelScreen(img, texts).kind
+    if (kind == LevelScreen.SKILL_PICK) return find(texts, L.LEARN_SKILLS) == null
+    return kind in ON_BOARD
+}
+
 /** Port of roguebot/navigation.py: from anywhere in the main UI to the start of the requested level. */
 
 open class NavigationError(msg: String) : RuntimeException(msg)
@@ -225,6 +236,8 @@ open class Navigator(
                 closeX != null -> { Log.info("Closing popup (✕)"); device.tap(closeX!!) }
                 // A level or mode fight ended and nothing took its result (a part that failed in it).
                 end != null -> { Log.info("Leaving a result screen"); device.tap(end!!) }
+                // A level is still running (goToLobby can't leave it): play it out.
+                resumeLevel != null && onBoard(c.first, texts) -> { Log.info("A level is on screen: playing it out"); resumeLevel!!() }
                 Screens.isStarList(texts) -> { Log.info("In star challenge list, going back"); device.tap(Config.LIST_BACK) }
                 back != null -> { Log.info("In a menu, going back"); device.tap(back!!) }
                 Screens.footerVisible(c.first) -> { Log.info("Not in Aventura lobby, tapping footer tab"); device.tap(Config.AVENTURA_TAB) }

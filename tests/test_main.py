@@ -367,6 +367,29 @@ def test_the_same_error_too_many_times_stops_the_bot(monkeypatch):
     assert FakeEmulator.shutdowns == main.config.MAX_SAME_ERROR  # then the 4th time it gives up
 
 
+def test_a_resumed_level_counts_as_progress_but_not_as_the_requested_level(monkeypatch):
+    """The "¿Continuar la aventura?" dialog after a restart: the interrupted level is played out
+    (go_to_lobby -> nav.resume_level). It resets the same-error count, and a single-level request
+    still plays its own level afterwards."""
+    nav = FakeNav(energy=20)
+    tries = []
+
+    def detect():
+        tries.append(1)
+        if len(tries) == main.config.MAX_SAME_ERROR + 1:
+            nav.resume_level()
+        return "es"
+
+    def start(mode, level):
+        if len(tries) <= main.config.MAX_SAME_ERROR + 1:
+            raise main.NavigationError("Level did not start")
+        nav.started.append(("stars", level))
+    nav.detect_language, nav.start_star_challenge = detect, start
+    report = run_with(monkeypatch, nav, [D, V], RunRequest(Mode.NORMAL, 4))
+    assert report.results == [V] and nav.started == [("stars", 4)]
+    assert FakeEmulator.shutdowns == main.config.MAX_SAME_ERROR + 1  # never gave up
+
+
 def test_permanent_problems_are_not_retried(monkeypatch):
     class NeedsUpdate(FakeEmulator):
         def start(self):

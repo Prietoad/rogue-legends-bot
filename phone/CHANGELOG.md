@@ -1,5 +1,8 @@
 # Changelog (phone app)
 
+## 0.2.1 (2026-10-16)
+- Same fixes as the desktop bot 1.5.1: the Spanish "¿Continuar la aventura?" dialog resumes the interrupted level, a level still running is played out instead of failing, and the guild castle is found even when its name reads badly.
+
 ## 0.2.0 (2026-10-15)
 - Same fixes as the desktop bot 1.5.0: tower "Próximo piso", Dojo/raid skill picks by your build, the Dungeon Dive end screen, re-tapped challenge buttons, free energy videos no longer skipped after a claim, and a routine that continues at the part it was doing after a recovery.
 

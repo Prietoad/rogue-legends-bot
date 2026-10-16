@@ -89,6 +89,16 @@
   "description": "Cuando la HP <40% por primera vez, usa Barrido 2 veces.",
   "auto": true
  },
+ "aumentodedanodefinitivc": {
+  "name": "Aumento de Daño Definitivc",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de la definitiva",
+  "auto": true
+ },
  "aumentodetasadecombo": {
   "name": "Aumento de Tasa de Combo",
   "lang": "es",
@@ -407,6 +417,16 @@
   "nature": "physical",
   "role": "damage",
   "description": "Critical Hit Rate , Critical Hit DMG , Non-Crit DMG",
+  "auto": true
+ },
+ "danodeataquebasicoaumentado": {
+  "name": "Daño de Ataque Básico Aumentado",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de Ataque Básico",
   "auto": true
  },
  "danodegolpecriticoaumentado": {
@@ -1379,6 +1399,16 @@
   "description": "HP Máx. ↑↑↑↑, ATQ ↓↓↓",
   "auto": true
  },
+ "maestriacon": {
+  "name": "Maestria con",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tus At comb infligen +80% más daño",
+  "auto": true
+ },
  "maestriaconarmas": {
   "name": "Maestria con Armas",
   "lang": "es",
@@ -2157,6 +2187,16 @@
   "nature": "physical",
   "role": "support",
   "description": "When HP <50%, HP Heal effects are +100% more effective.",
+  "auto": true
+ },
+ "vampirico": {
+  "name": "Vampirico",
+  "lang": null,
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "magic",
+  "role": "support",
+  "description": "Tasa de Robo de Vida +25%, Efecto de Robo de Vida +50%, Daño Mágico",
   "auto": true
  },
  "venenodefinitivo": {

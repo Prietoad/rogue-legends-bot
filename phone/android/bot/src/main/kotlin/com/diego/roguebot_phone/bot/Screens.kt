@@ -27,6 +27,7 @@ data class Card(val number: Int, val header: Text, val button: Text?, val stars:
 object Screens {
     fun parseLobby(texts: List<Text>): Lobby? {
         if (find(texts, L.PATROL) == null || popupClose(texts) != null) return null
+        if (find(texts, L.RESUME_ADVENTURE) != null) return null  // the lobby shows under the resume dialog, which takes every tap
         var hasElite = true
         val mode = when {
             find(texts, L.ELITE_ON, exact = true) != null -> Mode.ELITE

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1 (2026-10-16)
+- Interrupted level ("¿Continuar la aventura?" after the game was closed mid-level): the bot now recognizes the Spanish dialog and always taps "Confirmar" to resume the level (its energy is already spent), never "Abandonar".
+- MuMu's own store ads drawn over the game ("Claim Your Free SSR Goddess") are closed automatically. They blocked every tap and ignored Back.
+- If the bot finds a level still running when it tries to go back to the lobby, it plays the level out instead of restarting MuMu Player (the level used to be lost).
+- Guild donation: the guild castle is found even when its name is hard to read behind the flag (the donation used to fail some days).
+
 ## 1.5.0 (2026-10-15)
 - Frozen emulator: if the screen stays exactly the same with no input for 60 seconds (also during auto-play or fights), MuMu Player is restarted. If MuMu ignores the shutdown, its processes are closed.
 - After a restart the full routine continues at the part it was doing, instead of starting over or giving up. A part that keeps breaking the run is marked failed and the routine moves on.

@@ -33,6 +33,10 @@ LANGUAGE_ATTEMPTS = 3
 IN_LEVEL = (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.FIGHT, LevelScreen.SKILL_PICK, LevelScreen.SHOP,
             LevelScreen.EVENT, LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.VICTORY,
             LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD)  # only seen inside a level (not Continue/Leave buttons)
+# A level board found by go_to_lobby, played out instead of failing (the level is lost on a restart). Not
+# fights or skill picks alone: dojo and raid fights have them too.
+ON_BOARD = (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.SHOP, LevelScreen.EVENT,
+            LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE)
 
 
 class NavigationError(Exception):
@@ -253,6 +257,9 @@ class Navigator:
             elif end:  # a level or mode fight ended and nothing took its result (a part that failed in it)
                 log.info("Leaving a result screen")
                 self.device.tap(*end)
+            elif self.resume_level and self._on_board(img, texts):  # a level is still running (go_to_lobby can't leave it)
+                log.info("A level is on screen: playing it out")
+                self.resume_level()
             elif is_star_list(texts):
                 log.info("In star challenge list, going back")
                 self.device.tap(*config.LIST_BACK)
@@ -275,6 +282,13 @@ class Navigator:
             return state.tap
         result = parse_fight_result(texts)
         return result.button.center if result else None
+
+    @staticmethod
+    def _on_board(img, texts: list[Text]) -> bool:
+        kind = classify_level_screen(img, texts).kind
+        if kind is LevelScreen.SKILL_PICK:  # a level's level-up pick, not the dojo/raid skill step
+            return find(texts, labels.LEARN_SKILLS) is None
+        return kind in ON_BOARD
 
     def _leave_other_app(self) -> bool:
         """Another app is in front of the game: an ad the emulator shows for other apps, or the page such

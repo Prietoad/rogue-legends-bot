@@ -44,6 +44,8 @@ class Card:
 def parse_lobby(texts: list[Text]) -> Lobby | None:
     if not find(texts, L.PATROL) or popup_close(texts):  # some promos are see-through: lobby texts show under them
         return None
+    if find(texts, L.RESUME_ADVENTURE):  # the lobby shows under the resume dialog, which takes every tap
+        return None
     # Other accounts may not have elite mode or Desafío de Estrellas yet: both are optional.
     has_elite = True
     if find(texts, L.ELITE_ON, exact=True):

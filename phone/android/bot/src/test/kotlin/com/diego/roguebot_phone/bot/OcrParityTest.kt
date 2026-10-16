@@ -79,6 +79,7 @@ class OcrParityTest {
             "lobby_limited_offer_popup.png popup_close",
             "level_shop_2.png parse_skill_cards",             // sale price: the phone reads the right "48", the desktop "87"
             "level_shop_2.png parse_shop",
+            "guild_map_garbled.png guild_hall",              // the phone reads "Sala de" right (desktop: "Sa Slde", so its line "Gremio"): the same castle label
         )
     }
 }

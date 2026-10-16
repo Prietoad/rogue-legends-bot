@@ -1,0 +1,24 @@
+WINDOW MANAGER WINDOWS (dumpsys window windows)
+  Window #2 Window{21e6193 u0 NotificationShade}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{a1 1:u0a10044} mClient=android.os.BinderProxy@1
+    mOwnerUid=10044 showForAllUsers=true package=com.android.systemui appop=NONE
+    mAttrs={(0,0)(fillxfill) gr=TOP CENTER_VERTICAL sim={adjust=resize} layoutInDisplayCutoutMode=always ty=2040 fmt=TRANSLUCENT
+    mViewVisibility=0x4 mHaveFrame=true mObscured=false
+    mHasSurface=false isReadyForDisplay()=false mWindowRemovalAllowed=false
+  Window #4 Window{431817 u0 com.mumu.store}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{a2 2:1000} mClient=android.os.BinderProxy@2
+    mOwnerUid=1000 showForAllUsers=true package=com.mumu.store appop=SYSTEM_ALERT_WINDOW
+    mAttrs={(0,0)(fillxfill) gr=CENTER sim={adjust=pan} ty=APPLICATION_OVERLAY fmt=TRANSLUCENT
+      fl=DIM_BEHIND NOT_FOCUSABLE HARDWARE_ACCELERATED
+    mViewVisibility=0x0 mHaveFrame=true mObscured=false
+    mHasSurface=true isReadyForDisplay()=true mWindowRemovalAllowed=false
+  Window #5 Window{2762b85 u0 ShellDropTarget}:
+    mOwnerUid=10044 showForAllUsers=true package=com.android.systemui appop=SYSTEM_ALERT_WINDOW
+    mAttrs={(0,0)(fillxfill) sim={adjust=pan} layoutInDisplayCutoutMode=always ty=APPLICATION_OVERLAY fmt=TRANSLUCENT
+    mViewVisibility=0x4 mHaveFrame=true mObscured=false
+    mHasSurface=false isReadyForDisplay()=false mWindowRemovalAllowed=false
+  Window #7 Window{922d0f9 u0 com.pockethaven.roguelegend/com.singular.unitybridge.SingularUnityActivity}:
+    mOwnerUid=10056 showForAllUsers=true package=com.pockethaven.roguelegend appop=NONE
+    mAttrs={(0,0)(fillxfill) sim={adjust=pan} layoutInDisplayCutoutMode=always ty=BASE_APPLICATION fmt=TRANSLUCENT wanim=0x1030001 sysuil=true
+    mViewVisibility=0x0 mHaveFrame=true mObscured=false
+    mHasSurface=true isReadyForDisplay()=true mWindowRemovalAllowed=false

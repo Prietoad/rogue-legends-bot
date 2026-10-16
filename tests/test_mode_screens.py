@@ -270,10 +270,15 @@ def test_vip_cards_claim_all_never_a_price(ocr):
 
 def test_guild_hall_and_donation(ocr):
     from roguebot.mode_screens import free_donation, guild_hall_donate
+    from roguebot.mode_screens import guild_hall
     _, texts = load(ocr, "guild_map.png")
-    assert find(texts, labels.GUILD_HALL)  # "Sala de / Gremio" castle
+    assert guild_hall(texts).center[1] < 1100  # "Sala de / Gremio" castle
+    _, texts = load(ocr, "guild_map_garbled.png")  # the castle flag over the label: "Sa Slde" (seen 2026-10-16)
+    assert 900 < guild_hall(texts).center[1] < 1150  # its second line "Gremio"
     _, texts = load(ocr, "en_guild.png")
-    assert find(texts, labels.GUILD_HALL)  # "GuildHall"
+    assert guild_hall(texts)  # "GuildHall"
+    _, texts = load(ocr, "lobby_normal.png")
+    assert guild_hall(texts) is None  # the lobby's own "Gremio" button
     _, texts = load(ocr, "guild_hall.png")
     assert guild_hall_donate(texts).center[1] > 2100
     assert free_donation(texts) is None  # no popup yet

@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT))
 from roguebot import labels as L  # noqa: E402
 from roguebot import mode_screens as M  # noqa: E402
 from roguebot import screens as S  # noqa: E402
+from roguebot.navigation import Navigator  # noqa: E402
 from roguebot.vision import Ocr, Text  # noqa: E402
 
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -61,6 +62,7 @@ def outputs(img, texts, ocr) -> dict:
         "parse_energy_popup": S.parse_energy_popup(img, texts),
         "update_required": S.update_required(texts),
         "resume_prompt": S.resume_prompt(texts),
+        "on_board": Navigator._on_board(img, texts),
         "is_loading": S.is_loading(texts),
         "close_button": S.close_button(img),
         "tutorial_hand": S.tutorial_hand(img),
@@ -79,6 +81,7 @@ def outputs(img, texts, ocr) -> dict:
         "in_guild": M.in_guild(texts),
         "vip_cards_icon": M.vip_cards_icon(texts),
         "vip_claim_all": M.vip_claim_all(texts),
+        "guild_hall": M.guild_hall(texts),
         "guild_hall_donate": M.guild_hall_donate(texts),
         "free_donation": M.free_donation(texts),
         "parse_patrol": M.parse_patrol(texts),

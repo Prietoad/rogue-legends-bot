@@ -118,7 +118,12 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         catalog = catalog or Catalog()
         nav = Navigator(device, ocr, dry_run=dry_run, ads=request.ads)
         play_level = lambda: Player(device, ocr, request.build, catalog, request.ads).play_level()
-        nav.resume_level = play_level
+
+        def resume_level():  # an interrupted run (its energy is spent): play it out; progress for run()
+            play_level()
+            state["resumed"] = state.get("resumed", 0) + 1
+
+        nav.resume_level = resume_level
         if not launched and nav.level_in_progress():  # left running by a stopped bot: play it out first
             log.info("A level is in progress: playing it out")
             play_level()
@@ -185,7 +190,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                 if dry_run or isinstance(e, (NoEnergyError, LevelUnavailable)) or (
                         isinstance(e, EmulatorError) and e.key in PERMANENT_ERRORS):
                     raise
-                done = len(state["results"]) + len(state["parts"])
+                done = len(state["results"]) + len(state["parts"]) + state.get("resumed", 0)
                 if done > progress:  # a level or routine part finished since the last error: start counting again
                     errors.clear()
                     progress = done

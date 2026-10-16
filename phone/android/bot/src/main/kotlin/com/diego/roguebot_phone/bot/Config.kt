@@ -112,6 +112,7 @@ object Config {
     val REMAINING_BELOW_BUTTON = 80 to 170
     const val QUICK_PATROL_CYAN_MIN = 0.08
     val GUILD_BUTTON = P(89, 2130)
+    val GUILD_HALL_LABEL_Y = 900 to 1150  // guild map: the castle's "Sala de / Gremio" label band
     val ARENA_TICKETS_REGION = Region(815, 45, 940, 125)
     val ARENA_POWER_Y = 440 to 520
     val ARENA_ROWS_Y = 550 to 1900
