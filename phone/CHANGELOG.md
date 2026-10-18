@@ -1,5 +1,8 @@
 # Changelog (phone app)
 
+## 0.3.0 (2026-10-18)
+- Same changes as the desktop bot 1.6.0: two options ("Keep running" and "Full routine"; levels always run until out of energy), and the patrol reward is claimed from 2 hours, checked before each level and before the modes.
+
 ## 0.2.2 (2026-10-16)
 - Same fix as the desktop bot 1.5.2: a missed press-and-hold on the dice is retried, so auto-play keeps running instead of switching to taps for the rest of the level.
 

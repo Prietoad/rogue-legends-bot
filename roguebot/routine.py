@@ -20,7 +20,7 @@ from roguebot.vision import Ocr, Text, find
 
 log = logging.getLogger(__name__)
 
-PARTS = ("vip", "daily", "mail", "arena", "dojo", "tower", "dive", "mines", "pets", "patrol", "raid", "donate")
+PARTS = ("vip", "daily", "mail", "patrol", "arena", "dojo", "tower", "dive", "mines", "pets", "raid", "donate")
 MODE_PARTS = ("arena", "dojo", "tower", "dive", "mines", "pets")  # run from the modes list without going back to the lobby
 MAX_BACK_STEPS = 8   # screens to back out of (popups, arena panel, mode screen) to reach the modes list
 DONE, SKIPPED, FAILED = "done", "skipped", "failed"
@@ -253,8 +253,8 @@ class Routine:
         self._fail("Raid did not run out of attempts")
 
     def patrol(self) -> str:
-        """Patrulla (lobby): claim the reward once the counter reaches PATROL_CLAIM_AFTER (it stops at
-        8 h), then every quick patrol with uses left: the free video, then energy (only with enough
+        """Patrulla (lobby): claim the reward once the counter reaches PATROL_CLAIM_AFTER (2 h; it stops
+        at 8 h), then every quick patrol with uses left: the free video, then energy (only with enough
         energy). Never gems, never the VIP card offer below."""
         texts = self._lobby_texts()
         button = find(texts, L.PATROL)

@@ -71,7 +71,7 @@ def _patrol_next(wait: float | None, now: float) -> float:
 
 
 def _claim_patrol(routine: Routine, state: dict) -> None:
-    """After each level: patrol reward and free/energy quick patrols. A problem here never stops the run.
+    """Before each level: patrol reward and free/energy quick patrols. A problem here never stops the run.
     Skipped while nothing can be there (it costs ~10 s per level otherwise)."""
     if time.time() < state.get("patrol_next", 0):
         return
@@ -138,11 +138,15 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         while True:
             cycle += 1
             if request.full and not state["routine_done"]:  # a retry after an error resumes at the part that broke
-                Routine(device, ocr, nav, request.ads, play_level, request.build, catalog).run_parts(state)
+                routine = Routine(device, ocr, nav, request.ads, play_level, request.build, catalog)
+                routine.run_parts(state)
+                if routine.patrol_wait is not None:  # just opened by the routine: not again before the first level
+                    state["patrol_next"] = _patrol_next(routine.patrol_wait, time.time())
             state["routine_done"] = True
             while True:
                 if not request.repeat and results:  # a retry after an error must not replay the one level
                     return Report(results)
+                _claim_patrol(Routine(device, ocr, nav, request.ads), state)  # first: its quick patrols spend energy
                 if request.repeat and _energy(nav) < config.MIN_RUN_ENERGY:
                     if nav.claim_free_energy() < config.MIN_RUN_ENERGY:
                         break
@@ -160,7 +164,6 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                     request = state["request"] = replace(request, level=played)
                 nav.go_to_lobby()
                 log.info("Level finished: %s (run %d)", results[-1].value, len(results))
-                _claim_patrol(Routine(device, ocr, nav, request.ads), state)
                 if not request.repeat:
                     return Report(results)
             if not request.loop:

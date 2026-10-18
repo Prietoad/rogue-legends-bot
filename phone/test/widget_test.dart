@@ -32,6 +32,7 @@ void main() {
         'damage_order': ['fire', 'ice', 'lightning', 'shuriken', 'venom', 'bleed'],
       });
     expect([o.lang, o.mode, o.source, o.level, o.loop, o.ads], ['en', 'elite', 'latest', '1', true, false]);
+    expect(o.toJson().containsKey('repeat'), false);  // only keep running + full routine
     expect(o.order.first, 'fire');
     final bad = Options()..restore({'damage_order': ['fire']});
     expect(bad.order, damageTypes);

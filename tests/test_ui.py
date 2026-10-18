@@ -69,8 +69,8 @@ def test_invalid_level_shows_error_status(app):
     assert str(app.start.cget("state")) != "disabled"
 
 
-def test_repeat_checkbox_defaults_off(app):
-    assert app.repeat.get() is False
+def test_only_keep_running_and_full_routine_options(app):
+    assert not hasattr(app, "repeat") and app.loop.get() is False and app.full.get() is False
 
 
 class InlineThread:
@@ -93,7 +93,7 @@ def test_full_routine_checkbox_builds_a_full_request(app, monkeypatch):
         app.root.update()
     finally:
         app.full.set(False)
-    assert requests[0].full and requests[0].repeat
+    assert requests[0].full and requests[0].repeat and not requests[0].loop
 
 
 def test_stop_button(app, monkeypatch):
@@ -152,7 +152,7 @@ def test_loop_checkbox_builds_a_loop_request(app, monkeypatch):
         app.root.update()
     finally:
         app.loop.set(False)
-    assert requests[0].loop and requests[0].full and requests[0].repeat
+    assert requests[0].loop and not requests[0].full and requests[0].repeat
 
 
 def test_last_beaten_source_builds_a_last_beaten_request(app, monkeypatch):
@@ -268,7 +268,7 @@ def test_watch_ads_option_explains_it_needs_ad_skip(app):
 def test_every_option_is_saved_and_restored(app, tmp_path, monkeypatch):
     from roguebot import settings
     monkeypatch.setattr(app, "settings_path", tmp_path / "settings.json")
-    chosen = {"mode": "elite", "source": "stars", "level": "7", "repeat": True, "full": True, "loop": True,
+    chosen = {"mode": "elite", "source": "stars", "level": "7", "full": True, "loop": True,
               "ads": True, "nature": "magic", "support": True, "support_every": "4"}
     defaults = {k: getattr(app, k).get() for k in chosen}
     order = list(reversed(app.damage_order))
@@ -294,5 +294,5 @@ def test_every_option_is_saved_and_restored(app, tmp_path, monkeypatch):
 
 def test_invalid_saved_options_keep_the_defaults(app):
     before = app.options()
-    app._restore_options({"mode": "hard", "source": 3, "level": "-1", "repeat": "yes", "damage_order": ["fire"]})
+    app._restore_options({"mode": "hard", "source": 3, "level": "-1", "full": "yes", "damage_order": ["fire"]})
     assert app.options() == before

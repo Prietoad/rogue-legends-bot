@@ -10,12 +10,12 @@ import java.time.ZoneId
 data class RunRequest(
     val mode: Mode,
     val level: Int?,                  // null = last unlocked level
-    val repeat: Boolean = false,
+    val repeat: Boolean = false,      // replay until out of energy (always, from the UI)
     val full: Boolean = false,
     val build: Build = Build(),
     val lastBeaten: Boolean = false,
     val pendingStars: Boolean = false,
-    val loop: Boolean = false,
+    val loop: Boolean = false,        // keep running: out of energy -> wait for energy -> (routine ->) levels again
     val ads: Boolean = false,
 )
 
@@ -24,19 +24,18 @@ const val STARS = "stars"
 const val BEATEN = "beaten"
 const val PENDING = "pending"
 
-/** Validate the form values. Throws IllegalArgumentException("bad_level") (an i18n key). */
-fun buildRequest(mode: String, source: String, level: String, repeat: Boolean = false, full: Boolean = false,
+/** Validate the form values. Throws IllegalArgumentException("bad_level") (an i18n key).
+ * Levels always run until out of energy; `loop` then waits for energy and starts again. */
+fun buildRequest(mode: String, source: String, level: String, full: Boolean = false,
                  build: Build = Build(), loop: Boolean = false, ads: Boolean = false): RunRequest {
-    val f = full || loop
-    val r = repeat || f
     val m = Mode.values().first { it.value == mode }
     if (source == LATEST || source == BEATEN || source == PENDING) {
-        return RunRequest(m, null, r, f, build, lastBeaten = source == BEATEN || source == PENDING,
+        return RunRequest(m, null, true, full, build, lastBeaten = source == BEATEN || source == PENDING,
             pendingStars = source == PENDING, loop = loop, ads = ads)
     }
     val n = level.trim().toIntOrNull()
     if (n == null || n < 1 || !level.trim().isDigits()) throw IllegalArgumentException("bad_level")
-    return RunRequest(m, n, r, f, build, loop = loop, ads = ads)
+    return RunRequest(m, n, true, full, build, loop = loop, ads = ads)
 }
 
 data class Report(
@@ -190,11 +189,15 @@ class Runner(
         while (true) {
             cycle++
             if (request.full && !state.routineDone) {
-                Routine(device, ocr, nav, request.ads, playLevel, clock, request.build, catalog).runParts(state.progress)
+                val routine = Routine(device, ocr, nav, request.ads, playLevel, clock, request.build, catalog)
+                routine.runParts(state.progress)
+                // just opened by the routine: not again before the first level
+                routine.patrolWait?.let { state.patrolNext = patrolNext(it, wall()) }
             }
             state.routineDone = true
             while (true) {
                 if (!request.repeat && results.isNotEmpty()) return Report(results.toList())
+                claimPatrol(Routine(device, ocr, nav, request.ads, clock = clock), state)  // first: its quick patrols spend energy
                 if (request.repeat && energy(nav) < Config.MIN_RUN_ENERGY) {
                     if (nav.claimFreeEnergy() < Config.MIN_RUN_ENERGY) break
                 }
@@ -214,7 +217,6 @@ class Runner(
                 }
                 nav.goToLobby()
                 Log.info("Level finished: ${results.last().value} (run ${results.size})")
-                claimPatrol(Routine(device, ocr, nav, request.ads, clock = clock), state)
                 if (!request.repeat) return Report(results.toList())
             }
             if (!request.loop) break

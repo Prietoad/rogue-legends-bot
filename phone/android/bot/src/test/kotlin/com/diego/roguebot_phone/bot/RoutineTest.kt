@@ -53,8 +53,8 @@ class RoutineTest {
             override fun dive() = Parts.DONE
         }
         val results = r.runParts()
-        assertEquals(listOf("vip" to "done", "daily" to "done", "mail" to "done", "arena" to "failed", "dojo" to "done",
-            "tower" to "done", "dive" to "done", "mines" to "done", "pets" to "done", "patrol" to "done", "raid" to "skipped",
+        assertEquals(listOf("vip" to "done", "daily" to "done", "mail" to "done", "patrol" to "done", "arena" to "failed",
+            "dojo" to "done", "tower" to "done", "dive" to "done", "mines" to "done", "pets" to "done", "raid" to "skipped",
             "donate" to "done"), results)
         assertEquals(listOf("ok"), ran)
         assertEquals(7, n.lobbyVisits)  // stays in the modes tab between modes
@@ -265,9 +265,10 @@ class RoutineTest {
     }
 
     @Test
-    fun patrolRewardIsOnlyClaimedNearThe8HourCap() {
+    fun patrolRewardIsOnlyClaimedAfter2Hours() {
         L.setLanguage("es")
-        val early = listOf(t("Tiempo de patrulla: 7:49:59", 560, 1025, 960, 1070)) + PATROL.drop(1)
+        assertEquals(2 * 3600, Config.PATROL_CLAIM_AFTER)
+        val early = listOf(t("Tiempo de patrulla: 1:59:59", 560, 1025, 960, 1070)) + PATROL.drop(1)
         val r = Routine(device, FakeOcr(), nav(Script(listOf(s(ES_LOBBY), s(early), quick(0, 0)))), clock = clock)
         assertEquals(Parts.DONE, r.patrol())
         assertEquals(listOf(P(720, 1922), P(495, 1775)), device.taps)
@@ -404,7 +405,7 @@ class RoutineTest {
         broken = false
         r.calls.clear()
         val results = r.runParts(progress)
-        assertEquals(listOf("tower", "dive", "mines", "pets", "patrol", "raid", "donate"), r.calls)
+        assertEquals(listOf("tower", "dive", "mines", "pets", "raid", "donate"), r.calls)  // the patrol ran before the modes
         assertEquals(Parts.ALL, results.map { it.first })
     }
 

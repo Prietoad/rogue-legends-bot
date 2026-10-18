@@ -7,7 +7,7 @@ import kotlin.math.abs
  * guild raid and donation). A part that gets stuck is reported as failed and the next one runs.
  */
 object Parts {
-    val ALL = listOf("vip", "daily", "mail", "arena", "dojo", "tower", "dive", "mines", "pets", "patrol", "raid", "donate")
+    val ALL = listOf("vip", "daily", "mail", "patrol", "arena", "dojo", "tower", "dive", "mines", "pets", "raid", "donate")
     val MODES = listOf("arena", "dojo", "tower", "dive", "mines", "pets")
     const val DONE = "done"
     const val SKIPPED = "skipped"

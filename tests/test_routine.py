@@ -76,11 +76,11 @@ def test_failed_part_is_reported_and_the_next_one_runs(monkeypatch):
     for part in ("daily", "mail", "dojo", "dive"):
         monkeypatch.setattr(r, part, lambda: routine.DONE)
     results = r.run_parts()
-    assert results == [("vip", "done"), ("daily", "done"), ("mail", "done"), ("arena", "failed"), ("dojo", "done"),
-                       ("tower", "done"), ("dive", "done"), ("mines", "done"), ("pets", "done"), ("patrol", "done"),
+    assert results == [("vip", "done"), ("daily", "done"), ("mail", "done"), ("patrol", "done"), ("arena", "failed"),
+                       ("dojo", "done"), ("tower", "done"), ("dive", "done"), ("mines", "done"), ("pets", "done"),
                        ("raid", "skipped"), ("donate", "done")]
     assert ran == ["ok"]
-    assert r.nav.lobby_visits == 7  # stays in the modes tab; lobby after VIP, daily, mail, modes, patrol, raid, donation
+    assert r.nav.lobby_visits == 7  # stays in the modes tab; lobby after VIP, daily, mail, patrol, modes, raid, donation
 
 
 def skill_screen(chosen, needed, rarities):
@@ -312,11 +312,12 @@ def test_lobby_parts_read_the_lobby_again_when_the_game_opens_a_screen(monkeypat
     assert r.nav.lobby_visits >= 2 and r.device.taps[0] == (80, 660)  # the VIP icon, not the album's button
 
 
-def test_patrol_reward_is_only_claimed_near_the_8_hour_cap(monkeypatch):
+def test_patrol_reward_is_only_claimed_after_2_hours(monkeypatch):
     labels.set_language("es")
     monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
     monkeypatch.setattr(routine, "parse_quick_patrol", _fake_quick)
-    early = [Text("Tiempo de patrulla: 7:49:59", 560, 1025, 960, 1070)] + PATROL[1:]
+    assert routine.config.PATROL_CLAIM_AFTER == 2 * 3600
+    early = [Text("Tiempo de patrulla: 1:59:59", 560, 1025, 960, 1070)] + PATROL[1:]
     r = make([PATROL_LOBBY, early, quick(0, 0)])
     assert r.patrol() == routine.DONE
     assert (945, 1775) not in r.device.taps  # "Reclamar" not pressed
@@ -588,7 +589,7 @@ def test_run_parts_resumes_after_a_restart_at_the_part_that_broke(monkeypatch):
     calls.clear()
     monkeypatch.setattr(r, "tower", part("tower"))
     results = r.run_parts(progress)  # after the restart: from the tower on, nothing done twice
-    assert calls == ["tower", "dive", "patrol", "raid", "donate"]
+    assert calls == ["tower", "dive", "raid", "donate"]  # the patrol ran before the modes
     assert [p for p, _ in results] == list(routine.PARTS)
 
 

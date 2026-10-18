@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0 (2026-10-18)
+- Simpler options: "Keep running" and "Full routine" replace the three old checkboxes. Levels now always run until out of energy (claiming the free energy first). "Keep running" then waits for energy and starts again (with the full routine too, if ticked); off, the bot stops when out of energy. "Full routine" runs the secondary content first, then the levels from Mode/Level.
+- Patrol: the reward is claimed once it holds at least 2 hours (it used to wait for almost 8). It is checked before each level and, in the full routine, before the modes.
+
 ## 1.5.2 (2026-10-16)
 - Auto-play: if one press-and-hold on the dice doesn't turn auto-play back on (after a shop, for example), the bot holds again instead of rolling by taps for the rest of the level. It only switches to taps if auto-play never worked in that level, or after 3 misses in a row.
 

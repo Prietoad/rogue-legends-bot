@@ -112,26 +112,22 @@ class App:
         self.level_entry = ttk.Spinbox(sources, from_=1, to=999, width=5, textvariable=self.level, state="disabled")
         self.level_entry.pack(side="left")
 
-        self.repeat = tk.BooleanVar(value=False)
-        self._text(ttk.Checkbutton(frame, variable=self.repeat), "repeat").grid(
+        self.loop = tk.BooleanVar(value=False)
+        self._text(ttk.Checkbutton(frame, variable=self.loop), "loop").grid(
             row=4, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
         self.full = tk.BooleanVar(value=False)
         self._text(ttk.Checkbutton(frame, variable=self.full), "full").grid(
             row=5, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
-        self.loop = tk.BooleanVar(value=False)
-        self._text(ttk.Checkbutton(frame, variable=self.loop), "loop").grid(
-            row=6, column=0, columnspan=4, sticky="w", pady=(4, 0))
-
         self.ads = tk.BooleanVar(value=False)
         self._text(ttk.Checkbutton(frame, variable=self.ads), "ads").grid(
-            row=7, column=0, columnspan=4, sticky="w", pady=(4, 0))
+            row=6, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
-        self._build_section(frame).grid(row=8, column=0, columnspan=4, sticky="ew", pady=(8, 0))
+        self._build_section(frame).grid(row=7, column=0, columnspan=4, sticky="ew", pady=(8, 0))
 
         buttons = ttk.Frame(frame)
-        buttons.grid(row=9, column=0, columnspan=4, sticky="ew", pady=8)
+        buttons.grid(row=8, column=0, columnspan=4, sticky="ew", pady=8)
         buttons.columnconfigure((0, 1), weight=1)
         self.start = self._text(ttk.Button(buttons, command=self._start), "start")
         self.start.grid(row=0, column=0, sticky="ew", padx=(0, 4))
@@ -203,7 +199,7 @@ class App:
     def options(self) -> dict:
         """Every user choice, as saved between sessions."""
         values = {"lang": self.lang, "mode": self.mode.get(), "source": self.source.get(), "level": self.level.get(),
-                  "repeat": self.repeat.get(), "full": self.full.get(), "loop": self.loop.get(), "ads": self.ads.get(),
+                  "full": self.full.get(), "loop": self.loop.get(), "ads": self.ads.get(),
                   "nature": self.nature.get(), "damage_order": list(self.damage_order),
                   "support": self.support.get(), "support_every": self.support_every.get()}
         if emulator.tools(self.mumu_folder.get() or "-"):
@@ -217,7 +213,7 @@ class App:
                                   (self.nature, "nature", {PHYSICAL, MAGIC})):
             if saved.get(key) in choices:
                 var.set(saved[key])
-        for var, key in ((self.repeat, "repeat"), (self.full, "full"), (self.loop, "loop"), (self.ads, "ads"),
+        for var, key in ((self.full, "full"), (self.loop, "loop"), (self.ads, "ads"),
                          (self.support, "support")):
             if isinstance(saved.get(key), bool):
                 var.set(saved[key])
@@ -299,7 +295,7 @@ class App:
     def _start(self) -> None:
         self._save_options()
         try:
-            request = build_request(self.mode.get(), self.source.get(), self.level.get(), self.repeat.get(),
+            request = build_request(self.mode.get(), self.source.get(), self.level.get(),
                                     self.full.get(), self.build(), self.loop.get(), self.mumu_folder.get(),
                                     self.ads.get())
         except ValueError as e:

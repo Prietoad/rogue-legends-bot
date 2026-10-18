@@ -33,11 +33,11 @@ def test_scroll_delta_one_card_down():
 
 
 def test_build_request_latest_ignores_level():
-    assert build_request("elite", "latest", "") == RunRequest(Mode.ELITE, None)
+    assert build_request("elite", "latest", "") == RunRequest(Mode.ELITE, None, repeat=True)
 
 
 def test_build_request_stars():
-    assert build_request("normal", "stars", " 7 ") == RunRequest(Mode.NORMAL, 7)
+    assert build_request("normal", "stars", " 7 ") == RunRequest(Mode.NORMAL, 7, repeat=True)
 
 
 @pytest.mark.parametrize("level", ["", "abc", "0", "-3"])
@@ -191,9 +191,9 @@ def test_speed_absent_does_nothing():
     assert device.taps == []
 
 
-def test_build_request_repeat_flag():
-    assert build_request("elite", "stars", "3", repeat=True) == RunRequest(Mode.ELITE, 3, True)
-    assert build_request("normal", "latest", "", repeat=False).repeat is False
+def test_build_request_always_plays_until_out_of_energy():
+    assert build_request("elite", "stars", "3") == RunRequest(Mode.ELITE, 3, True)
+    assert build_request("normal", "latest", "").repeat is True
 
 
 @pytest.mark.parametrize("s, value", [("534,8k", 534800), ("3,4m", 3400000), ("339k", 339000), ("1045", 1045),
@@ -210,9 +210,9 @@ def test_pick_opponent_closest_not_stronger():
     assert pick_opponent(50, opponents) is None  # all stronger: caller refreshes (if free) or takes the weakest
 
 
-def test_build_request_full_routine_implies_repeat():
-    request = build_request("normal", "latest", "", repeat=False, full=True)
-    assert request.full and request.repeat
+def test_build_request_full_routine():
+    request = build_request("normal", "latest", "", full=True)
+    assert request.full and request.repeat and not request.loop
 
 
 def test_skill_choice_prefers_highest_rarity():
@@ -358,15 +358,15 @@ def test_detect_language_retries_when_the_game_leaves_the_lobby(monkeypatch):
     assert nav.device.taps == [(120, 2447)]  # left the event through its back arrow
 
 
-def test_build_request_loop_implies_full_routine():
+def test_build_request_keep_running_and_full_routine_are_independent():
     request = build_request("normal", "latest", "", loop=True)
-    assert request.loop and request.full and request.repeat
-    assert not build_request("normal", "latest", "", full=True).loop
+    assert request.loop and not request.full and request.repeat  # keep running levels only
+    assert build_request("normal", "latest", "", loop=True, full=True).full
 
 
 def test_build_request_last_beaten_ignores_level():
     request = build_request("elite", "beaten", "")
-    assert request == RunRequest(Mode.ELITE, None, last_beaten=True)
+    assert request == RunRequest(Mode.ELITE, None, repeat=True, last_beaten=True)
     assert not build_request("normal", "latest", "").last_beaten
     assert not build_request("normal", "stars", "4").last_beaten
 
@@ -656,7 +656,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.5.2"
+    assert roguebot.__version__ == "1.6.0"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):

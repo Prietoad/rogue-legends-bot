@@ -220,7 +220,7 @@ def test_stop_event_reaches_the_device_and_is_cleared_on_start(monkeypatch):
     assert seen == [(stop, False)] and FakeEmulator.stop is stop  # the emulator waits can be stopped too
 
 
-def run_loop(monkeypatch, nav, results, on_wait):
+def run_loop(monkeypatch, nav, results, on_wait, full=True):
     """Loop request; the device's wait() (energy refill time) is simulated by on_wait."""
     class Dev:
         def __init__(self, serial, stop=None, adb=None):
@@ -242,7 +242,7 @@ def run_loop(monkeypatch, nav, results, on_wait):
     monkeypatch.setattr(main, "Navigator", lambda *a, **k: nav)
     monkeypatch.setattr(main, "Player", FakePlayer)
     monkeypatch.setattr(main, "Routine", FakeRoutine)
-    return main.make_runner(dry_run=False)(RunRequest(Mode.NORMAL, 4, repeat=True, full=True, loop=True))
+    return main.make_runner(dry_run=False)(RunRequest(Mode.NORMAL, 4, repeat=True, full=full, loop=True))
 
 
 def test_loop_waits_for_energy_then_runs_the_whole_routine_again(monkeypatch):
@@ -263,6 +263,24 @@ def test_loop_waits_for_energy_then_runs_the_whole_routine_again(monkeypatch):
     assert FakeRoutine.calls == 2  # modes again on the second cycle
     assert nav.started == ["detect", ("stars", 4), ("stars", 4)]
     assert waits == [0, 2, 0]
+
+
+def test_keep_running_without_the_full_routine_only_replays_levels(monkeypatch):
+    from roguebot.device import Stopped
+    nav = FakeNav(energy=5, claimable=5)
+    waits = []
+
+    def on_wait():
+        waits.append(nav.energy)
+        if len(waits) == 1:
+            nav.energy += 5  # refilled while waiting
+        else:
+            raise Stopped("Stopped by the user")
+    with pytest.raises(Stopped):
+        run_loop(monkeypatch, nav, [V, V, V], on_wait, full=False)
+    assert FakeRoutine.calls == 0  # never the routine
+    assert nav.started == ["detect", ("stars", 4), ("stars", 4), ("stars", 4)]  # 5 + 5 claimed, then 5 refilled
+    assert nav.claims == 3 and waits == [0, 0]  # free energy claimed before every wait
 
 
 def test_loop_survives_a_failed_cycle(monkeypatch):
@@ -326,10 +344,25 @@ def test_waiting_for_energy_logs_each_check(caplog):
     assert "Waiting for energy (2/5)" in caplog.text
 
 
-def test_patrol_is_claimed_after_every_level(monkeypatch):
+def test_patrol_is_checked_before_every_level(monkeypatch):
     nav = FakeNav(energy=10)
+
+    class R(FakeRoutine):
+        def patrol(self):
+            nav.started.append("patrol")
+            return super().patrol()
+    monkeypatch.setattr(main, "Routine", R)
     run_with(monkeypatch, nav, [V, D], RunRequest(Mode.NORMAL, 4, repeat=True))
-    assert FakeRoutine.patrols == 2
+    # before each level (its quick patrols spend energy, so before the energy check too)
+    assert nav.started == ["detect", "patrol", ("stars", 4), "patrol", ("stars", 4), "patrol"]
+
+
+def test_patrol_opened_by_the_routine_is_not_opened_again_before_the_first_level(monkeypatch):
+    class R(FakeRoutine):
+        patrol_wait = 3600
+    monkeypatch.setattr(main, "Routine", R)
+    report = run_with(monkeypatch, FakeNav(energy=5), [V], RunRequest(Mode.NORMAL, 4, repeat=True, full=True))
+    assert report.results == [V] and FakeRoutine.patrols == 0  # the routine's own patrol part counts
 
 
 def test_a_patrol_problem_never_stops_the_run(monkeypatch):

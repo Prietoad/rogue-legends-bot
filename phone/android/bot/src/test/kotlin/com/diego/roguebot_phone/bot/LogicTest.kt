@@ -144,13 +144,14 @@ class LogicTest {
 
     @Test
     fun buildRequest() {
-        assertEquals(RunRequest(Mode.ELITE, null), buildRequest("elite", LATEST, ""))
-        assertEquals(RunRequest(Mode.NORMAL, 7), buildRequest("normal", STARS, " 7 "))
+        assertEquals(RunRequest(Mode.ELITE, null, repeat = true), buildRequest("elite", LATEST, ""))
+        assertEquals(RunRequest(Mode.NORMAL, 7, repeat = true), buildRequest("normal", STARS, " 7 "))
         for (bad in listOf("", "abc", "0", "-3")) assertThrows(IllegalArgumentException::class.java) { buildRequest("normal", STARS, bad) }
         val loop = buildRequest("normal", LATEST, "", loop = true)
-        assertTrue(loop.loop && loop.full && loop.repeat)
-        assertTrue(!buildRequest("normal", LATEST, "", full = true).loop)
-        assertEquals(RunRequest(Mode.ELITE, null, lastBeaten = true), buildRequest("elite", BEATEN, ""))
+        assertTrue(loop.loop && !loop.full && loop.repeat)  // keep running levels only
+        val full = buildRequest("normal", LATEST, "", full = true)
+        assertTrue(full.full && full.repeat && !full.loop)
+        assertEquals(RunRequest(Mode.ELITE, null, repeat = true, lastBeaten = true), buildRequest("elite", BEATEN, ""))
         val pending = buildRequest("normal", PENDING, "")
         assertTrue(pending.pendingStars && pending.lastBeaten && pending.level == null)
         assertTrue(!buildRequest("normal", LATEST, "1").ads && buildRequest("normal", LATEST, "1", ads = true).ads)

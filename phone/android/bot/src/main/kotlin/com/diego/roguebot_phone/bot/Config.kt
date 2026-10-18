@@ -108,7 +108,7 @@ object Config {
     val MODES_BUTTON = P(1350, 2130)
     const val LOBBY_LEFT_ICONS_MAX_X = 250
     const val DONATE_FREE_MAX = 5
-    const val PATROL_CLAIM_AFTER = 7 * 3600 + 50 * 60
+    const val PATROL_CLAIM_AFTER = 2 * 3600
     val PATROL_BUTTONS_Y = 1700..1850
     val REMAINING_BELOW_BUTTON = 80 to 170
     const val QUICK_PATROL_CYAN_MIN = 0.08

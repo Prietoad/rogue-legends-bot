@@ -9,7 +9,7 @@ import 'i18n.dart';
 
 /// The phone version of the desktop bot's window (roguebot/ui.py): options, Start/Stop, status and log.
 /// The bot itself runs in Kotlin (android/bot, android/app): see Engine.kt.
-const version = '0.2.2';
+const version = '0.3.0';
 const damageTypes = ['ice', 'lightning', 'fire', 'shuriken', 'venom', 'bleed'];
 const engine = MethodChannel('roguebot/engine');
 const events = EventChannel('roguebot/events');
@@ -31,12 +31,12 @@ class BotApp extends StatelessWidget {
 /// Every option the user sets, saved between sessions (like data/settings.json on the desktop).
 class Options {
   String lang = 'es', mode = 'normal', source = 'latest', level = '1', nature = 'physical', supportEvery = '3';
-  bool repeat = false, full = false, loop = false, ads = false, support = false;
+  bool full = false, loop = false, ads = false, support = false;
   List<String> order = [...damageTypes];
 
   Map<String, Object> toJson() => {
         'lang': lang, 'mode': mode, 'source': source, 'level': level, 'nature': nature, 'support_every': supportEvery,
-        'repeat': repeat, 'full': full, 'loop': loop, 'ads': ads, 'support': support, 'damage_order': order,
+        'full': full, 'loop': loop, 'ads': ads, 'support': support, 'damage_order': order,
       };
 
   /// Last session's choices; anything missing or invalid keeps its default.
@@ -48,7 +48,6 @@ class Options {
     nature = pick<String>('nature', ['physical', 'magic'].contains) ?? nature;
     level = pick<String>('level', (v) => int.tryParse(v) != null) ?? level;
     supportEvery = pick<String>('support_every', (v) => int.tryParse(v) != null) ?? supportEvery;
-    repeat = pick<bool>('repeat', (_) => true) ?? repeat;
     full = pick<bool>('full', (_) => true) ?? full;
     loop = pick<bool>('loop', (_) => true) ?? loop;
     ads = pick<bool>('ads', (_) => true) ?? ads;
@@ -171,7 +170,6 @@ class _BotPageState extends State<BotPage> with WidgetsBindingObserver {
       'mode': options.mode,
       'source': options.source,
       'level': options.level,
-      'repeat': options.repeat,
       'full': options.full,
       'loop': options.loop,
       'ads': options.ads,
@@ -280,9 +278,8 @@ class _BotPageState extends State<BotPage> with WidgetsBindingObserver {
                 onChanged: (v) => _set(() => o.level = v),
               ),
             ),
-          check('repeat', o.repeat, (v) => o.repeat = v),
-          check('full', o.full, (v) => o.full = v),
           check('loop', o.loop, (v) => o.loop = v),
+          check('full', o.full, (v) => o.full = v),
           check('ads', o.ads, (v) => o.ads = v),
           Card(
             child: Padding(
