@@ -32,11 +32,11 @@ LANGUAGE_ATTEMPTS = 3
 
 IN_LEVEL = (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.FIGHT, LevelScreen.SKILL_PICK, LevelScreen.SHOP,
             LevelScreen.EVENT, LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.VICTORY,
-            LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD)  # only seen inside a level (not Continue/Leave buttons)
+            LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD, LevelScreen.FORTUNE_TELLER)  # only seen inside a level (not Continue/Leave buttons)
 # A level board found by go_to_lobby, played out instead of failing (the level is lost on a restart). Not
 # fights or skill picks alone: dojo and raid fights have them too.
 ON_BOARD = (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.SHOP, LevelScreen.EVENT,
-            LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE)
+            LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.FORTUNE_TELLER)
 
 
 class NavigationError(Exception):

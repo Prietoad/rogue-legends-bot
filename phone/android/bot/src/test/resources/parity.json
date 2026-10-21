@@ -537,6 +537,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -939,6 +940,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -1104,6 +1106,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -1499,6 +1502,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -1986,6 +1990,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -2340,6 +2345,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -2507,6 +2513,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -2745,6 +2752,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -2932,6 +2940,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -3099,6 +3108,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -3288,6 +3298,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -3521,6 +3532,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -3710,6 +3722,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -4067,6 +4080,7 @@
 ],
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -4559,6 +4573,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -5029,6 +5044,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -5394,6 +5410,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -5757,6 +5774,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -5949,6 +5967,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -6525,6 +6544,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -7164,6 +7184,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -7373,6 +7394,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -7525,6 +7547,7 @@
 "skill_reroll": null,
 "parse_money": 59,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -7982,6 +8005,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -8437,6 +8461,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -8879,6 +8904,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -9174,6 +9200,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -9327,6 +9354,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 148,
 2304
@@ -9597,6 +9625,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -9718,6 +9747,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -9867,6 +9897,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -9960,6 +9991,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -10095,6 +10127,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -10286,6 +10319,7 @@
 "skill_reroll": null,
 "parse_money": 121,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -10435,6 +10469,7 @@
 "skill_reroll": null,
 "parse_money": 328,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -10595,6 +10630,7 @@
 "skill_reroll": null,
 "parse_money": 175,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -10702,6 +10738,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -10830,14 +10867,14 @@
 "parse_energy_popup": null,
 "update_required": false,
 "resume_prompt": null,
-"on_board": false,
+"on_board": true,
 "is_loading": false,
 "close_button": null,
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
 "classify_level_screen": {
-"kind": "leave",
+"kind": "fortune_teller",
 "tap": [
 293,
 2280
@@ -10851,6 +10888,23 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": {
+"orbs": 5,
+"balls": {
+"100": [
+369,
+1626
+],
+"70": [
+720,
+1626
+],
+"40": [
+1073,
+1627
+]
+}
+},
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -10958,6 +11012,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -11149,6 +11204,7 @@
 "skill_reroll": null,
 "parse_money": 100,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -11263,6 +11319,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -11726,6 +11783,7 @@
 2464
 ]
 },
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -12183,6 +12241,7 @@
 2464
 ]
 },
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -12639,6 +12698,7 @@
 2464
 ]
 },
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -13088,6 +13148,7 @@
 2464
 ]
 },
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -13370,6 +13431,7 @@
 ],
 "parse_money": 158,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -13653,6 +13715,7 @@
 "skill_reroll": null,
 "parse_money": 114,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -13858,6 +13921,7 @@
 "skill_reroll": null,
 "parse_money": 967,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -14098,6 +14162,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -14528,6 +14593,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -14948,6 +15014,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -15371,6 +15438,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -15781,6 +15849,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -16229,6 +16298,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -16408,6 +16478,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -16545,6 +16616,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -16801,6 +16873,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -17073,6 +17146,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -17265,6 +17339,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -17514,6 +17589,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -17734,6 +17810,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -17947,6 +18024,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -18385,6 +18463,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -18657,6 +18736,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -18894,6 +18974,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -19153,6 +19234,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -19382,6 +19464,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -19596,6 +19679,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -19754,6 +19838,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -19879,6 +19964,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -20213,6 +20299,7 @@
 ],
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -20558,6 +20645,7 @@
 ],
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -20910,6 +20998,7 @@
 ],
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -21192,6 +21281,7 @@
 ],
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -21424,6 +21514,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2449
@@ -21739,6 +21830,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2449
@@ -21930,6 +22022,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -22067,6 +22160,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -22188,6 +22282,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -22344,6 +22439,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -22517,6 +22613,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -22998,6 +23095,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -23482,6 +23580,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -23644,6 +23743,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -23762,6 +23862,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -24121,6 +24222,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -24495,6 +24597,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -24909,6 +25012,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -25078,6 +25182,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 148,
 2304
@@ -25261,6 +25366,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 148,
 2304
@@ -25451,6 +25557,7 @@
 "skill_reroll": null,
 "parse_money": 100,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -25618,6 +25725,7 @@
 "skill_reroll": null,
 "parse_money": 93,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -25788,6 +25896,7 @@
 "skill_reroll": null,
 "parse_money": 100,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -25955,6 +26064,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -26139,6 +26249,7 @@
 "skill_reroll": null,
 "parse_money": 373,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -26295,6 +26406,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -26430,6 +26542,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -26621,6 +26734,7 @@
 "skill_reroll": null,
 "parse_money": 154,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -26812,6 +26926,7 @@
 "skill_reroll": null,
 "parse_money": 209,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -26968,6 +27083,7 @@
 "skill_reroll": null,
 "parse_money": 207,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -27121,6 +27237,7 @@
 "skill_reroll": null,
 "parse_money": 100,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -27235,6 +27352,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -27349,6 +27467,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -27463,14 +27582,14 @@
 "parse_energy_popup": null,
 "update_required": false,
 "resume_prompt": null,
-"on_board": false,
+"on_board": true,
 "is_loading": false,
 "close_button": null,
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
 "classify_level_screen": {
-"kind": "leave",
+"kind": "fortune_teller",
 "tap": [
 293,
 2280
@@ -27484,6 +27603,530 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": {
+"orbs": 5,
+"balls": {
+"100": [
+368,
+1626
+],
+"70": [
+719,
+1626
+],
+"40": [
+1073,
+1627
+]
+}
+},
+"back_arrow": null,
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
+"level_fortune_teller_missed.png": {
+"lang": "es",
+"texts": [
+[
+"Adivino",
+572,
+157,
+866,
+249
+],
+[
+"Las estrellas",
+357,
+464,
+703,
+521
+],
+[
+"guardaron silencio.",
+249,
+521,
+768,
+600
+],
+[
+"100%",
+277,
+1002,
+460,
+1085
+],
+[
+"70%",
+644,
+1001,
+795,
+1086
+],
+[
+"40%",
+1001,
+1003,
+1145,
+1085
+],
+[
+"x1",
+362,
+1579,
+482,
+1674
+],
+[
+"x1",
+717,
+1580,
+834,
+1673
+],
+[
+"x2",
+1072,
+1580,
+1191,
+1673
+],
+[
+"3",
+745,
+2240,
+813,
+2322
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"on_board": true,
+"is_loading": false,
+"close_button": null,
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"classify_level_screen": {
+"kind": "fortune_teller",
+"tap": [
+293,
+2280
+]
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"parse_fortune_teller": {
+"orbs": 3,
+"balls": {
+"100": [
+368,
+1626
+],
+"70": [
+719,
+1626
+],
+"40": [
+1073,
+1627
+]
+}
+},
+"back_arrow": null,
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
+"level_fortune_teller_no_orbs.png": {
+"lang": "es",
+"texts": [
+[
+"Adivino",
+572,
+157,
+866,
+249
+],
+[
+"Que el destino guie tu",
+228,
+455,
+830,
+534
+],
+[
+"camino.",
+417,
+527,
+642,
+589
+],
+[
+"100%",
+277,
+1002,
+460,
+1085
+],
+[
+"70%",
+644,
+1001,
+795,
+1086
+],
+[
+"40%",
+1001,
+1003,
+1145,
+1085
+],
+[
+"x1",
+362,
+1579,
+482,
+1674
+],
+[
+"x1",
+717,
+1580,
+834,
+1673
+],
+[
+"x2",
+1069,
+1578,
+1190,
+1673
+],
+[
+"0",
+750,
+2245,
+808,
+2318
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"on_board": true,
+"is_loading": false,
+"close_button": null,
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"classify_level_screen": {
+"kind": "fortune_teller",
+"tap": [
+293,
+2280
+]
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"parse_fortune_teller": {
+"orbs": 0,
+"balls": {
+"100": [
+368,
+1626
+],
+"70": [
+719,
+1626
+],
+"40": [
+1073,
+1627
+]
+}
+},
+"back_arrow": null,
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
+"level_fortune_teller_won.png": {
+"lang": "es",
+"texts": [
+[
+"Adivino",
+577,
+162,
+865,
+246
+],
+[
+"Una apuesta con",
+300,
+461,
+757,
+530
+],
+[
+"cerebro.",
+415,
+529,
+640,
+587
+],
+[
+"X",
+734,
+717,
+794,
+779
+],
+[
+"Recibiste",
+549,
+894,
+894,
+981
+],
+[
+"Común",
+267,
+1072,
+381,
+1113
+],
+[
+"Oportunista",
+462,
+1094,
+798,
+1167
+],
+[
+"Inflige más daño a los enemigos",
+464,
+1175,
+1139,
+1234
+],
+[
+"afectados por Herida.",
+466,
+1230,
+920,
+1282
+],
+[
+"x1",
+365,
+1583,
+477,
+1672
+],
+[
+"x1",
+711,
+1575,
+834,
+1674
+],
+[
+"x2",
+1068,
+1581,
+1184,
+1669
+],
+[
+"Toca en cualquier lugar",
+399,
+2309,
+1036,
+2390
+],
+[
+"para reclamar",
+525,
+2376,
+914,
+2451
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"on_board": false,
+"is_loading": false,
+"close_button": null,
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"classify_level_screen": {
+"kind": "continue",
+"tap": [
+717,
+2349
+]
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [
+{
+"rarity": "common",
+"name": "Oportunista",
+"description": "Inflige más daño a los enemigos afectados por Herida.",
+"tag": [
+"Común",
+267,
+1072,
+381,
+1113
+],
+"price": null,
+"sold": false
+}
+],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"parse_fortune_teller": {
+"orbs": null,
+"balls": {}
+},
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -27584,6 +28227,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -27698,6 +28342,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -27805,6 +28450,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -27968,6 +28614,7 @@
 "skill_reroll": null,
 "parse_money": 492,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -28131,6 +28778,7 @@
 "skill_reroll": null,
 "parse_money": 492,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -28259,6 +28907,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -28743,6 +29392,7 @@
 2464
 ]
 },
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -29206,6 +29856,7 @@
 2464
 ]
 },
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -29544,6 +30195,7 @@
 ],
 "parse_money": 154,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -29841,6 +30493,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -29983,6 +30636,7 @@
 "skill_reroll": null,
 "parse_money": 100,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -30209,6 +30863,7 @@
 "skill_reroll": null,
 "parse_money": 481,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -30285,6 +30940,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -30713,6 +31369,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -31129,6 +31786,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -31637,6 +32295,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -32095,6 +32754,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -32516,6 +33176,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -32681,6 +33342,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -33057,6 +33719,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -33512,6 +34175,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -33924,6 +34588,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -34319,6 +34984,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -34768,6 +35434,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -34975,6 +35642,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -35209,6 +35877,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -35652,6 +36321,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": true,
 "vip_cards_icon": [
@@ -35896,6 +36566,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -36139,6 +36810,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -36310,6 +36982,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -36498,6 +37171,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -36827,6 +37501,7 @@
 ],
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -37070,6 +37745,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2449
@@ -37399,6 +38075,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2449
@@ -37783,6 +38460,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2449
@@ -38112,6 +38790,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2449
@@ -38324,6 +39003,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -38531,6 +39211,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447
@@ -38712,6 +39393,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -38861,6 +39543,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -38992,6 +39675,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": null,
 "in_guild": false,
 "vip_cards_icon": null,
@@ -39332,6 +40016,7 @@
 "skill_reroll": null,
 "parse_money": null,
 "parse_shop": null,
+"parse_fortune_teller": null,
 "back_arrow": [
 120,
 2447

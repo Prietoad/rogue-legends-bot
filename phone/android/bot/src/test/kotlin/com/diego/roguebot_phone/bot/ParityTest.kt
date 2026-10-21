@@ -56,6 +56,9 @@ class ParityTest {
             "parse_shop" to nul(Screens.parseShop(texts)) {
                 obj("money" to it.money, "cards" to JSONArray(it.cards.map(::card)), "free_reroll" to text(it.freeReroll), "exit" to text(it.exit))
             },
+            "parse_fortune_teller" to nul(Screens.parseFortuneTeller(texts)) {
+                obj("orbs" to it.orbs, "balls" to JSONObject().apply { it.balls.forEach { (k, v) -> put(k.toString(), p(v)) } })
+            },
             "back_arrow" to p(ModeScreens.backArrow(img)),
             "in_guild" to ModeScreens.inGuild(texts),
             "vip_cards_icon" to text(ModeScreens.vipCardsIcon(texts)),

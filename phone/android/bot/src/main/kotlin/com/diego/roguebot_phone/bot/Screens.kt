@@ -202,7 +202,7 @@ object Screens {
         if (find(texts, L.FLIP_CARDS_PROMPT) != null) {
             return LevelState(LevelScreen.FLIP_CARDS, Config.FLIP_CARDS.firstOrNull { faceDown(img, it) })
         }
-        if (find(texts, L.FORTUNE_TELLER) != null) return LevelState(LevelScreen.LEAVE, Config.FORTUNE_TELLER_BACK)
+        if (find(texts, L.FORTUNE_TELLER) != null) return LevelState(LevelScreen.FORTUNE_TELLER, Config.FORTUNE_TELLER_BACK)
         val leave = find(texts, L.LEAVE, exact = true)
         if (leave != null && find(texts, L.BLACK_MARKET) != null) return LevelState(LevelScreen.LEAVE, leave.center)
         if (leave != null && find(texts, L.SHOP_REROLL) != null) return LevelState(LevelScreen.SHOP, leave.center)
@@ -301,11 +301,27 @@ object Screens {
         val free = if (below(reroll, texts).any { matches(it, L.FREE, exact = true) }) reroll else null
         return Shop(parseMoney(texts), parseSkillCards(texts), free, leave)
     }
+
+    /** "Adivino": orbs left and each ball's buy button by its chance (100, 70, 40). */
+    data class FortuneTeller(val orbs: Int?, val balls: Map<Int, P>)
+
+    private val CHANCE_RE = Regex("^(\\d+)\\s*%$")
+
+    fun parseFortuneTeller(texts: List<Text>): FortuneTeller? {
+        if (find(texts, L.FORTUNE_TELLER) == null) return null
+        val r = Config.FORTUNE_ORBS_REGION
+        val orbs = texts.firstOrNull { it.norm.isDigits() && it.center.x in r.x1..r.x2 && it.center.y in r.y1..r.y2 }?.norm?.toInt()
+        val balls = texts.mapNotNull { t ->
+            CHANCE_RE.find(t.norm)?.let { it.groupValues[1].toInt() to P(t.center.x, t.center.y + Config.FORTUNE_BUTTON_BELOW_TAG) }
+        }.toMap()
+        return FortuneTeller(orbs, balls)
+    }
 }
 
 enum class LevelScreen(val value: String) {
     VICTORY("victory"), DEFEAT("defeat"), DOUBLE_REWARD("double_reward"), REVIVE("revive"), SKILL_PICK("skill_pick"),
     BOARD_READY("board_ready"), AUTO_PLAY("auto_play"), FIGHT("fight"), EVENT("event"), SHOP("shop"), LEAVE("leave"),
+    FORTUNE_TELLER("fortune_teller"),
     CONTINUE("continue"), DICE_DUEL("dice_duel"), FLIP_CARDS("flip_cards"), UNKNOWN("unknown")
 }
 

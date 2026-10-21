@@ -656,7 +656,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.6.0"
+    assert roguebot.__version__ == "1.7.0"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -935,3 +935,59 @@ def test_energy_claim_takes_the_reward_shown_over_the_popup_before_reading_it(mo
         labels.set_language(None)
     claim = (720, 2322)
     assert nav.device.taps == [config.ENERGY_ICON, (1000, 1685), claim, (480, 1390), claim, config.ENERGY_POPUP_CLOSE]
+
+
+_BALLS = {100: (421, 1626), 70: (775, 1626), 40: (1129, 1626)}
+
+
+def _fortune_visit(monkeypatch, orbs_per_frame, clock_step=1.0):
+    """Fortune Teller frames with these orb counts (None = a won skill popup in between), then the board and VICTORY.
+    Returns the taps."""
+    from roguebot import play
+    from roguebot.screens import FortuneTeller, LevelScreen as S
+    frames = [(S.CONTINUE, (717, 2349)) if o is None else (S.FORTUNE_TELLER, config.FORTUNE_TELLER_BACK)
+              for o in orbs_per_frame]
+    tellers = iter(FortuneTeller(o, _BALLS) for o in orbs_per_frame if o is not None)
+    monkeypatch.setattr(play, "parse_fortune_teller", lambda texts: next(tellers))
+    clock = iter(range(1000))
+    monkeypatch.setattr(play.time, "monotonic", lambda: next(clock) * clock_step)
+    actions = _play(monkeypatch, [*frames, (S.AUTO_PLAY, None), (S.VICTORY, (720, 2220))])
+    return [p for a, p in actions if a == "tap"][:-1]  # without the VICTORY tap
+
+
+def test_fortune_teller_buys_the_40_ball_once_then_the_70_one_three_times(monkeypatch):
+    """Seen live 2026-10-21: 5 orbs = 40% (x2) + 3 x 70% (x1). A won skill shows a "tap to claim" popup."""
+    taps = _fortune_visit(monkeypatch, [5, 3, None, 2, 1, None, 0])
+    assert taps == [_BALLS[40], _BALLS[70], (717, 2349), _BALLS[70], _BALLS[70], (717, 2349),
+                    config.FORTUNE_TELLER_BACK]
+
+
+def test_fortune_teller_leaves_when_the_orbs_run_out(monkeypatch):
+    taps = _fortune_visit(monkeypatch, [3, 1, 0])
+    assert taps == [_BALLS[40], _BALLS[70], config.FORTUNE_TELLER_BACK]
+
+
+def test_fortune_teller_skips_the_40_ball_without_orbs_for_it(monkeypatch):
+    taps = _fortune_visit(monkeypatch, [1, 0])
+    assert taps == [_BALLS[70], config.FORTUNE_TELLER_BACK]
+
+
+def test_fortune_teller_stops_after_three_70_balls_with_orbs_left(monkeypatch):
+    taps = _fortune_visit(monkeypatch, [9, 7, 6, 5, 4, 4])
+    assert taps == [_BALLS[40], _BALLS[70], _BALLS[70], _BALLS[70], config.FORTUNE_TELLER_BACK,
+                    config.FORTUNE_TELLER_BACK]  # a missed back tap never buys again
+
+
+def test_fortune_teller_waits_for_the_orbs_then_taps_a_missed_ball_again(monkeypatch):
+    """A frame right after the tap can still show the old count: wait, never buy twice; still the same count
+    after FORTUNE_RETAP_AFTER: the tap did not land, tap again."""
+    taps = _fortune_visit(monkeypatch, [2, 2, 2, 2, 2, 2, 0], clock_step=0.5)
+    assert taps == [_BALLS[40], _BALLS[40], config.FORTUNE_TELLER_BACK]
+
+
+def test_fortune_teller_with_unreadable_orbs_leaves(monkeypatch):
+    from roguebot import play
+    from roguebot.screens import FortuneTeller, LevelScreen as S
+    monkeypatch.setattr(play, "parse_fortune_teller", lambda texts: FortuneTeller(None, _BALLS))
+    actions = _play(monkeypatch, [(S.FORTUNE_TELLER, config.FORTUNE_TELLER_BACK), (S.VICTORY, (720, 2220))])
+    assert actions[0] == ("tap", config.FORTUNE_TELLER_BACK)

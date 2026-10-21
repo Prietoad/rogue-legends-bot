@@ -33,6 +33,8 @@ class Player(
     private var autoMissing = false
     private var autoSeen = false  // auto-play worked in this level: a hold that brings the red dice back was missed
     private var autoMisses = 0    // such missed holds in a row
+    private var fortuneBought = ArrayList<Int>()  // Fortune Teller balls bought this visit (chances)
+    private var fortuneTap: Triple<Int, Int, Double>? = null  // (chance, orbs before, time) of the last ball tap
 
     /** Play until the level ends; returns VICTORY or DEFEAT. */
     fun playLevel(): LevelScreen {
@@ -41,6 +43,7 @@ class Player(
         var repeats = 0
         var firstRepeat = clock.now()
         state = BuildState(); rerolled = false; doubles = 0; lastOffer = null
+        fortuneBought = ArrayList(); fortuneTap = null
         while (true) {
             val img = device.screenshot()
             val texts = ocr.read(img)
@@ -50,6 +53,10 @@ class Player(
                 s = LevelState(s.kind, pickSkill(texts) ?: s.tap)
             } else if (s.kind == LevelScreen.SHOP) {
                 shop(texts)
+            } else if (s.kind == LevelScreen.FORTUNE_TELLER) {
+                s = LevelState(s.kind, fortune(texts))
+            } else if (s.kind == LevelScreen.BOARD_READY || s.kind == LevelScreen.AUTO_PLAY) {
+                fortuneBought.clear()  // back on the board: a later Fortune Teller is a new visit
             }
 
             if (s.kind == LevelScreen.DOUBLE_REWARD) {
@@ -133,6 +140,28 @@ class Player(
         lastOffer = offer
         Log.info("Skill: ${skills[i].name} (${skills[i].rarity}, ${skills[i].damageType ?: "-"}, ${skills[i].role})")
         return P(Config.SCREEN_W / 2, cards[i].tag.center.y + Config.SKILL_TAP_BELOW_RARITY)
+    }
+
+    /** Fortune Teller: buy the balls in FORTUNE_BUYS order while the orbs allow, then the back arrow.
+     *  A buy counts once the orb counter drops (a missed tap is tapped again); null = wait for it. */
+    internal fun fortune(texts: List<Text>): P? {
+        val teller = Screens.parseFortuneTeller(texts) ?: return Config.FORTUNE_TELLER_BACK
+        fortuneTap?.let { (chance, orbs, tapped) ->
+            if (teller.orbs != null && teller.orbs < orbs) fortuneBought.add(chance)
+            else if (clock.now() - tapped < Config.FORTUNE_RETAP_AFTER) return null
+            fortuneTap = null
+        }
+        if (teller.orbs != null) {
+            for ((chance, times) in Config.FORTUNE_BUYS) {
+                val button = teller.balls[chance] ?: continue
+                if (fortuneBought.count { it == chance } < times && teller.orbs >= Config.FORTUNE_COST.getValue(chance)) {
+                    Log.info("Fortune Teller: $chance% ball (orbs ${teller.orbs})")
+                    fortuneTap = Triple(chance, teller.orbs, clock.now())
+                    return button
+                }
+            }
+        }
+        return Config.FORTUNE_TELLER_BACK
     }
 
     /** Free reroll if nothing is wanted, then buy in the build's order whatever the coins allow. */

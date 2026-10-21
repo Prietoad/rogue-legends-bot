@@ -4,7 +4,7 @@ import kotlin.math.abs
 
 /** Level screens goToLobby plays out instead of failing (a level left running). */
 val ON_BOARD = setOf(LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.SHOP, LevelScreen.EVENT,
-    LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE)
+    LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.FORTUNE_TELLER)
 
 /** A level board (not fights or skill picks alone: dojo and raid fights have them too). */
 fun onBoard(img: Frame, texts: List<Text>): Boolean {

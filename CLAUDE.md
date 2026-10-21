@@ -68,6 +68,7 @@ Bot that plays the Android game **Rogue Legend** (PocketHaven, `com.pockethaven.
   - Shop: buy nothing, "Salir" button at the bottom.
   - Wheels: Lucky Treasure "¡GIRAR!" → "Toca en cualquier lugar para reclamar"; Monje Sabio "GIRAR" → "Meditación completa" + "Salir".
   - Event outcomes: "Toca para continuar".
+  - **Fortune Teller** "Adivino"/"Fortune Teller" (requested 2026-10-21, seen live): 3 crystal balls that may give a skill, tags "100%" / "70%" / "40%" with buy buttons below (cost "x1"/"x1"/"x2" **run orbs**, counter bottom center, 5 seen; costs fixed in `FORTUNE_COST`, OCR garbles "x1"). `LevelScreen.FORTUNE_TELLER` (tap = ← back arrow) → `Player._fortune` (`parse_fortune_teller`): per visit the 40% ball once, then the 70% one 3 times (`FORTUNE_BUYS`), while the orbs allow; then ←. A buy counts when the orb counter drops (it drops at once); still the same after `FORTUNE_RETAP_AFTER` → tap again. A miss: the bubble says "Las estrellas guardaron silencio", same screen. A win: "Recibiste" + skill card + "Toca en cualquier lugar para reclamar" (CONTINUE). The visit resets when the board shows again. Before 2026-10-21 the bot always left without buying.
   - Card flip "Excavar en Busca de Tesoro": 4x3 face-down "?" cards (detected by color); flip them in order.
   - Dice duel "¡Batalla de Dados!": `Yo N / 21`. TIRAR while N < 15, else RESISTIR.
   - Speed button bottom-left: "» x2" / "» x1" shows the **current** speed (tap toggles x2 ↔ x1, verified 2026-10-12).

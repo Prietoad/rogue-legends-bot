@@ -208,7 +208,8 @@ class LevelScreen(Enum):
     FIGHT = "fight"              # "Ronda N/30", plays by itself
     EVENT = "event"              # tile event with options; we always pick "Salir" (leave)
     SHOP = "shop"                # shop tile; we buy nothing and press "Salir"
-    LEAVE = "leave"              # screens we just exit: a lone "Salir", the Fortune Teller back arrow
+    LEAVE = "leave"              # screens we just exit: a lone "Salir"
+    FORTUNE_TELLER = "fortune_teller"  # "Adivino": 100/70/40% balls paid with orbs; tap = its back arrow
     CONTINUE = "continue"        # screen whose only action is one button (see labels.CONTINUE_BUTTONS)
     DICE_DUEL = "dice_duel"      # "¡Batalla de Dados!" 21-style minigame
     FLIP_CARDS = "flip_cards"    # "Excavar en Busca de Tesoro" memory minigame; flip face-down cards in order
@@ -343,7 +344,7 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
         card = next((c for c in config.FLIP_CARDS if _face_down(img, c)), None)
         return LevelState(LevelScreen.FLIP_CARDS, card)
     if find(texts, L.FORTUNE_TELLER):
-        return LevelState(LevelScreen.LEAVE, config.FORTUNE_TELLER_BACK)
+        return LevelState(LevelScreen.FORTUNE_TELLER, config.FORTUNE_TELLER_BACK)
     leave = find(texts, L.LEAVE, exact=True)
     if leave and find(texts, L.BLACK_MARKET):  # never seen: its prices may be gems, so just leave
         return LevelState(LevelScreen.LEAVE, leave.center)
@@ -490,3 +491,24 @@ def parse_shop(texts: list[Text]) -> Shop | None:
         return None
     free = reroll if reroll and any(matches(t, L.FREE, exact=True) for t in _below(reroll, texts)) else None
     return Shop(parse_money(texts), parse_skill_cards(texts), free, leave)
+
+
+@dataclass(frozen=True)
+class FortuneTeller:
+    orbs: int | None                     # run orbs left (bottom counter)
+    balls: dict[int, tuple[int, int]]    # chance (100, 70, 40) -> its buy button
+
+
+_CHANCE_RE = re.compile(r"^(\d+)\s*%$")
+
+
+def parse_fortune_teller(texts: list[Text]) -> FortuneTeller | None:
+    """"Adivino": each ball gives a skill with its chance ("100%" tag above it), paid with run orbs."""
+    if not find(texts, L.FORTUNE_TELLER):
+        return None
+    x1, y1, x2, y2 = config.FORTUNE_ORBS_REGION
+    orbs = next((int(t.norm) for t in texts if t.norm.isdigit()
+                 and x1 <= t.center[0] <= x2 and y1 <= t.center[1] <= y2), None)
+    balls = {int(m.group(1)): (t.center[0], t.center[1] + config.FORTUNE_BUTTON_BELOW_TAG)
+             for t in texts if (m := _CHANCE_RE.match(t.norm))}
+    return FortuneTeller(orbs, balls)

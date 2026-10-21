@@ -12,8 +12,8 @@ import cv2
 from roguebot import config, labels
 from roguebot.build import Build, BuildState, choose, shop_order
 from roguebot.device import Device
-from roguebot.screens import (LevelScreen, LevelState, SkillCard, classify_level_screen, game_speed, parse_shop,
-                              parse_skill_cards, skill_reroll)
+from roguebot.screens import (LevelScreen, LevelState, SkillCard, classify_level_screen, game_speed,
+                              parse_fortune_teller, parse_shop, parse_skill_cards, skill_reroll)
 from roguebot.skills import Catalog, Skill
 from roguebot.vision import Ocr, find
 
@@ -51,12 +51,15 @@ class Player:
         self._auto_missing = False  # a hold brought the red dice back: no auto-play here, tap instead
         self._auto_seen = False     # auto-play worked in this level: a hold that brings the red dice back was missed
         self._auto_misses = 0       # such missed holds in a row
+        self._fortune_bought = []   # Fortune Teller balls bought this visit (chances)
+        self._fortune_tap = None    # (chance, orbs before, time) of the last ball tap, until the orbs drop
 
     def play_level(self) -> LevelScreen:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
         last_known = time.monotonic()
         last_tap, repeats, first_repeat = None, 0, time.monotonic()
         self._state, self._rerolled, self._doubles, self._last_offer = BuildState(), False, 0, None
+        self._fortune_bought, self._fortune_tap = [], None
         while True:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
@@ -67,6 +70,10 @@ class Player:
                 state = LevelState(state.kind, self._pick_skill(texts) or state.tap)
             elif state.kind is LevelScreen.SHOP:
                 self._shop(texts)  # buys what the build wants and the coins allow; then state.tap exits
+            elif state.kind is LevelScreen.FORTUNE_TELLER:
+                state = LevelState(state.kind, self._fortune(texts))
+            elif state.kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY):
+                self._fortune_bought = []  # back on the board: a later Fortune Teller is a new visit
 
             if state.kind is LevelScreen.DOUBLE_REWARD:
                 self._doubles += 1
@@ -170,6 +177,26 @@ class Player:
                 tapped.add(cards[i].name)
                 self._state.take(skills[i])
             texts = self.ocr.read(self.device.screenshot())
+
+    def _fortune(self, texts) -> tuple[int, int] | None:
+        """Fortune Teller: buy the balls in FORTUNE_BUYS order while the orbs allow, then the back arrow.
+        A buy counts once the orb counter drops (a missed tap is tapped again); None = wait for it."""
+        teller = parse_fortune_teller(texts)
+        if self._fortune_tap:
+            chance, orbs, tapped = self._fortune_tap
+            if teller.orbs is not None and teller.orbs < orbs:
+                self._fortune_bought.append(chance)
+            elif time.monotonic() - tapped < config.FORTUNE_RETAP_AFTER:
+                return None
+            self._fortune_tap = None
+        if teller.orbs is not None:
+            for chance, times in config.FORTUNE_BUYS:
+                if (self._fortune_bought.count(chance) < times and chance in teller.balls
+                        and teller.orbs >= config.FORTUNE_COST[chance]):
+                    log.info("Fortune Teller: %d%% ball (orbs %d)", chance, teller.orbs)
+                    self._fortune_tap = chance, teller.orbs, time.monotonic()
+                    return teller.balls[chance]
+        return config.FORTUNE_TELLER_BACK
 
     def _ensure_double_speed(self, texts) -> bool:
         """Switch the game to x2 speed when it shows x1. Returns True if it tapped."""

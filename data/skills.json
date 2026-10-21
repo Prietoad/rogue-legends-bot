@@ -309,6 +309,16 @@
   "description": "Combo Rate",
   "auto": true
  },
+ "comboreforzado": {
+  "name": "ComboReforzado",
+  "lang": null,
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada Ataque de combo aumenta la Tasa de critico en +2%, acumulándose hasta 15 veces.",
+  "auto": true
+ },
  "companerodesombra": {
   "name": "Compañero-de-Sombra",
   "lang": "es",
@@ -327,6 +337,16 @@
   "nature": "physical",
   "role": "damage",
   "description": "Cuando un enemigo con Veneno muere, todas las acumulaciones se transfieren a todos los demás enemigos.",
+  "auto": true
+ },
+ "contraataquemejorado": {
+  "name": "Contraataque Mejorado",
+  "lang": null,
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada Contraataque aumenta la Reducciôn de Daño en +2%, acumulándose hasta 15 veces.",
   "auto": true
  },
  "corrienteenergizante": {
@@ -849,6 +869,16 @@
   "description": "Cuando el HP <40%, Tasa de evasión ",
   "auto": true
  },
+ "evasionninja": {
+  "name": "Evasión ninja",
+  "lang": null,
+  "rarity": "common",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando esquivas, lanza 2 Shurikens",
+  "auto": true
+ },
  "executioner": {
   "name": "Executioner",
   "lang": "en",
@@ -1259,6 +1289,16 @@
   "description": "",
   "auto": true
  },
+ "lado": {
+  "name": "Lado",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando el de tu cada pero drena el turno",
+  "auto": true
+ },
  "ladooscuro": {
   "name": "Lado Oscuro",
   "lang": "es",
@@ -1327,6 +1367,16 @@
   "nature": "physical",
   "role": "damage",
   "description": "Daño de Efectos de Estado",
+  "auto": true
+ },
+ "lentoysegurolv": {
+  "name": "Lento y Seguro Lv. 2",
+  "lang": null,
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Daño de Efectos de Estado +40%",
   "auto": true
  },
  "lifesteal": {

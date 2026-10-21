@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.0 (2026-10-21)
+- Fortune Teller ("Adivino") in levels: the bot now uses its crystal balls instead of leaving. On each visit it tries the 40% ball once, then the 70% ball up to 3 times, as long as the orbs allow (5 orbs = exactly that), and then leaves. Won skills are claimed.
+
 ## 1.6.0 (2026-10-18)
 - Simpler options: "Keep running" and "Full routine" replace the three old checkboxes. Levels now always run until out of energy (claiming the free energy first). "Keep running" then waits for energy and starts again (with the full routine too, if ticked); off, the bot stops when out of energy. "Full routine" runs the secondary content first, then the levels from Mode/Level.
 - Patrol: the reward is claimed once it holds at least 2 hours (it used to wait for almost 8). It is checked before each level and, in the full routine, before the modes.

@@ -83,6 +83,11 @@ object Config {
     val FLIP_CARDS = listOf(1280, 1560, 1840).flatMap { y -> listOf(299, 579, 859, 1139).map { x -> P(x, y) } }
     const val FLIP_FACE_DOWN_MIN_FRACTION = 0.25
     val FORTUNE_TELLER_BACK = P(293, 2280)
+    val FORTUNE_ORBS_REGION = Region(680, 2200, 880, 2360)
+    const val FORTUNE_BUTTON_BELOW_TAG = 583
+    val FORTUNE_COST = mapOf(100 to 1, 70 to 1, 40 to 2)
+    val FORTUNE_BUYS = listOf(40 to 1, 70 to 3)  // per visit, in order: the 40% ball once, then the 70% one 3 times
+    const val FORTUNE_RETAP_AFTER = 3.0
     const val SKILL_TEXT_MIN_X = 380
     const val SHOP_PRICE_MIN_X = 1080
     val SKILL_NAME_BELOW_TAG = -10..70

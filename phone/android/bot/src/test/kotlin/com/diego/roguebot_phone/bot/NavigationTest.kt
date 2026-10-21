@@ -273,6 +273,53 @@ class NavigationTest {
     }
 
     private fun s(kind: LevelScreen, tap: P? = null) = LevelState(kind, tap)
+
+    private val balls = mapOf(100 to P(368, 1626), 70 to P(719, 1626), 40 to P(1073, 1627))
+    private val claim = P(717, 2349)
+
+    /** Fortune Teller frames with these orb counts (null = a won skill popup), then the board and VICTORY: the taps. */
+    private fun fortuneVisit(orbs: List<Int?>): List<P> {
+        val frames = ArrayDeque(orbs.map { o ->
+            if (o == null) listOf(t("Toca en cualquier lugar", 399, 2309, 1036, 2390))
+            else listOf(t("Adivino", 572, 157, 866, 249), t("100%", 277, 1002, 460, 1085), t("70%", 644, 1001, 795, 1086),
+                t("40%", 1001, 1003, 1145, 1085), t("$o", 750, 2245, 808, 2317))
+        } + listOf(emptyList(), emptyList()))
+        val after = ArrayDeque(listOf(s(LevelScreen.AUTO_PLAY), s(LevelScreen.VICTORY, P(720, 2220))))
+        val device = FakeDevice()
+        val ocr = object : Ocr { override fun read(img: Frame, region: Region?) = frames.removeFirst() }
+        Player(device, ocr, clock = clock, classify = { img, texts ->
+            if (texts.isEmpty()) after.removeFirst() else Screens.classifyLevelScreen(img, texts)
+        }).playLevel()
+        return device.taps.dropLast(1)
+    }
+
+    @Test
+    fun fortuneTellerBuysThe40BallOnceThenThe70OneThreeTimes() {
+        L.setLanguage("es")
+        assertEquals(listOf(balls[40], balls[70], claim, balls[70], balls[70], claim, Config.FORTUNE_TELLER_BACK),
+            fortuneVisit(listOf(5, 3, null, 2, 1, null, 0)))
+    }
+
+    @Test
+    fun fortuneTellerLeavesWhenTheOrbsRunOut() {
+        L.setLanguage("es")
+        assertEquals(listOf(balls[40], balls[70], Config.FORTUNE_TELLER_BACK), fortuneVisit(listOf(3, 1, 0)))
+        assertEquals(listOf(balls[70], Config.FORTUNE_TELLER_BACK), fortuneVisit(listOf(1, 0)))
+    }
+
+    @Test
+    fun fortuneTellerStopsAfterThree70BallsWithOrbsLeft() {
+        L.setLanguage("es")
+        assertEquals(listOf(balls[40], balls[70], balls[70], balls[70], Config.FORTUNE_TELLER_BACK, Config.FORTUNE_TELLER_BACK),
+            fortuneVisit(listOf(9, 7, 6, 5, 4, 4)))
+    }
+
+    @Test
+    fun fortuneTellerWaitsForTheOrbsThenTapsAMissedBallAgain() {
+        L.setLanguage("es")
+        val waits = (Config.FORTUNE_RETAP_AFTER / Config.POLL_INTERVAL).toInt() + 1
+        assertEquals(listOf(balls[40], balls[40], Config.FORTUNE_TELLER_BACK), fortuneVisit(List(waits + 3) { 2 } + listOf(0)))
+    }
     private val dice = Config.DICE_BUTTON
 
     @Test

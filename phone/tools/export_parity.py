@@ -77,6 +77,7 @@ def outputs(img, texts, ocr) -> dict:
         "skill_reroll": S.skill_reroll(texts),
         "parse_money": S.parse_money(texts),
         "parse_shop": S.parse_shop(texts),
+        "parse_fortune_teller": S.parse_fortune_teller(texts),
         "back_arrow": M.back_arrow(img),
         "in_guild": M.in_guild(texts),
         "vip_cards_icon": M.vip_cards_icon(texts),

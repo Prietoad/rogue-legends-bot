@@ -102,14 +102,15 @@ def test_star_list(ocr, name, playable, locked):
     ("level_flip_cards_one_up.png", LevelScreen.FLIP_CARDS, (579, 1280)),  # skips the flipped card
     ("en_level_skill_levelup.png", LevelScreen.SKILL_PICK, (720, 1053)),
     ("en_level_modifiers.png", LevelScreen.CONTINUE, (719, 1930)),  # elite level intro
-    ("level_fortune_teller.png", LevelScreen.LEAVE, (293, 2280)),  # "Adivino"
+    ("level_fortune_teller.png", LevelScreen.FORTUNE_TELLER, (293, 2280)),  # "Adivino"; Player picks the ball
+    ("level_fortune_teller_won.png", LevelScreen.CONTINUE, (717, 2349)),  # "Recibiste" + skill: tap to claim
     ("en_level_fight.png", LevelScreen.FIGHT, None),  # "Round 4/30"
     ("level_dice_duel_won.png", LevelScreen.CONTINUE, (480, 2366)),  # RECLAMAR, not "Desafiar de Nuevo"
     ("level_revive.png", LevelScreen.REVIVE, (993, 1454)),
     ("en_level_skill_power_resurrection.png", LevelScreen.SKILL_PICK, (720, 1054)),  # "Revive after..." card  # "Gratis" video, never the 60-gem button
     ("level_revive_last_second.png", LevelScreen.REVIVE, (993, 1454)),
     ("en_level_shop.png", LevelScreen.SHOP, (428, 2417)),
-    ("en_level_fortune_teller.png", LevelScreen.LEAVE, (293, 2280)),
+    ("en_level_fortune_teller.png", LevelScreen.FORTUNE_TELLER, (293, 2280)),
     ("en_level_event_result.png", LevelScreen.CONTINUE, (720, 2461)),
     ("en_level_chest.png", LevelScreen.CONTINUE, (717, 2123)),
     ("en_level_monk_wheel.png", LevelScreen.CONTINUE, (720, 2281)),
@@ -498,3 +499,33 @@ def test_go_to_lobby_plays_out_only_level_boards(ocr, name, on_board):
     from roguebot.navigation import Navigator
     img, texts = load(ocr, name)
     assert Navigator._on_board(img, texts) is on_board
+
+
+@pytest.mark.parametrize("name, orbs", [
+    ("level_fortune_teller.png", 5),
+    ("en_level_fortune_teller.png", 5),
+    ("level_fortune_teller_missed.png", 3),  # after the 40% ball failed ("Las estrellas guardaron silencio")
+    ("level_fortune_teller_no_orbs.png", 0),
+])
+def test_fortune_teller(ocr, name, orbs):
+    from roguebot.screens import parse_fortune_teller
+    _, texts = load(ocr, name)
+    teller = parse_fortune_teller(texts)
+    assert teller.orbs == orbs
+    assert sorted(teller.balls) == [40, 70, 100]
+    for chance, button in ((100, (368, 1626)), (70, (719, 1626)), (40, (1073, 1626))):  # the "x1"/"x2" buttons
+        assert abs(teller.balls[chance][0] - button[0]) <= 15 and abs(teller.balls[chance][1] - button[1]) <= 15
+
+
+def test_fortune_teller_absent_on_other_screens(ocr):
+    from roguebot.screens import parse_fortune_teller
+    _, texts = load(ocr, "level_shop.png")
+    assert parse_fortune_teller(texts) is None
+
+
+def test_a_level_left_at_the_fortune_teller_is_played_out(ocr):
+    """Seen 2026-10-21: the game sat at the Fortune Teller and go_to_lobby failed instead of playing the level out."""
+    from roguebot.navigation import IN_LEVEL, Navigator
+    img, texts = load(ocr, "level_fortune_teller_no_orbs.png")
+    assert Navigator._on_board(img, texts)
+    assert classify_level_screen(img, texts).kind in IN_LEVEL
