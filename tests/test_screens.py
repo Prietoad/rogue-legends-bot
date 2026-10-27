@@ -9,14 +9,10 @@ import pytest
 from roguebot.screens import (LevelScreen, Mode, classify_level_screen, close_button, footer_visible, game_speed, is_loading, is_star_list, parse_elite_dialog,
                               parse_energy, parse_energy_popup, parse_lobby, parse_star_list, popup_close)
 from roguebot import labels
-from roguebot.vision import Ocr, Text, normalize, parse_level_number
+from roguebot.vision import Text, normalize, parse_level_number
+from conftest import fixture_image
 
 FIXTURES = Path(__file__).parent / "fixtures"
-
-
-@pytest.fixture(scope="module")
-def ocr():
-    return Ocr()
 
 
 @pytest.fixture(autouse=True)
@@ -32,7 +28,7 @@ def fixture_language(name: str) -> str:
 def load(ocr, name):
     """Screenshot + OCR, with only the fixture's own language active (en_* = English, else Spanish)."""
     labels.set_language(fixture_language(name))
-    img = cv2.imread(str(FIXTURES / name))
+    img = fixture_image(FIXTURES / name)
     return img, ocr.read(img)
 
 
@@ -521,6 +517,71 @@ def test_fortune_teller_absent_on_other_screens(ocr):
     from roguebot.screens import parse_fortune_teller
     _, texts = load(ocr, "level_shop.png")
     assert parse_fortune_teller(texts) is None
+
+
+LEVEL_FIXTURES = ["board.png", "level_board_ready.png", "level_board_auto.png", "level_event_cart.png", "level_event_rest.png",
+                  "en_level_event_disabled_option.png", "level_shop.png", "en_level_shop.png", "level_dice_duel.png",
+                  "level_flip_cards.png", "level_revive.png", "level_fortune_teller.png", "level_skill_levelup.png",
+                  "en_level_fight.png", "level_victory.png", "level_defeat.png", "en_level_victory_x2.png"]
+LOBBY_POPUP_FIXTURES = ["lobby_autumn_event_popup.png", "lobby_album_popup.png", "lobby_roulette_popup.png",
+                        "lobby_limited_offer_popup.png", "en_lobby_spin_popup.png", "en_lobby_guild_popup.png",
+                        "en_vip_offer.png", "en_lobby_daily_login.png", "lobby_normal.png", "en_lobby_elite.png"]
+
+
+@pytest.mark.parametrize("name", LEVEL_FIXTURES)
+def test_level_screens_have_no_lobby_behind(ocr, name):
+    from roguebot.screens import lobby_behind
+    _, texts = load(ocr, name)
+    assert not lobby_behind(texts)
+
+
+@pytest.mark.parametrize("name", LOBBY_POPUP_FIXTURES)
+def test_lobby_popups_are_never_played_as_a_level(ocr, name):
+    """Seen 2026-10-23..27: a seasonal popup over the lobby looked like a level event, go_to_lobby handed it to
+    the player, which tapped "options" in the lobby (once into the Equip tab) and stopped on an unknown screen."""
+    from roguebot.navigation import Navigator
+    from roguebot.screens import lobby_behind
+    img, texts = load(ocr, name)
+    assert lobby_behind(texts)
+    assert not Navigator._on_board(img, texts)
+    nav = Navigator(None, ocr)
+    nav._capture = lambda: (img, texts)
+    assert not nav.level_in_progress()
+
+
+def test_autumn_event_popup_closes_by_its_x(ocr):
+    """"¡Sendero de Ascuas!" (autumn 2026): a big ✕ at the bottom center, over the dimmed footer."""
+    from roguebot.screens import outside_tap_clear
+    img, texts = load(ocr, "lobby_autumn_event_popup.png")
+    assert close_button(img) == (720, 2453)
+    assert outside_tap_clear(texts)
+
+
+def test_close_button_any_size_finds_a_bigger_x(ocr):
+    import cv2
+    from roguebot.screens import _CLOSE_X, close_button_any_size
+    img, _ = load(ocr, "lobby_normal.png")
+    img = img.copy()
+    big = cv2.resize(_CLOSE_X, None, fx=1.5, fy=1.5)
+    img[1000:1000 + big.shape[0], 600:600 + big.shape[1]] = big
+    assert close_button(img) is None
+    x, y = close_button_any_size(img)
+    assert abs(x - (600 + big.shape[1] // 2)) <= 3 and abs(y - (1000 + big.shape[0] // 2)) <= 3
+
+
+def test_close_button_any_size_absent_on_plain_screens(ocr):
+    from roguebot.screens import close_button_any_size
+    for name in ("lobby_normal.png", "lobby_limited_offer_popup.png", "level_board_ready.png"):
+        img, _ = load(ocr, name)
+        assert close_button_any_size(img) is None, name
+
+
+def test_outside_tap_never_lands_on_popup_text():
+    from roguebot.screens import outside_tap_clear
+    from roguebot.vision import Text
+    assert outside_tap_clear([Text("Aventura", 640, 2450, 799, 2492)])
+    assert outside_tap_clear([Text("Toca en cualquier lugar para cerrar", 358, 2434, 1078, 2491)])
+    assert not outside_tap_clear([Text("$4,99", 660, 2420, 780, 2480)])
 
 
 def test_a_level_left_at_the_fortune_teller_is_played_out(ocr):

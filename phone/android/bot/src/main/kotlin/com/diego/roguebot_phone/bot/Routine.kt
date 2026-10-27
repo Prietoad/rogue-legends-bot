@@ -98,20 +98,20 @@ open class Routine(
                 return Parts.DONE
             }
             press(screen.challenge) { ModeScreens.parseArenaOpponents(it) != null }
-            var panel = waitFor("arena opponent list") { _, texts -> claimOr(texts, ModeScreens::parseArenaOpponents) }
+            var panel = waitFor("arena opponent list") { img, texts -> claimOr(texts) { ModeScreens.parseArenaOpponents(it, img, ocr) } }
             var choice = ModeScreens.pickOpponent(panel.ownPower, panel.opponents)
             if (choice == null && panel.freeRefresh != null) {
                 Log.info("Arena: every opponent is stronger, using the free refresh")
                 tap(panel.freeRefresh!!)
                 clock.sleep(Config.UI_SETTLE)
-                panel = waitFor("arena opponent list") { _, texts -> claimOr(texts, ModeScreens::parseArenaOpponents) }
+                panel = waitFor("arena opponent list") { img, texts -> claimOr(texts) { ModeScreens.parseArenaOpponents(it, img, ocr) } }
                 choice = ModeScreens.pickOpponent(panel.ownPower, panel.opponents)
             }
             if (choice == null) {
                 if (panel.opponents.isEmpty()) fail("No arena opponents recognized")
                 choice = panel.opponents.minBy { it.power }
             }
-            Log.info("Arena: power ${panel.ownPower} vs ${choice.power} (${screen.tickets} tickets)")
+            Log.info("Arena: power ${panel.ownPower} vs ${choice.power} of ${panel.opponents.map { it.power }} (${screen.tickets} tickets)")
             tap(choice.challenge!!)
             fight()
         }

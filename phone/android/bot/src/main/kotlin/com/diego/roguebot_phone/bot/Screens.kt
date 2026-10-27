@@ -106,6 +106,28 @@ object Screens {
 
     fun closeButton(img: Frame): P? = matchTemplate(img, Templates.closeX, Config.CLOSE_X_MIN_SCORE)
 
+    private val closeXScaled by lazy { Config.CLOSE_X_SCALES.map { Template(Templates.closeX.src.scaled(it)) } }
+
+    /** The same ✕ drawn at another size (unknown popups, e.g. new seasonal events). Slower than
+     *  closeButton: only for popups nothing else recognized. */
+    fun closeButtonAnySize(img: Frame): P? = closeXScaled.firstNotNullOfOrNull { matchTemplate(img, it, Config.CLOSE_X_MIN_SCORE) }
+
+    /** Lobby labels (footer "Aventura", "Patrulla", "Gremio", "Modos") show, dimmed, under lobby popups and
+     *  never on a level board: such a screen is a popup, never a level to play (a seasonal event popup once
+     *  looked like a level event and the bot tapped it as one). */
+    fun lobbyBehind(texts: List<Text>): Boolean =
+        find(texts, L.PATROL) != null || find(texts, L.GUILD_BUTTON, exact = true) != null || find(texts, L.MODES_BUTTON, exact = true) != null ||
+            texts.any { matches(it, L.LOBBY_TAB, exact = true) && it.center.y > Config.FOOTER_Y.first }
+
+    /** No text but the footer tab label or a "para cerrar" hint near POPUP_OUTSIDE_TAP: tapping it can't
+     *  hit a popup's button (a price, a purchase). */
+    fun outsideTapClear(texts: List<Text>): Boolean {
+        val (x, y) = Config.POPUP_OUTSIDE_TAP
+        val m = Config.OUTSIDE_TAP_CLEARANCE
+        return texts.none { t -> t.x1 - m < x && x < t.x2 + m && t.y1 - m < y && y < t.y2 + m &&
+            !matches(t, L.LOBBY_TAB, exact = true) && !matches(t, L.POPUP_CLOSE) }
+    }
+
     fun tutorialHand(img: Frame): P? {
         val c = matchTemplate(img, Templates.tutorialHand, Config.TUTORIAL_HAND_MIN_SCORE) ?: return null
         return P(c.x + Config.TUTORIAL_TAP_OFFSET.x, c.y + Config.TUTORIAL_TAP_OFFSET.y)

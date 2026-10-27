@@ -55,7 +55,7 @@ val PERMANENT_ERRORS = setOf("err_game_update", "err_game_missing", "err_service
 fun levelInProgress(img: Frame, texts: List<Text>): Boolean = Screens.classifyLevelScreen(img, texts).kind in setOf(
     LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.FIGHT, LevelScreen.SKILL_PICK, LevelScreen.SHOP,
     LevelScreen.EVENT, LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.VICTORY,
-    LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD, LevelScreen.FORTUNE_TELLER)
+    LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD, LevelScreen.FORTUNE_TELLER) && !Screens.lobbyBehind(texts)
 
 /** Errors that differ only in numbers or screenshot paths count as the same error. */
 fun errorKey(e: Throwable): String =

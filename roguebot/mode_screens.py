@@ -196,11 +196,20 @@ class ArenaOpponents:
     free_refresh: Text | None
 
 
-def parse_arena_opponents(texts: list[Text]) -> ArenaOpponents | None:
+def parse_arena_opponents(texts: list[Text], img: np.ndarray | None = None, ocr: Ocr | None = None) -> ArenaOpponents | None:
+    """The opponent panel. With `img` and `ocr`, a power that full-frame OCR garbles ("3,3m" read as
+    "'mε", seen live) is re-read from a crop, so no opponent is left out of the choice."""
+    def crop_power(region: tuple[int, int, int, int]) -> int | None:
+        if ocr is None:
+            return None
+        return next((p for t in ocr.read(img, region) if (p := parse_power(t.norm)) is not None), None)
+
     if not find(texts, L.ARENA_PANEL):
         return None
     own = next((p for t in texts if config.ARENA_POWER_Y[0] < t.center[1] < config.ARENA_POWER_Y[1]
                 and (p := parse_power(t.norm)) is not None and t.center[0] < config.ARENA_ROW_POWER_X[1]), None)
+    if own is None:
+        own = crop_power(config.ARENA_POWER_REGION)
     if own is None:
         return None
     opponents = []
@@ -210,6 +219,9 @@ def parse_arena_opponents(texts: list[Text]) -> ArenaOpponents | None:
         dy = config.ARENA_ROW_POWER_BELOW
         power = next((p for t in texts if config.ARENA_ROW_POWER_X[0] < t.center[0] < config.ARENA_ROW_POWER_X[1]
                       and dy[0] < t.center[1] - b.center[1] < dy[1] and (p := parse_power(t.norm)) is not None), None)
+        if power is None:
+            power = crop_power((config.ARENA_ROW_POWER_X[0], b.center[1] + dy[0],
+                                config.ARENA_ROW_POWER_X[1], b.center[1] + dy[1]))
         if power is not None:
             opponents.append(Opponent(power, b))
     return ArenaOpponents(own, opponents, find(texts, L.FREE_REFRESH))

@@ -42,6 +42,8 @@ object L {
     val START_ELITE = l("listo", "ready")
     val LOADING = l("cargando")
     val POPUP_CLOSE = l("para cerrar", "to close")
+    val LOBBY_TAB = l("aventura", "adventure")  // exact; footer tab label, dimmed under lobby popups
+    val MODES_BUTTON = l("modos", "modes")      // exact; lobby bottom-right (OCR often garbles it)
 
     // Star challenge list
     val STAR_LIST_TITLE = l("desafio de", "star challenge")

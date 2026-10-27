@@ -168,6 +168,25 @@ def close_button(img: np.ndarray) -> tuple[int, int] | None:
     return match_template(img, _CLOSE_X, config.CLOSE_X_MIN_SCORE)
 
 
+def close_button_any_size(img: np.ndarray) -> tuple[int, int] | None:
+    """The same ✕ drawn at another size (unknown popups, e.g. new seasonal events). Slower than
+    close_button: only for popups nothing else recognized."""
+    for scale in config.CLOSE_X_SCALES:
+        found = match_template(img, cv2.resize(_CLOSE_X, None, fx=scale, fy=scale), config.CLOSE_X_MIN_SCORE)
+        if found:
+            return found
+    return None
+
+
+def outside_tap_clear(texts: list[Text]) -> bool:
+    """No text but the footer tab label or a "para cerrar" hint near POPUP_OUTSIDE_TAP: tapping it can't
+    hit a popup's button (a price, a purchase)."""
+    x, y = config.POPUP_OUTSIDE_TAP
+    m = config.OUTSIDE_TAP_CLEARANCE
+    return not any(t.x1 - m < x < t.x2 + m and t.y1 - m < y < t.y2 + m
+                   and not matches(t, L.LOBBY_TAB, exact=True) and not matches(t, L.POPUP_CLOSE) for t in texts)
+
+
 def tutorial_hand(img: np.ndarray) -> tuple[int, int] | None:
     """Where a forced tutorial's pointing hand points (e.g. at a newly unlocked lobby button).
     While it shows, the game ignores every other tap."""
@@ -187,6 +206,14 @@ def footer_visible(img: np.ndarray) -> bool:
         mean = img[config.FOOTER_Y[0]:config.FOOTER_Y[1], x1:x2].reshape(-1, 3).mean(0)
         matching += bool(np.abs(mean - color).max() < config.FOOTER_COLOR_TOLERANCE)
     return matching >= config.FOOTER_MIN_TABS
+
+
+def lobby_behind(texts: list[Text]) -> bool:
+    """Lobby labels (footer "Aventura", "Patrulla", "Gremio", "Modos") show, dimmed, under lobby popups
+    and never on a level board: such a screen is a popup, never a level to play (a seasonal event
+    popup once looked like a level event and the bot tapped it as one)."""
+    return bool(find(texts, L.PATROL) or find(texts, L.GUILD_BUTTON, exact=True) or find(texts, L.MODES_BUTTON, exact=True)
+                or any(matches(t, L.LOBBY_TAB, exact=True) and t.center[1] > config.FOOTER_Y[0] for t in texts))
 
 
 def popup_close(texts: list[Text]) -> Text | None:

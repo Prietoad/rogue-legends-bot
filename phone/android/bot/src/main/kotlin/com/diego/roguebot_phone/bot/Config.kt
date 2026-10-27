@@ -21,6 +21,10 @@ object Config {
     val TUTORIAL_TAP_OFFSET = P(24, 215)
     const val TUTORIAL_MAX_STEPS = 8
     const val CLOSE_X_MIN_SCORE = 0.9
+    val CLOSE_X_SCALES = listOf(0.6, 0.75, 1.25, 1.5, 1.75)  // unknown popups: the ✕ at other sizes
+    const val UNKNOWN_POPUP_PATIENCE = 3  // goToLobby frames on an unknown popup over the lobby before improvising
+    val POPUP_OUTSIDE_TAP = P(720, 2453)  // outside any popup: the dimmed footer's Aventura tab (also the seasonal popups' ✕)
+    const val OUTSIDE_TAP_CLEARANCE = 60  // px around it that must hold no popup text
     val FOOTER_Y = 2380 until 2440
     val FOOTER_SAMPLES = listOf((60 until 300) to intArrayOf(80, 55, 123), (330 until 570) to intArrayOf(107, 80, 74),
         (600 until 840) to intArrayOf(107, 84, 89), (870 until 1110) to intArrayOf(105, 59, 106),
@@ -121,6 +125,7 @@ object Config {
     val GUILD_HALL_LABEL_Y = 900 to 1150  // guild map: the castle's "Sala de / Gremio" label band
     val ARENA_TICKETS_REGION = Region(815, 45, 940, 125)
     val ARENA_POWER_Y = 440 to 520
+    val ARENA_POWER_REGION = Region(300, 440, 680, 520)
     val ARENA_ROWS_Y = 550 to 1900
     val ARENA_ROW_POWER_X = 480 to 680
     val ARENA_ROW_POWER_BELOW = 30 to 130

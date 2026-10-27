@@ -43,13 +43,14 @@ class OcrParityTest {
         Fixtures.loadTemplates()
         val ocr = Fixtures.paddleOcr()
         val cases = Fixtures.parity()
+        val reads = Fixtures.phoneReads(cases.keySet())
         val failures = ArrayList<String>()
         var textMisses = 0
         var textTotal = 0
         for (name in cases.keySet().sorted()) {
             val case = cases.getJSONObject(name)
             val img = Fixtures.fixture(name)
-            val texts = ocr.read(img)
+            val texts = reads.getValue(name)
             val desktop = Fixtures.texts(case.getJSONArray("texts"))
             textTotal += desktop.size
             textMisses += desktop.count { d -> texts.none { it.norm == d.norm && abs(it.center.x - d.center.x) <= TOLERANCE && abs(it.center.y - d.center.y) <= TOLERANCE } }

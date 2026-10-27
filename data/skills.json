@@ -49,6 +49,16 @@
   "description": "Cuando HP <50%, ATQ ↑↑↑+↑",
   "auto": true
  },
+ "anergizantelv": {
+  "name": "anergizante Lv.2",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": " te otorga 4 de Carga Cada",
+  "auto": true
+ },
  "armadefuego": {
   "name": "Arma de Fuego",
   "lang": "es",
@@ -359,6 +369,16 @@
   "description": "Cada Descarga te otorga 2 de Carga Definitiva",
   "auto": true
  },
+ "cortesprofundos": {
+  "name": "Cortes Profundos",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "bleed",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada vez que tu Ataque del arma asesta un golpe critico, aplica 2 acumulaciones de Herida",
+  "auto": true
+ },
  "countericicle": {
   "name": "Counter-Icicle",
   "lang": "en",
@@ -539,6 +559,26 @@
   "description": "Cada ronda, DEF ",
   "auto": true
  },
+ "delrayo": {
+  "name": "del rayo",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "",
+  "auto": true
+ },
+ "descargadecombo": {
+  "name": "Descarga de Combo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Después de cada Ataque de combo, lanza Descarga",
+  "auto": true
+ },
  "descargadefinitiva": {
   "name": "Descarga Definitiva",
   "lang": "es",
@@ -547,6 +587,16 @@
   "nature": "magic",
   "role": "damage",
   "description": "Lanza 2 Descargas después de usar tu Definitiva.",
+  "auto": true
+ },
+ "descargarepetida": {
+  "name": "DescargaRepetida",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Las Descargas tienen probabilidad de activar otra Descarga.",
   "auto": true
  },
  "dicpel": {
@@ -729,6 +779,16 @@
   "description": "Every 7th Icicle reduces enemy Ultimate Charge by -50.",
   "auto": true
  },
+ "enfoqueelemental": {
+  "name": "Enfoque Elemental",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Infligir daño de Fuego/Hielo/Rayo aumenta el daño que infliges de ese tipo de elemento en +15% acumulándose hasta 5 veces. Infligir daño con un elemento diferente reinicia todas tus acumulaciones.",
+  "auto": true
+ },
  "enrageddodge": {
   "name": "Enraged Dodge",
   "lang": "en",
@@ -767,6 +827,16 @@
   "nature": "physical",
   "role": "damage",
   "description": "When HP <40%, ATK  and DEF ",
+  "auto": true
+ },
+ "entrenadordemascotas": {
+  "name": "Entrenador de-Mascotas",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Ya no puedes usar Ataques del arma, pero el retraso de ataque de tus Mascotas se reduce en 1 y estas infligen +50% más daño.",
   "auto": true
  },
  "envenenar": {
@@ -1039,6 +1109,16 @@
   "description": "Escalofrío aumenta el daño que infliges al objetivo en 5% por acumulación.",
   "auto": true
  },
+ "frioglacial": {
+  "name": "Frio Glacial",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cuando un enemigo alcanza el máximo de acumulaciones de Escalofrio, queda Congelado y todas las acumulaciones de Escalofrio se consumen.",
+  "auto": true
+ },
  "frostnova": {
   "name": "Frost Nova",
   "lang": "en",
@@ -1137,6 +1217,16 @@
   "nature": "magic",
   "role": "damage",
   "description": "Después de lanzar tienes probabilidad de lanzar de Llama",
+  "auto": true
+ },
+ "golpedellamadefinitivo": {
+  "name": "Golpe de Llama Definitivo",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Después de usar tu Definitiva, lanza 1 Golpe de Llama",
   "auto": true
  },
  "golpeinicial": {
@@ -1539,6 +1629,16 @@
   "description": "Daño de hielo ",
   "auto": true
  },
+ "maestriadelrayo": {
+  "name": "Maestria-del rayo",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Daño de Rayo ",
+  "auto": true
+ },
  "maestriadeveneno": {
   "name": "Maestria de Veneno",
   "lang": "es",
@@ -1577,6 +1677,16 @@
   "nature": "magic",
   "role": "damage",
   "description": "Daño Mágico , Daño Físico ",
+  "auto": true
+ },
+ "magonv": {
+  "name": "Mago Nv.2",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "magic",
+  "role": "damage",
+  "description": "Daño de Daño Mágico +30%, Habilidad +30%,  Daño Fisico -30%",
   "auto": true
  },
  "masterofwar": {
@@ -1627,6 +1737,16 @@
   "nature": "magic",
   "role": "damage",
   "description": "Cuando recibes daño por primera vez, recibes 50% de Daño en su lugar y contraatacas con Carámbano.",
+  "auto": true
+ },
+ "novadeescarcha": {
+  "name": "Nova de Escarcha",
+  "lang": "es",
+  "rarity": "mythic",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Después de cada 10.° Carámbano, lanza Nova de escarcha sobre todos los enemigos y los Congela.",
   "auto": true
  },
  "nubedaralizanto": {
@@ -1727,6 +1847,16 @@
   "nature": "physical",
   "role": "damage",
   "description": "Weapon Attacks will apply 1 stack of Poison.",
+  "auto": true
+ },
+ "puasdehielo": {
+  "name": "Púas de Hielo",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cuando eres atacado mientras tienes un Escudo activo, realizas un contraataque con Carámbano.",
   "auto": true
  },
  "pyromania": {
@@ -1987,6 +2117,16 @@
   "nature": "physical",
   "role": "damage",
   "description": "When you dodge, apply Poison to a random enemy 2 times.",
+  "auto": true
+ },
+ "sobrecarga": {
+  "name": "Sobrecarga",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada Descarga aumenta tu Tasa de Combo en +10%, acumulándose hasta 10 veces, pero cada Ataque Combo elimina 2 acumulaciones.",
   "auto": true
  },
  "specialexperiment": {

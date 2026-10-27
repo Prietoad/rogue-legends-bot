@@ -26,5 +26,8 @@ dependencies {
 tasks.test {
     workingDir = projectDir  // Fixtures.ROOT is relative to it
     maxHeapSize = "2g"
+    // Test classes in parallel JVMs: ParityTest and OcrParityTest each walk every fixture (the parsers share a
+    // global language, so they can't use threads inside one JVM); phone OCR reads are shared via build/ocr_cache.
+    maxParallelForks = 3
     testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
 }

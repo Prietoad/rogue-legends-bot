@@ -197,7 +197,8 @@ def test_build_request_always_plays_until_out_of_energy():
 
 
 @pytest.mark.parametrize("s, value", [("534,8k", 534800), ("3,4m", 3400000), ("339k", 339000), ("1045", 1045),
-                                      ("62,9b", 62900000000), ("70.7K", 70700), ("Win:", None), ("x1", None)])
+                                      ("62,9b", 62900000000), ("70.7K", 70700), ("Win:", None), ("x1", None),
+                                      ("1,23b", 1230000000), ("261,5m", 261500000), ("9,8 m", 9800000), ("'mε", None)])
 def test_parse_power(s, value):
     from roguebot.mode_screens import parse_power
     assert parse_power(s) == value
@@ -656,7 +657,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.7.0"
+    assert roguebot.__version__ == "1.8.0"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -909,6 +910,43 @@ def test_go_to_lobby_waits_on_an_unknown_game_screen(monkeypatch):
     device.foreground_package = lambda: config.PACKAGE
     _other_app_nav(monkeypatch, device).go_to_lobby()
     assert device.actions == [] and device.taps == []  # the game's own screen: never tap blindly
+
+
+_UNKNOWN_POPUP = [Text("Gremio", 27, 2160, 154, 2196), Text("¡Gran Evento!", 500, 300, 940, 360),
+                  Text("x800", 325, 588, 437, 634)]  # lobby labels dimmed under a popup nobody has seen yet
+
+
+def _unknown_popup_nav(monkeypatch, tmp_path, popup, close_x=None):
+    nav = _other_app_nav(monkeypatch, _OtherAppDevice())
+    nav.device.foreground_package = lambda: config.PACKAGE
+    from roguebot import navigation
+    monkeypatch.setattr(navigation, "DEBUG_DIR", tmp_path)
+    monkeypatch.setattr(navigation, "close_button_any_size", lambda img: close_x)
+    lobby = [Text("Patrulla", 650, 1900, 790, 1945), Text("APAGADO", 880, 2060, 990, 2095),
+             Text("INICIO", 600, 2070, 716, 2115), Text("de Estrellas", 840, 1910, 960, 1945)]
+    frames = iter([popup] * config.UNKNOWN_POPUP_PATIENCE + [lobby])
+    import numpy as np
+    nav._capture = lambda: (np.zeros((2560, 1440, 3), np.uint8), next(frames))
+    return nav
+
+
+def test_go_to_lobby_taps_outside_an_unknown_popup(monkeypatch, tmp_path):
+    nav = _unknown_popup_nav(monkeypatch, tmp_path, _UNKNOWN_POPUP)
+    nav.go_to_lobby()
+    assert nav.device.taps == [config.POPUP_OUTSIDE_TAP]  # once, after waiting UNKNOWN_POPUP_PATIENCE frames
+    assert list(tmp_path.glob("popup_unknown_*.png"))  # saved, to add it as a known popup later
+
+
+def test_go_to_lobby_prefers_an_unknown_popups_x_of_another_size(monkeypatch, tmp_path):
+    nav = _unknown_popup_nav(monkeypatch, tmp_path, _UNKNOWN_POPUP, close_x=(1200, 300))
+    nav.go_to_lobby()
+    assert nav.device.taps == [(1200, 300)]
+
+
+def test_go_to_lobby_never_taps_outside_onto_a_price(monkeypatch, tmp_path):
+    nav = _unknown_popup_nav(monkeypatch, tmp_path, _UNKNOWN_POPUP + [Text("$4,99", 660, 2420, 780, 2480)])
+    nav.go_to_lobby()
+    assert nav.device.taps == []
 
 
 def test_energy_claim_takes_the_reward_shown_over_the_popup_before_reading_it(monkeypatch, tmp_path):

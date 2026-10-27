@@ -525,6 +525,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -597,6 +599,679 @@
 },
 {
 "power": 248400,
+"challenge": [
+"Desafiar",
+983,
+1623,
+1159,
+1672
+]
+}
+],
+"free_refresh": [
+"Recarga Gratis",
+511,
+1904,
+927,
+1980
+]
+},
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": [
+"Arena",
+246,
+54,
+434,
+125
+],
+"mode_closed_ARENA": false,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
+"arena_opponents_millions.png": {
+"lang": "es",
+"texts": [
+[
+"Arena",
+246,
+54,
+434,
+125
+],
+[
+"28250",
+1033,
+61,
+1164,
+107
+],
+[
+"18114",
+1281,
+63,
+1410,
+107
+],
+[
+"La temporada termina en:",
+146,
+154,
+507,
+190
+],
+[
+"Batalla Platino",
+624,
+171,
+912,
+218
+],
+[
+"5d 7h",
+200,
+203,
+308,
+249
+],
+[
+"Tienda",
+1299,
+264,
+1420,
+305
+],
+[
+"Por defecto",
+129,
+283,
+312,
+322
+],
+[
+"Desafio de la Arena",
+437,
+329,
+1004,
+397
+],
+[
+"Recompensas",
+1270,
+416,
+1438,
+449
+],
+[
+"9,8m",
+387,
+455,
+497,
+507
+],
+[
+"1060",
+705,
+456,
+810,
+503
+],
+[
+"4",
+1053,
+460,
+1083,
+500
+],
+[
+"Grabar",
+1298,
+578,
+1423,
+620
+],
+[
+"Kaizer",
+460,
+593,
+599,
+643
+],
+[
+"P",
+604,
+601,
+640,
+636
+],
+[
+"Desafiar",
+983,
+600,
+1158,
+649
+],
+[
+"x1",
+1074,
+649,
+1141,
+699
+],
+[
+"261,5m",
+504,
+672,
+650,
+717
+],
+[
+"1286",
+785,
+670,
+882,
+717
+],
+[
+"Victoria:",
+664,
+743,
+811,
+781
+],
+[
+"+20",
+849,
+744,
+924,
+783
+],
+[
+"Pierdes:",
+947,
+743,
+1092,
+783
+],
+[
+"TripleFire",
+460,
+847,
+657,
+905
+],
+[
+"Desafiar",
+983,
+856,
+1159,
+905
+],
+[
+"x1",
+1004,
+900,
+1143,
+960
+],
+[
+"12,7m",
+520,
+926,
+641,
+976
+],
+[
+"1098",
+786,
+929,
+882,
+971
+],
+[
+"Victoria:",
+667,
+1000,
+812,
+1040
+],
+[
+"+15",
+849,
+1001,
+924,
+1038
+],
+[
+"Pierdes:",
+947,
+1001,
+1091,
+1040
+],
+[
+"Aynar",
+456,
+1101,
+591,
+1163
+],
+[
+"Desafiar",
+982,
+1113,
+1158,
+1161
+],
+[
+"x1",
+1078,
+1162,
+1140,
+1209
+],
+[
+"4,1m",
+528,
+1183,
+631,
+1233
+],
+[
+"1049",
+785,
+1183,
+882,
+1229
+],
+[
+"Victoria:",
+666,
+1256,
+813,
+1295
+],
+[
+"+10",
+849,
+1258,
+930,
+1294
+],
+[
+"Pierdes:",
+930,
+1255,
+1081,
+1294
+],
+[
+"-10",
+1119,
+1256,
+1185,
+1295
+],
+[
+"1400",
+1244,
+1250,
+1375,
+1300
+],
+[
+"Rogue#237267",
+461,
+1362,
+758,
+1414
+],
+[
+"Desafiar",
+983,
+1369,
+1159,
+1418
+],
+[
+"LX四",
+1000,
+1411,
+1144,
+1473
+],
+[
+"1380",
+1245,
+1419,
+1377,
+1473
+],
+[
+"'mε",
+528,
+1438,
+631,
+1489
+],
+[
+"1011",
+784,
+1440,
+880,
+1486
+],
+[
+"Victoria:",
+676,
+1509,
+825,
+1552
+],
+[
+"+8",
+860,
+1514,
+916,
+1549
+],
+[
+"Pierdes:",
+934,
+1512,
+1082,
+1550
+],
+[
+"-10",
+1118,
+1513,
+1185,
+1550
+],
+[
+"1287",
+1242,
+1587,
+1375,
+1646
+],
+[
+"Peach",
+459,
+1615,
+591,
+1665
+],
+[
+"Desafiar",
+983,
+1623,
+1159,
+1672
+],
+[
+"x1",
+1078,
+1674,
+1140,
+1721
+],
+[
+"2,1m",
+528,
+1695,
+631,
+1745
+],
+[
+"988",
+794,
+1696,
+870,
+1740
+],
+[
+"Victoria:",
+677,
+1767,
+825,
+1807
+],
+[
+"+6",
+860,
+1770,
+919,
+1805
+],
+[
+"Pierdes:",
+932,
+1767,
+1082,
+1807
+],
+[
+"-10",
+1119,
+1769,
+1186,
+1807
+],
+[
+"1286",
+1243,
+1761,
+1377,
+1815
+],
+[
+"5",
+66,
+1917,
+131,
+1993
+],
+[
+"Recarga Gratis",
+511,
+1904,
+927,
+1980
+],
+[
+"1229",
+1242,
+1930,
+1374,
+1985
+],
+[
+"tempora",
+468,
+2078,
+655,
+2130
+],
+[
+"enderán",
+785,
+2073,
+970,
+2125
+],
+[
+"Prieto",
+340,
+2180,
+498,
+2234
+],
+[
+"48",
+21,
+2193,
+154,
+2290
+],
+[
+"1060",
+1257,
+2214,
+1388,
+2268
+],
+[
+"Explorador",
+455,
+2252,
+644,
+2296
+],
+[
+"biscuitskupos",
+443,
+2317,
+723,
+2347
+],
+[
+"Desafiar",
+615,
+2389,
+824,
+2442
+],
+[
+"x1",
+721,
+2449,
+803,
+2504
+]
+],
+"regions": {
+"480,1423,680,1523": [
+[
+"3,3m",
+527,
+1438,
+632,
+1493
+]
+]
+},
+"out": {
+"parse_lobby": null,
+"is_star_list": true,
+"parse_energy": null,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"on_board": false,
+"is_loading": false,
+"close_button": [
+720,
+2152
+],
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
+"classify_level_screen": {
+"kind": "unknown",
+"tap": null
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": [],
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"parse_fortune_teller": null,
+"back_arrow": [
+120,
+2447
+],
+"in_guild": false,
+"vip_cards_icon": null,
+"vip_claim_all": null,
+"guild_hall": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": {
+"own_power": 9800000,
+"opponents": [
+{
+"power": 261500000,
+"challenge": [
+"Desafiar",
+983,
+600,
+1158,
+649
+]
+},
+{
+"power": 12700000,
+"challenge": [
+"Desafiar",
+983,
+856,
+1159,
+905
+]
+},
+{
+"power": 4100000,
+"challenge": [
+"Desafiar",
+982,
+1113,
+1158,
+1161
+]
+},
+{
+"power": 3300000,
+"challenge": [
+"Desafiar",
+983,
+1369,
+1159,
+1418
+]
+},
+{
+"power": 2100000,
 "challenge": [
 "Desafiar",
 983,
@@ -925,6 +1600,8 @@
 1092,
 2492
 ],
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -1091,6 +1768,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "board_ready",
 "tap": [
@@ -1487,6 +2166,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -1978,6 +2659,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": false,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -2333,6 +3016,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -2501,6 +3186,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -2737,6 +3424,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "defeat",
 "tap": [
@@ -2925,6 +3614,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -3096,6 +3787,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -3286,6 +3979,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -3517,6 +4212,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -3707,6 +4404,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -4002,6 +4701,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -4561,6 +5262,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -5032,6 +5735,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -5398,6 +6103,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -5762,6 +6469,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -5955,6 +6664,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -6532,6 +7243,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -7172,6 +7885,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -7382,6 +8097,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -7532,6 +8249,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "board_ready",
 "tap": [
@@ -7993,6 +8712,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -8449,6 +9170,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -8892,6 +9615,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -9188,6 +9913,8 @@
 ],
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -9342,6 +10069,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -9613,6 +10342,8 @@
 ],
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -9732,6 +10463,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -9882,6 +10615,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "dice_duel",
 "tap": [
@@ -9976,6 +10711,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "leave",
 "tap": [
@@ -10112,6 +10849,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -10304,6 +11043,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "event",
 "tap": [
@@ -10454,6 +11195,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -10618,6 +11361,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "fight",
 "tap": null
@@ -10723,6 +11468,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "flip_cards",
 "tap": [
@@ -10873,6 +11620,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "fortune_teller",
 "tap": [
@@ -10997,6 +11746,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -11189,6 +11940,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -11304,6 +12057,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -11629,6 +12384,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "shop",
 "tap": [
@@ -12093,6 +12850,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "shop",
 "tap": [
@@ -12544,6 +13303,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "shop",
 "tap": [
@@ -12994,6 +13755,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "shop",
 "tap": [
@@ -13367,6 +14130,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -13657,6 +14422,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -13906,6 +14673,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "double_reward",
 "tap": [
@@ -14150,6 +14919,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -14581,6 +15352,8 @@
 "tutorial_hand": null,
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -14999,6 +15772,8 @@
 915,
 2483
 ],
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -15426,6 +16201,8 @@
 "tutorial_hand": null,
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -15837,6 +16614,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -16283,6 +17062,8 @@
 964,
 2486
 ],
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -16463,6 +17244,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -16601,6 +17384,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -16861,6 +17646,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -17134,6 +17921,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -17324,6 +18113,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -17577,6 +18368,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -17798,6 +18591,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -18012,6 +18807,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -18448,6 +19245,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": false,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -18721,6 +19520,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": false,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -18962,6 +19763,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -19222,6 +20025,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -19452,6 +20257,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -19667,6 +20474,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -19826,6 +20635,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -19952,6 +20763,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -20221,6 +21034,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -20567,6 +21382,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -20920,6 +21737,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -21217,6 +22036,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -21471,6 +22292,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -21769,6 +22592,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -22010,6 +22835,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -22148,6 +22975,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -22267,6 +23096,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -22427,6 +23258,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -22598,6 +23431,8 @@
 1026,
 2469
 ],
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -23083,6 +23918,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -23568,6 +24405,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -23728,6 +24567,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -23850,6 +24691,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -24210,6 +25053,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -24585,6 +25430,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -25000,6 +25847,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -25170,6 +26019,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": false,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -25354,6 +26205,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": false,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -25545,6 +26398,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "auto_play",
 "tap": null
@@ -25713,6 +26568,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "auto_play",
 "tap": null
@@ -25881,6 +26738,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "board_ready",
 "tap": [
@@ -26052,6 +26911,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -26234,6 +27095,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "defeat",
 "tap": [
@@ -26391,6 +27254,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "dice_duel",
 "tap": [
@@ -26527,6 +27392,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -26719,6 +27586,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "event",
 "tap": [
@@ -26911,6 +27780,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "event",
 "tap": [
@@ -27068,6 +27939,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -27225,6 +28098,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "fight",
 "tap": null
@@ -27337,6 +28212,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "flip_cards",
 "tap": [
@@ -27452,6 +28329,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "flip_cards",
 "tap": [
@@ -27588,6 +28467,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "fortune_teller",
 "tap": [
@@ -27747,6 +28628,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "fortune_teller",
 "tap": [
@@ -27906,6 +28789,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "fortune_teller",
 "tap": [
@@ -28093,6 +28978,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -28212,6 +29099,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -28327,6 +29216,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "leave",
 "tap": [
@@ -28435,6 +29326,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -28599,6 +29492,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "revive",
 "tap": [
@@ -28763,6 +29658,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "revive",
 "tap": [
@@ -28892,6 +29789,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -29238,6 +30137,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "shop",
 "tap": [
@@ -29702,6 +30603,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "shop",
 "tap": [
@@ -30131,6 +31034,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -30435,6 +31340,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -30621,6 +31528,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "board_ready",
 "tap": [
@@ -30848,6 +31757,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "victory",
 "tap": [
@@ -30928,6 +31839,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -31354,6 +32267,8 @@
 1051,
 2385
 ],
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -31378,6 +32293,395 @@
 668,
 151,
 703
+],
+"vip_claim_all": null,
+"guild_hall": null,
+"guild_hall_donate": null,
+"free_donation": null,
+"parse_patrol": null,
+"parse_quick_patrol": null,
+"is_modes_list": false,
+"parse_arena": null,
+"parse_arena_opponents": null,
+"parse_tower": null,
+"parse_dojo": null,
+"parse_dive": null,
+"menu_daily": null,
+"menu_mail": null,
+"daily_claim": null,
+"mail_claim_all": null,
+"parse_dungeon_popup": null,
+"parse_raid": null,
+"parse_skill_choice": null,
+"parse_fight_result": null,
+"mode_entry_ARENA": null,
+"mode_closed_ARENA": null,
+"mode_entry_DOJO": null,
+"mode_closed_DOJO": null,
+"mode_entry_TOWER": null,
+"mode_closed_TOWER": null,
+"mode_entry_DIVE": null,
+"mode_closed_DIVE": null,
+"mode_entry_MINES": null,
+"mode_closed_MINES": null,
+"mode_entry_PETS": null,
+"mode_closed_PETS": null,
+"detect_language": null
+}
+},
+"lobby_autumn_event_popup.png": {
+"lang": "es",
+"texts": [
+[
+"Prieto",
+171,
+58,
+284,
+98
+],
+[
+"32/36",
+790,
+63,
+918,
+107
+],
+[
+"18066",
+1037,
+63,
+1164,
+107
+],
+[
+"4361",
+1293,
+64,
+1396,
+105
+],
+[
+"9,8m",
+164,
+104,
+343,
+160
+],
+[
+"06:27",
+812,
+108,
+900,
+144
+],
+[
+"Sendero de Ascuas!",
+478,
+219,
+964,
+285
+],
+[
+"2290",
+1022,
+371,
+1127,
+421
+],
+[
+"120",
+551,
+464,
+655,
+517
+],
+[
+"Paquete",
+2,
+503,
+155,
+547
+],
+[
+"Misiones",
+1279,
+501,
+1438,
+545
+],
+[
+"Inicial",
+24,
+544,
+135,
+584
+],
+[
+"x800",
+326,
+588,
+438,
+634
+],
+[
+"Carnaval",
+1288,
+642,
+1438,
+681
+],
+[
+"Tarjetas",
+15,
+667,
+151,
+704
+],
+[
+"VIP",
+54,
+708,
+108,
+738
+],
+[
+"115",
+372,
+704,
+465,
+757
+],
+[
+"7h 11m",
+1305,
+785,
+1413,
+824
+],
+[
+"7h11m",
+27,
+850,
+131,
+886
+],
+[
+"x100",
+649,
+851,
+761,
+898
+],
+[
+"105",
+693,
+965,
+788,
+1018
+],
+[
+"7h11m",
+1303,
+952,
+1413,
+990
+],
+[
+"Sendero",
+1,
+1025,
+155,
+1064
+],
+[
+"de Ascuas!",
+0,
+1058,
+168,
+1092
+],
+[
+"100",
+999,
+1091,
+1091,
+1145
+],
+[
+"Evento de Héroe",
+1271,
+1152,
+1438,
+1181
+],
+[
+"Fondode",
+0,
+1202,
+162,
+1241
+],
+[
+"Monturas",
+0,
+1237,
+164,
+1272
+],
+[
+"x1000",
+632,
+1232,
+770,
+1277
+],
+[
+"7h 11m",
+1306,
+1294,
+1413,
+1332
+],
+[
+"90",
+699,
+1347,
+771,
+1398
+],
+[
+"36",
+1379,
+1358,
+1436,
+1401
+],
+[
+"7h 11m",
+25,
+1396,
+131,
+1430
+],
+[
+"x4705",
+303,
+1423,
+444,
+1468
+],
+[
+"Riquezas",
+1289,
+1468,
+1433,
+1507
+],
+[
+"Congeladas",
+1271,
+1503,
+1438,
+1543
+],
+[
+"66∠$",
+285,
+1523,
+468,
+1602
+],
+[
+"x280",
+948,
+1661,
+1062,
+1708
+],
+[
+"7h11m",
+1305,
+1660,
+1414,
+1698
+],
+[
+"x3",
+785,
+1874,
+843,
+1922
+],
+[
+"x32k",
+460,
+1920,
+573,
+1974
+],
+[
+"Gremio",
+28,
+2161,
+154,
+2197
+],
+[
+"Tiempo restante 7h 11m",
+549,
+2152,
+893,
+2187
+],
+[
+"Modos",
+1285,
+2157,
+1414,
+2197
+]
+],
+"regions": {},
+"out": {
+"parse_lobby": null,
+"is_star_list": false,
+"parse_energy": 32,
+"parse_elite_dialog": null,
+"parse_energy_popup": null,
+"update_required": false,
+"resume_prompt": null,
+"on_board": false,
+"is_loading": false,
+"close_button": [
+720,
+2453
+],
+"tutorial_hand": null,
+"footer_visible": false,
+"popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
+"classify_level_screen": {
+"kind": "unknown",
+"tap": null
+},
+"game_speed": null,
+"dice_ready": false,
+"dice_auto": false,
+"parse_star_list": null,
+"parse_skill_cards": [],
+"skill_reroll": null,
+"parse_money": null,
+"parse_shop": null,
+"parse_fortune_teller": null,
+"back_arrow": null,
+"in_guild": true,
+"vip_cards_icon": [
+"Tarjetas",
+15,
+667,
+151,
+704
 ],
 "vip_claim_all": null,
 "guild_hall": null,
@@ -31774,6 +33078,8 @@
 "tutorial_hand": null,
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -32283,6 +33589,8 @@
 1082,
 2491
 ],
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -32742,6 +34050,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -33164,6 +34474,8 @@
 "tutorial_hand": null,
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -33330,6 +34642,8 @@
 861,
 2476
 ],
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -33707,6 +35021,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -34160,6 +35476,8 @@
 1090,
 2486
 ],
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -34576,6 +35894,8 @@
 ],
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -34972,6 +36292,8 @@
 "tutorial_hand": null,
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -35422,6 +36744,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -35630,6 +36954,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -35865,6 +37191,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -36306,6 +37634,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -36551,6 +37881,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -36795,6 +38127,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -36970,6 +38304,8 @@
 "tutorial_hand": null,
 "footer_visible": true,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -37159,6 +38495,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -37423,6 +38761,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "skill_pick",
 "tap": [
@@ -37702,6 +39042,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -38014,6 +39356,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -38381,6 +39725,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -38729,6 +40075,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -38991,6 +40339,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -39199,6 +40549,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "unknown",
 "tap": null
@@ -39378,6 +40730,8 @@
 1185,
 2472
 ],
+"lobby_behind": true,
+"outside_tap_clear": true,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [
@@ -39528,6 +40882,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "victory",
 "tap": [
@@ -39660,6 +41016,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": false,
+"outside_tap_clear": null,
 "classify_level_screen": {
 "kind": "victory",
 "tap": [
@@ -40001,6 +41359,8 @@
 "tutorial_hand": null,
 "footer_visible": false,
 "popup_close": null,
+"lobby_behind": true,
+"outside_tap_clear": false,
 "classify_level_screen": {
 "kind": "continue",
 "tap": [

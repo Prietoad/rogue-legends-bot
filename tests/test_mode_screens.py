@@ -11,14 +11,10 @@ from roguebot.mode_screens import (back_arrow, daily_claim, in_guild, is_modes_l
                                    parse_dungeon_popup, parse_fight_result, parse_raid, parse_skill_choice,
                                    parse_tower, pick_opponent)
 from roguebot.screens import close_button
-from roguebot.vision import Ocr, Text, find
+from roguebot.vision import Text, find
+from conftest import fixture_image
 
 FIXTURES = Path(__file__).parent / "fixtures"
-
-
-@pytest.fixture(scope="module")
-def ocr():
-    return Ocr()
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +25,7 @@ def _reset_language():
 
 def load(ocr, name):
     labels.set_language("en" if name.startswith("en_") else "es")
-    img = cv2.imread(str(FIXTURES / name))
+    img = fixture_image(FIXTURES / name)
     return img, ocr.read(img)
 
 
@@ -296,6 +292,15 @@ def test_arena_opponents_spanish(ocr):
     assert [o.power for o in panel.opponents] == [3500000, 717100, 107500, 440200, 248400]
     assert panel.free_refresh.norm == "recarga gratis"
     assert pick_opponent(panel.own_power, panel.opponents).power == 440200
+
+
+def test_arena_opponents_garbled_power_is_read_from_a_crop(ocr):
+    img, texts = load(ocr, "arena_opponents_millions.png")  # full-frame OCR reads the 4th row's "3,3m" as "'mε"
+    panel = parse_arena_opponents(texts, img, ocr)
+    assert panel.own_power == 9800000
+    assert [o.power for o in panel.opponents] == [261500000, 12700000, 4100000, 3300000, 2100000]
+    assert all(abs(o.challenge.center[0] - 1071) < 20 for o in panel.opponents)
+    assert pick_opponent(panel.own_power, panel.opponents).power == 4100000
 
 
 @pytest.mark.parametrize("name", ["en_lobby_normal.png", "en_lobby_elite.png", "en_lobby_guild_popup.png"])

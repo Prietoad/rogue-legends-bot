@@ -68,6 +68,8 @@ def outputs(img, texts, ocr) -> dict:
         "tutorial_hand": S.tutorial_hand(img),
         "footer_visible": S.footer_visible(img),
         "popup_close": S.popup_close(texts),
+        "lobby_behind": S.lobby_behind(texts),
+        "outside_tap_clear": S.outside_tap_clear(texts) if S.lobby_behind(texts) else None,  # only used then
         "classify_level_screen": S.classify_level_screen(img, texts),
         "game_speed": S.game_speed(texts),
         "dice_ready": S.dice_ready(img),
@@ -89,7 +91,7 @@ def outputs(img, texts, ocr) -> dict:
         "parse_quick_patrol": M.parse_quick_patrol(img, texts),
         "is_modes_list": M.is_modes_list(texts),
         "parse_arena": M.parse_arena(img, texts, ocr),
-        "parse_arena_opponents": M.parse_arena_opponents(texts),
+        "parse_arena_opponents": M.parse_arena_opponents(texts, img, ocr),
         "parse_tower": M.parse_tower(texts),
         "parse_dojo": M.parse_dojo(img, texts, ocr),
         "parse_dive": M.parse_dive(texts),

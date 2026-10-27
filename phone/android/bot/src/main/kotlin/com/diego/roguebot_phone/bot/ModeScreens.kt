@@ -119,12 +119,17 @@ object ModeScreens {
     data class Opponent(val power: Long, val challenge: Text?)
     data class ArenaOpponents(val ownPower: Long, val opponents: List<Opponent>, val freeRefresh: Text?)
 
-    fun parseArenaOpponents(texts: List<Text>): ArenaOpponents? {
+    /** The opponent panel. With [img] and [ocr], a power that full-frame OCR garbles ("3,3m" read as
+     *  "'mε", seen live) is re-read from a crop, so no opponent is left out of the choice. */
+    fun parseArenaOpponents(texts: List<Text>, img: Frame? = null, ocr: Ocr? = null): ArenaOpponents? {
+        fun cropPower(region: Region): Long? =
+            if (img == null || ocr == null) null else ocr.read(img, region).firstNotNullOfOrNull { parsePower(it.norm) }
+
         if (find(texts, L.ARENA_PANEL) == null) return null
         val own = texts.firstNotNullOfOrNull { t ->
             if (t.center.y > Config.ARENA_POWER_Y.first && t.center.y < Config.ARENA_POWER_Y.second && t.center.x < Config.ARENA_ROW_POWER_X.second)
                 parsePower(t.norm) else null
-        } ?: return null
+        } ?: cropPower(Config.ARENA_POWER_REGION) ?: return null
         val opponents = ArrayList<Opponent>()
         for (b in texts) {
             if (!(matches(b, L.CHALLENGE, exact = true) && b.center.y > Config.ARENA_ROWS_Y.first && b.center.y < Config.ARENA_ROWS_Y.second)) continue
@@ -132,7 +137,7 @@ object ModeScreens {
             val power = texts.firstNotNullOfOrNull { t ->
                 val dy = t.center.y - b.center.y
                 if (t.center.x > Config.ARENA_ROW_POWER_X.first && t.center.x < Config.ARENA_ROW_POWER_X.second && dy > lo && dy < hi) parsePower(t.norm) else null
-            }
+            } ?: cropPower(Region(Config.ARENA_ROW_POWER_X.first, b.center.y + lo, Config.ARENA_ROW_POWER_X.second, b.center.y + hi))
             if (power != null) opponents.add(Opponent(power, b))
         }
         return ArenaOpponents(own, opponents, find(texts, L.FREE_REFRESH))

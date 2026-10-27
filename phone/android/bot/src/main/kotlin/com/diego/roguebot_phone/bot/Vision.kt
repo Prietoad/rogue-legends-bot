@@ -81,6 +81,28 @@ class Frame(val width: Int, val height: Int, val pixels: IntArray) {
         return Frame(w, h, out)
     }
 
+    /** Bilinear resize by [scale] (cv2.resize's default). */
+    fun scaled(scale: Double): Frame {
+        val w = Math.round(width * scale).toInt(); val h = Math.round(height * scale).toInt()
+        val out = IntArray(w * h)
+        for (y in 0 until h) {
+            val fy = ((y + 0.5) / scale - 0.5).coerceIn(0.0, height - 1.0)
+            val y0 = fy.toInt(); val y1 = minOf(y0 + 1, height - 1); val ty = fy - y0
+            for (x in 0 until w) {
+                val fx = ((x + 0.5) / scale - 0.5).coerceIn(0.0, width - 1.0)
+                val x0 = fx.toInt(); val x1 = minOf(x0 + 1, width - 1); val tx = fx - x0
+                var argb = 0xFF000000.toInt()
+                for (shift in intArrayOf(16, 8, 0)) {
+                    fun ch(px: Int, py: Int) = (pixels[py * width + px] shr shift) and 0xFF
+                    val v = (ch(x0, y0) * (1 - tx) + ch(x1, y0) * tx) * (1 - ty) + (ch(x0, y1) * (1 - tx) + ch(x1, y1) * tx) * ty
+                    argb = argb or (Math.round(v).toInt().coerceIn(0, 255) shl shift)
+                }
+                out[y * w + x] = argb
+            }
+        }
+        return Frame(w, h, out)
+    }
+
     companion object {
         fun blank(width: Int = Config.SCREEN_W, height: Int = Config.SCREEN_H) =
             Frame(width, height, IntArray(width * height) { 0xFF000000.toInt() })
@@ -113,7 +135,7 @@ interface Ocr {
  * phone: grey 1/8-scale search for candidates, then a colour 1/2-scale check around each. The score
  * gaps between "shown" and "not shown" are wide (e.g. 0.998 vs 0.61), so the reduced scale keeps them.
  */
-class Template(src: Frame) {
+class Template(val src: Frame) {
     val width = src.width
     val height = src.height
     internal val coarse = Plane.grey(src, COARSE)

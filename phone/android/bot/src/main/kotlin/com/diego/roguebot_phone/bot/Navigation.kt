@@ -8,6 +8,7 @@ val ON_BOARD = setOf(LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen
 
 /** A level board (not fights or skill picks alone: dojo and raid fights have them too). */
 fun onBoard(img: Frame, texts: List<Text>): Boolean {
+    if (Screens.lobbyBehind(texts)) return false  // a popup over the lobby, whatever it looks like
     val kind = Screens.classifyLevelScreen(img, texts).kind
     if (kind == LevelScreen.SKILL_PICK) return find(texts, L.LEARN_SKILLS) == null
     return kind in ON_BOARD
@@ -204,6 +205,7 @@ open class Navigator(
 
     open fun goToLobby(): Lobby {
         var handTaps = 0
+        var unknown = 0  // frames in a row on a popup over the lobby that nothing below recognized
         var img: Frame? = null
         repeat(MAX_LOBBY_ATTEMPTS + Config.TUTORIAL_MAX_STEPS) {
             val c = capture()
@@ -241,10 +243,32 @@ open class Navigator(
                 Screens.isStarList(texts) -> { Log.info("In star challenge list, going back"); device.tap(Config.LIST_BACK) }
                 back != null -> { Log.info("In a menu, going back"); device.tap(back!!) }
                 Screens.footerVisible(c.first) -> { Log.info("Not in Aventura lobby, tapping footer tab"); device.tap(Config.AVENTURA_TAB) }
+                // A popup we don't know (new seasonal events): improvise after a few frames (its "para cerrar" may blink).
+                Screens.lobbyBehind(texts) -> {
+                    unknown++
+                    if (unknown >= Config.UNKNOWN_POPUP_PATIENCE) {
+                        improviseClose(c.first, texts)
+                        unknown = 0
+                    } else {
+                        clock.sleep(Config.UI_SETTLE)
+                    }
+                }
                 !leaveOtherApp() -> clock.sleep(Config.UI_SETTLE)  // loading or a screen we don't know: wait
             }
         }
         fail("Could not reach the Aventura lobby", img!!)
+    }
+
+    /** An unknown popup over the lobby: its ✕ at another size, else a tap outside it (the dimmed footer),
+     *  never inside it (popups hold purchase buttons). The frame is saved to add it later. */
+    fun improviseClose(img: Frame, texts: List<Text>) {
+        val path = save(img, "popup_unknown")
+        val closeX = Screens.closeButtonAnySize(img)
+        when {
+            closeX != null -> { Log.info("Unknown popup: closing its ✕ (screenshot: $path)"); device.tap(closeX) }
+            Screens.outsideTapClear(texts) -> { Log.info("Unknown popup: tapping outside it (screenshot: $path)"); device.tap(Config.POPUP_OUTSIDE_TAP) }
+            else -> { Log.info("Unknown popup with text where the bot would tap outside it: waiting (screenshot: $path)"); clock.sleep(Config.UI_SETTLE) }
+        }
     }
 
     /** The button of a level end (VICTORIA/DERROTA + Continuar/Confirmar) or mode fight result screen. */

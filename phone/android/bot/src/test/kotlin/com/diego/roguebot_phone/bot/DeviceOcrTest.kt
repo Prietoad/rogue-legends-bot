@@ -16,11 +16,11 @@ class DeviceOcrTest {
         val url = javaClass.classLoader!!.getResource("device_ocr.json")
         assumeTrue("no device recording", url != null)
         val device = JSONObject(url!!.readText())
-        val ocr = Fixtures.paddleOcr()
+        val reads = Fixtures.phoneReads(device.keySet())
         val failures = ArrayList<String>()
         for (name in device.keySet().sorted()) {
             val phone = Fixtures.texts(device.getJSONObject(name).getJSONArray("texts"))
-            val pc = ocr.read(Fixtures.fixture(name))
+            val pc = reads.getValue(name)
             val missing = pc.filter { p -> phone.none { it.text == p.text && abs(it.center.x - p.center.x) <= 3 && abs(it.center.y - p.center.y) <= 3 } }
             if (missing.isNotEmpty()) failures.add("$name: ${missing.map { it.text }} vs ${phone.map { it.text }}")
         }

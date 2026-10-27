@@ -102,22 +102,26 @@ class Routine:
                 log.info("Arena: no tickets left")
                 return DONE
             self._press(screen.challenge, lambda texts: parse_arena_opponents(texts) is not None)
-            panel = self._wait_for(lambda img, texts: self._claim_or(texts, parse_arena_opponents), "arena opponent list")
+            panel = self._wait_for(self._arena_panel, "arena opponent list")
             choice = pick_opponent(panel.own_power, panel.opponents)
             if choice is None and panel.free_refresh:
                 log.info("Arena: every opponent is stronger, using the free refresh")
                 self._tap(panel.free_refresh)
                 time.sleep(config.UI_SETTLE)
-                panel = self._wait_for(lambda img, texts: self._claim_or(texts, parse_arena_opponents), "arena opponent list")
+                panel = self._wait_for(self._arena_panel, "arena opponent list")
                 choice = pick_opponent(panel.own_power, panel.opponents)
             if choice is None:
                 if not panel.opponents:
                     self._fail("No arena opponents recognized")
                 choice = min(panel.opponents, key=lambda o: o.power)
-            log.info("Arena: power %d vs %d (%d tickets)", panel.own_power, choice.power, screen.tickets)
+            log.info("Arena: power %d vs %d of %s (%d tickets)", panel.own_power, choice.power,
+                     [o.power for o in panel.opponents], screen.tickets)
             self._tap(choice.challenge)
             self._fight()
         self._fail("Arena did not run out of tickets")
+
+    def _arena_panel(self, img, texts: list[Text]):
+        return self._claim_or(texts, lambda t: parse_arena_opponents(t, img, self.ocr))
 
     def tower(self) -> str:
         """Climb until the first defeat or until no tickets are left. After a win, "Próximo piso" starts

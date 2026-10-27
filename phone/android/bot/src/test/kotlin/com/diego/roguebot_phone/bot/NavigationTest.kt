@@ -142,6 +142,41 @@ class NavigationTest {
 
     private val ad = listOf(t("Install now", 600, 1500, 840, 1550))
 
+    // Lobby labels dimmed under a popup nobody has seen yet (new seasonal events).
+    private val unknownPopup = listOf(t("Gremio", 27, 2160, 154, 2196), t("¡Gran Evento!", 500, 300, 940, 360), t("x800", 325, 588, 437, 634))
+
+    @Test
+    fun goToLobbyTapsOutsideAnUnknownPopup() {
+        L.setLanguage("es")
+        val device = FakeDevice()
+        nav(device, Script.texts(*Array(Config.UNKNOWN_POPUP_PATIENCE) { unknownPopup }, ES_LOBBY)).goToLobby()
+        assertEquals(listOf(Config.POPUP_OUTSIDE_TAP), device.taps)  // once, after UNKNOWN_POPUP_PATIENCE frames
+    }
+
+    @Test
+    fun goToLobbyNeverTapsOutsideOntoAPrice() {
+        L.setLanguage("es")
+        val device = FakeDevice()
+        val popup = unknownPopup + t("\$4,99", 660, 2420, 780, 2480)
+        nav(device, Script.texts(*Array(Config.UNKNOWN_POPUP_PATIENCE) { popup }, ES_LOBBY)).goToLobby()
+        assertEquals(emptyList<P>(), device.taps)
+    }
+
+    @Test
+    fun aPopupOverTheLobbyIsNeverALevel() {
+        L.setLanguage("es")
+        assertTrue(!onBoard(Frame.blank(), unknownPopup + t("Salir", 600, 1770, 840, 1820)))
+    }
+
+    @Test
+    fun closeButtonAnySizeFindsABiggerX() {
+        val big = Templates.closeX.src.scaled(1.5)
+        val img = Frame.blank()
+        for (y in 0 until big.height) System.arraycopy(big.pixels, y * big.width, img.pixels, (1000 + y) * img.width + 600, big.width)
+        assertNull(Screens.closeButton(img))
+        near(P(600 + big.width / 2, 1000 + big.height / 2), Screens.closeButtonAnySize(img)!!)
+    }
+
     @Test
     fun goToLobbyLeavesAnotherAppWithBack() {
         val device = OtherAppDevice(backs = 1)

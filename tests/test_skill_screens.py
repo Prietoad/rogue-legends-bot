@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import cv2
 import pytest
 
 from roguebot import config, labels
@@ -11,14 +10,10 @@ from roguebot.play import Player
 from roguebot.screens import (LevelScreen, classify_level_screen, parse_money, parse_shop, parse_skill_cards,
                               skill_reroll)
 from roguebot.skills import Catalog
-from roguebot.vision import Ocr, Text
+from roguebot.vision import Text
+from conftest import fixture_image
 
 FIXTURES = Path(__file__).parent / "fixtures"
-
-
-@pytest.fixture(scope="module")
-def ocr():
-    return Ocr()
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +24,7 @@ def _reset_language():
 
 def load(ocr, name):
     labels.set_language("en" if name.startswith("en_") else "es")
-    img = cv2.imread(str(FIXTURES / name))
+    img = fixture_image(FIXTURES / name)
     return img, ocr.read(img)
 
 

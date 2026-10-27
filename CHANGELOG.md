@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.0 (2026-10-27)
+- Arena: the bot always fights the closest opponent that is not stronger. Some opponent powers ("3,3m") were misread and that opponent was left out of the choice, so the bot sometimes fought a much weaker one. A misread power is now read again from a close-up of its row. The log lists every opponent's power.
+- Unknown popups over the lobby (new seasonal events, like the autumn "¡Sendero de Ascuas!"): the bot no longer mistakes them for a level, which used to make it tap around the lobby and restart MuMu Player. A popup it doesn't recognize is closed by its ✕ (any size) or by a tap outside it, never inside it (popups have purchase buttons). Its screenshot is saved in `debug/popup_unknown_*.png`.
+
 ## 1.7.0 (2026-10-21)
 - Fortune Teller ("Adivino") in levels: the bot now uses its crystal balls instead of leaving. On each visit it tries the 40% ball once, then the 70% ball up to 3 times, as long as the orbs allow (5 orbs = exactly that), and then leaves. Won skills are claimed.
 

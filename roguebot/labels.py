@@ -53,6 +53,8 @@ START_NORMAL = _l("inicio", "start")                 # exact; also the elite dia
 START_ELITE = _l("listo", "ready")                   # exact
 LOADING = _l("cargando")
 POPUP_CLOSE = _l("para cerrar", "to close")          # "Toca (en cualquier lugar) para cerrar" / "Tap anywhere to close"
+LOBBY_TAB = _l("aventura", "adventure")              # exact; footer tab label, dimmed under lobby popups
+MODES_BUTTON = _l("modos", "modes")                  # exact; lobby bottom-right (OCR often garbles it)
 
 # Star challenge list
 STAR_LIST_TITLE = _l("desafio de", "star challenge")

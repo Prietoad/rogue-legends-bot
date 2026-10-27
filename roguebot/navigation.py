@@ -10,7 +10,8 @@ import cv2
 from roguebot import config, labels
 from roguebot.device import Device
 from roguebot.mode_screens import back_arrow, parse_fight_result
-from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, footer_visible, is_loading, is_star_list,
+from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, close_button_any_size,
+                              footer_visible, is_loading, is_star_list, lobby_behind, outside_tap_clear,
                               parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list, popup_close,
                               resume_prompt, tutorial_hand, update_required)
 from roguebot.vision import Ocr, Text, find, parse_level_number
@@ -140,7 +141,7 @@ class Navigator:
         """A level is on screen: the bot was stopped or restarted mid-level while the game kept running
         (go_to_lobby can't leave a level board)."""
         img, texts = self._capture()
-        return classify_level_screen(img, texts).kind in IN_LEVEL
+        return classify_level_screen(img, texts).kind in IN_LEVEL and not lobby_behind(texts)
 
     def wait_for_lobby(self, timeout: float) -> Lobby:
         """Just after opening the game (splash, loading, login popups): retry until the lobby shows."""
@@ -221,6 +222,7 @@ class Navigator:
 
     def go_to_lobby(self) -> Lobby:
         hand_taps = 0
+        unknown = 0  # frames in a row on a popup over the lobby that nothing below recognized
         for _ in range(MAX_LOBBY_ATTEMPTS + config.TUTORIAL_MAX_STEPS):
             img, texts = self._capture()
             hand = tutorial_hand(img) if hand_taps < config.TUTORIAL_MAX_STEPS else None
@@ -270,9 +272,30 @@ class Navigator:
             elif footer_visible(img):
                 log.info("Not in Aventura lobby, tapping footer tab")
                 self.device.tap(*config.AVENTURA_TAB)
+            elif lobby_behind(texts):  # a popup we don't know (new seasonal events): improvise after a few frames
+                unknown += 1
+                if unknown >= config.UNKNOWN_POPUP_PATIENCE:  # its "para cerrar" text may blink: give it time first
+                    self._improvise_close(img, texts)
+                    unknown = 0
+                else:
+                    time.sleep(config.UI_SETTLE)
             elif not self._leave_other_app():  # loading, animation or a screen we don't know: wait, never guess
                 time.sleep(config.UI_SETTLE)
         self._fail("Could not reach the Aventura lobby", img)
+
+    def _improvise_close(self, img, texts: list[Text]) -> None:
+        """An unknown popup over the lobby: its ✕ at another size, else a tap outside it (the dimmed
+        footer), never inside it (popups hold purchase buttons). The frame is saved to add it later."""
+        path = self._save(img, "popup_unknown")
+        if close_x := close_button_any_size(img):
+            log.info("Unknown popup: closing its ✕ (screenshot: %s)", path)
+            self.device.tap(*close_x)
+        elif outside_tap_clear(texts):
+            log.info("Unknown popup: tapping outside it (screenshot: %s)", path)
+            self.device.tap(*config.POPUP_OUTSIDE_TAP)
+        else:
+            log.info("Unknown popup with text where the bot would tap outside it: waiting (screenshot: %s)", path)
+            time.sleep(config.UI_SETTLE)
 
     @staticmethod
     def _end_button(img, texts: list[Text]) -> tuple[int, int] | None:
@@ -285,6 +308,8 @@ class Navigator:
 
     @staticmethod
     def _on_board(img, texts: list[Text]) -> bool:
+        if lobby_behind(texts):  # a popup over the lobby, whatever it looks like
+            return False
         kind = classify_level_screen(img, texts).kind
         if kind is LevelScreen.SKILL_PICK:  # a level's level-up pick, not the dojo/raid skill step
             return find(texts, labels.LEARN_SKILLS) is None

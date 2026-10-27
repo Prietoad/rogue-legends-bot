@@ -43,6 +43,8 @@ class ParityTest {
             "tutorial_hand" to p(Screens.tutorialHand(img)),
             "footer_visible" to Screens.footerVisible(img),
             "popup_close" to text(Screens.popupClose(texts)),
+            "lobby_behind" to Screens.lobbyBehind(texts),
+            "outside_tap_clear" to (if (Screens.lobbyBehind(texts)) Screens.outsideTapClear(texts) else JSONObject.NULL),  // only used then
             "classify_level_screen" to Screens.classifyLevelScreen(img, texts).let { obj("kind" to it.kind.value, "tap" to p(it.tap)) },
             "game_speed" to (Screens.gameSpeed(texts) ?: JSONObject.NULL),
             "dice_ready" to Screens.diceReady(img),
@@ -72,7 +74,7 @@ class ParityTest {
             },
             "is_modes_list" to ModeScreens.isModesList(texts),
             "parse_arena" to nul(ModeScreens.parseArena(img, texts, ocr)) { obj("challenge" to text(it.challenge), "tickets" to it.tickets) },
-            "parse_arena_opponents" to nul(ModeScreens.parseArenaOpponents(texts)) {
+            "parse_arena_opponents" to nul(ModeScreens.parseArenaOpponents(texts, img, ocr)) {
                 obj("own_power" to it.ownPower, "opponents" to JSONArray(it.opponents.map { o -> obj("power" to o.power, "challenge" to text(o.challenge)) }),
                     "free_refresh" to text(it.freeRefresh))
             },

@@ -65,8 +65,8 @@ def match_template(img: np.ndarray, template: np.ndarray, threshold: float) -> t
 
 
 class Ocr:
-    def __init__(self):
-        self._engine = RapidOCR(params={"Global.log_level": "error"})
+    def __init__(self, threads: int = -1):  # -1: onnxruntime's default (every core); tests in parallel share them
+        self._engine = RapidOCR(params={"Global.log_level": "error", "EngineConfig.onnxruntime.intra_op_num_threads": threads})
 
     def read(self, img: np.ndarray, region: tuple[int, int, int, int] | None = None) -> list[Text]:
         """OCR the image, or only region=(x1, y1, x2, y2). Coordinates are always full-frame."""
