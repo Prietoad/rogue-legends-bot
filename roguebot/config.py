@@ -27,7 +27,9 @@ TUTORIAL_TAP_OFFSET = (24, 215)  # from the hand template center to its target r
 TUTORIAL_MAX_STEPS = 8           # hand taps per go_to_lobby (a tutorial chains several steps)
 CLOSE_X_MIN_SCORE = 0.9      # template score: ≥0.998 on popups with ✕, ≤0.61 elsewhere
 CLOSE_X_SCALES = (0.6, 0.75, 1.25, 1.5, 1.75)  # unknown popups: the ✕ at other sizes
-UNKNOWN_POPUP_PATIENCE = 3   # go_to_lobby frames on an unknown popup over the lobby before improvising
+MATCH_SHRINK = 4             # template matching searches at 1/4 size first, then scores at full size
+MATCH_PEAKS = 3              # coarse spots scored again at full size
+UNKNOWN_POPUP_PATIENCE = 3  # go_to_lobby frames on an unknown popup over the lobby before improvising
 POPUP_OUTSIDE_TAP = (720, 2453)  # outside any popup: the dimmed footer's Aventura tab (also the seasonal popups' ✕)
 OUTSIDE_TAP_CLEARANCE = 60   # px around it that must hold no popup text
 FOOTER_Y = (2380, 2440)
@@ -111,6 +113,7 @@ CHANGE_TIMEOUT = 5                       # seconds to see a tap's effect before 
 
 # Timing (seconds)
 POLL_INTERVAL = 0.3          # between captures while waiting (one capture + OCR already takes ~0.9 s)
+OCR_THREADS = 4              # every core (-1) took 1.95 s CPU per OCR for 0.43 s; 4 threads 1.48 s for 0.49 s
 UNKNOWN_SCREEN_TIMEOUT = 20              # unrecognized for this long -> stop and save a screenshot
 UI_SETTLE = 0.7              # after taps; every step re-reads the screen, so this only spares a wasted capture
 SCROLL_SETTLE = 0.8          # after a list swipe (the star list also waits for the target card to stop moving)

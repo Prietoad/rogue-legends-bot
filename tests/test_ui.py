@@ -296,3 +296,11 @@ def test_invalid_saved_options_keep_the_defaults(app):
     before = app.options()
     app._restore_options({"mode": "hard", "source": 3, "level": "-1", "full": "yes", "damage_order": ["fire"]})
     assert app.options() == before
+
+
+def test_log_view_keeps_only_the_last_lines(app, monkeypatch):
+    monkeypatch.setattr("roguebot.ui.LOG_VIEW_LINES", 5)
+    for i in range(20):
+        app._append(f"line {i}")
+    lines = app.log_view.get("1.0", "end-1c").splitlines()
+    assert len(lines) <= 5 and lines[-1] == "line 19"

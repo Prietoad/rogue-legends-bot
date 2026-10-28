@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.0 (2026-10-28)
+- Uses far less CPU: about 1.5 cores on average while running instead of 2.6–3.8 (−60% to −65% CPU per screen read), at the same speed in levels and ~35% faster when going back to the lobby and in the full routine. The text reader no longer keeps the processor busy while it waits, uses at most 4 cores, and no longer runs a step that turned short texts upside down, so it now reads texts like "x1", "x5", "Modos" or "3,3m" correctly. Finding the ✕, back arrow and tutorial hand on screen is ~15 times faster.
+- Uses far less memory: ~120 MB committed instead of ~600 MB. Most of it was reserved at startup by a math library the bot doesn't need, once per processor core.
+- The log in the window keeps the last 2000 lines (it grew without limit over days of running; `debug/bot.log` still keeps everything).
+
 ## 1.8.0 (2026-10-27)
 - Arena: the bot always fights the closest opponent that is not stronger. Some opponent powers ("3,3m") were misread and that opponent was left out of the choice, so the bot sometimes fought a much weaker one. A misread power is now read again from a close-up of its row. The log lists every opponent's power.
 - Unknown popups over the lobby (new seasonal events, like the autumn "¡Sendero de Ascuas!"): the bot no longer mistakes them for a level, which used to make it tap around the lobby and restart MuMu Player. A popup it doesn't recognize is closed by its ✕ (any size) or by a tap outside it, never inside it (popups have purchase buttons). Its screenshot is saved in `debug/popup_unknown_*.png`.

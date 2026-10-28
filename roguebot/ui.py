@@ -21,6 +21,7 @@ log = logging.getLogger("roguebot")
 ICON = Path(__file__).parent / "assets" / "icon.png"
 CHANGELOG = Path(__file__).parent.parent / "CHANGELOG.md"  # the exe bundles it at its root
 ICON_HEADER_SHRINK = 3  # 192 px icon -> 64 px in the header
+LOG_VIEW_LINES = 2000   # lines kept in the window's log
 
 
 class _QueueHandler(logging.Handler):
@@ -341,5 +342,6 @@ class App:
     def _append(self, line: str) -> None:
         self.log_view.configure(state="normal")
         self.log_view.insert("end", line + "\n")
+        self.log_view.delete("1.0", f"end-{LOG_VIEW_LINES}l")  # days of running grew it ~19 MB (debug/bot.log keeps all)
         self.log_view.see("end")
         self.log_view.configure(state="disabled")
