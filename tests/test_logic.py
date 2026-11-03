@@ -583,6 +583,22 @@ EN_LOBBY = [Text("Patrol", 650, 1900, 790, 1945), Text("OFF", 900, 2060, 970, 20
             Text("START", 600, 2070, 716, 2115), Text("Challenge", 840, 1910, 960, 1945)]
 
 
+def test_go_to_lobby_claims_english_daily_rewards_or_closes_it(monkeypatch):
+    from roguebot import navigation
+    popup = [Text("Daily Rewards", 420, 700, 1020, 760), Text("Claim Rewards", 500, 1100, 940, 1180),
+             Text("Enter Code", 470, 1300, 970, 1380)]
+    nav = _resume_nav(monkeypatch, [popup, popup, EN_LOBBY])
+    monkeypatch.setattr(navigation, "close_button", lambda img: (720, 1600))
+    labels.set_language("en")
+    try:
+        nav.go_to_lobby()
+    finally:
+        labels.set_language(None)
+    assert nav.device.taps[0] == (720, 1140)  # Claim Rewards
+    assert (720, 1340) not in nav.device.taps  # Enter Code
+    assert (720, 1600) in nav.device.taps  # popup stayed: the ✕
+
+
 def test_go_to_lobby_resumes_an_interrupted_level(monkeypatch):
     nav = _resume_nav(monkeypatch, [RESUME, EN_LOBBY])
     played = []
@@ -815,7 +831,28 @@ def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.10.0"
+    assert roguebot.__version__ == "1.11.0"
+
+
+def test_next_farm_level_advances_on_a_win_and_falls_back_on_a_loss():
+    from roguebot.__main__ import next_farm_level
+    assert next_farm_level(79, won=True, lobby_level=80, replaying=None) is None  # new unlock, lobby start
+    assert next_farm_level(80, won=False, lobby_level=80, replaying=None) == 79  # fail 80 → run 79
+    assert next_farm_level(38, won=False, lobby_level=80, replaying=None) == 79  # stale low read
+    assert next_farm_level(79, won=False, lobby_level=80, replaying=79) == 79  # already on the fallback
+    assert next_farm_level(79, won=True, lobby_level=80, replaying=79) is None  # win the fallback, try 80
+    assert next_farm_level(1, won=False, lobby_level=1, replaying=None) is None
+
+
+def test_refresh_keeps_coins_for_a_wanted_skill():
+    from roguebot.play import refresh_leaves_a_buy
+    assert refresh_leaves_a_buy(55, 10, [48]) is False  # 45 left cannot buy the 48 already affordable
+    assert refresh_leaves_a_buy(100, 10, [95]) is False  # 90 left cannot buy the 95
+    assert refresh_leaves_a_buy(120, 10, [95]) is True  # 110 still buys it (the caller buys first anyway)
+    assert refresh_leaves_a_buy(100, 10, [190]) is True  # 190 is not affordable; 90 can buy a cheap roll
+    assert refresh_leaves_a_buy(50, 10, []) is False  # 40 left is under the cheap-skill floor
+    assert refresh_leaves_a_buy(100, 10, []) is True
+    assert refresh_leaves_a_buy(20, 0, []) is True  # free refresh
 
 
 def test_elite_spend_uses_the_chosen_tier_or_the_next_lower_one():
@@ -874,6 +911,55 @@ def test_wise_monk_second_spin_is_taken_when_the_button_returns(monkeypatch):
         assert player._monk_spins == 2
         leave = [banner, Text("Leave", 600, 2240, 840, 2320)]
         assert player._monk_tap(leave) == (720, 2280)
+    finally:
+        labels.set_language(None)
+
+
+def test_wise_monk_claims_the_reward_after_each_spin(monkeypatch):
+    """Each spin ends on "Tap anywhere to claim". Dismiss it, spin again, dismiss, then leave."""
+    from roguebot import play
+    clock = [0.0]
+    monkeypatch.setattr(play.time, "monotonic", lambda: clock[0])
+    player = play.Player(None, None)
+    labels.set_language("en")
+    banner = Text("Wise Monk", 400, 180, 900, 240)
+    spin = [banner, Text("SPIN", 600, 2240, 840, 2320)]
+    claim = [banner, Text("You Received", 400, 900, 1040, 980),
+             Text("Tap anywhere to claim", 360, 2400, 1080, 2460)]
+    leave = [banner, Text("Leave", 600, 2240, 840, 2320)]
+    try:
+        assert player._monk_tap(spin) == (720, 2280)
+        assert player._monk_tap(claim) == (720, 2430) and player._monk_spins == 1
+        assert player._monk_tap(spin) == (720, 2280)
+        assert player._monk_tap(claim) == (720, 2430) and player._monk_spins == 2
+        assert player._monk_tap(leave) == (720, 2280)
+    finally:
+        labels.set_language(None)
+
+
+def test_wise_monk_claim_without_the_footer_text_taps_the_center(monkeypatch):
+    from roguebot import play
+    player = play.Player(None, None)
+    labels.set_language("en")
+    banner = Text("Wise Monk", 400, 180, 900, 240)
+    try:
+        player._monk_armed = 0.0
+        got = player._monk_tap([banner, Text("You Received", 400, 900, 1040, 980)])
+        assert got == (config.SCREEN_SIZE[0] // 2, config.SCREEN_SIZE[1] // 2)
+        assert player._monk_spins == 1
+    finally:
+        labels.set_language(None)
+
+
+def test_wise_monk_spanish_claim_is_tapped(monkeypatch):
+    from roguebot import play
+    player = play.Player(None, None)
+    labels.set_language("es")
+    banner = Text("Monje Sabio", 400, 180, 900, 240)
+    claim = [banner, Text("Toca en cualquier lugar para reclamar", 300, 2400, 1140, 2460)]
+    try:
+        player._monk_armed = 0.0
+        assert player._monk_tap(claim) == (720, 2430)
     finally:
         labels.set_language(None)
 

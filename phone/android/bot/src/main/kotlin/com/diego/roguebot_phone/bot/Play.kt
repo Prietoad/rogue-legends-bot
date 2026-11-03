@@ -6,7 +6,17 @@ import kotlin.math.abs
 
 class PlayError(msg: String) : RuntimeException(msg)
 
-const val MAX_SHOP_STEPS = 8
+const val MAX_SHOP_STEPS = 16
+
+/** True when paying `cost` still leaves a wanted skill buyable. A free refresh always passes. */
+fun refreshLeavesABuy(money: Int, cost: Int, wantedCosts: List<Int>, floor: Int = Config.SHOP_SKILL_FLOOR): Boolean {
+    if (cost <= 0) return money >= 0
+    if (money < cost) return false
+    val after = money - cost
+    val affordable = wantedCosts.filter { it <= money }
+    if (affordable.isNotEmpty()) return after >= affordable.min()
+    return after >= floor
+}
 
 /** Same screen kind and (nearly) the same point: OCR jitters text centers by a few pixels. */
 fun sameTap(a: Pair<LevelScreen, P>, b: Pair<LevelScreen, P>?): Boolean =
@@ -180,8 +190,25 @@ class Player(
         return Config.FORTUNE_TELLER_BACK
     }
 
-    /** Wise Monk: spin twice, then leave. HP is never a reason to stop early. */
+    /** The reward overlay after a spin ("Tap anywhere to claim" / "You Received"). */
+    private fun monkClaim(texts: List<Text>): P? {
+        find(texts, L.TAP_TO_CLAIM)?.let { return it.center }
+        if (find(texts, L.MONK_REWARD) != null) return P(Config.SCREEN_W / 2, Config.SCREEN_H / 2)
+        return null
+    }
+
+    /** Wise Monk: spin twice, claim each reward, then leave. HP is never a reason to stop early. */
     private fun monkTap(texts: List<Text>): P? {
+        monkClaim(texts)?.let { claim ->
+            if (monkArmed != null) {
+                monkSpins += 1
+                monkArmed = null
+                Log.info("Wise Monk: spin $monkSpins/${Config.MONK_SPINS} done")
+            }
+            monkLeaveSince = null
+            Log.info("Wise Monk: claiming the reward")
+            return claim
+        }
         var spin = find(texts, L.MONK_SPIN, exact = true)
         if (spin != null && spin.center.y <= Config.MONK_SPIN_MIN_Y) spin = null
         val leave = find(texts, L.LEAVE, exact = true)
@@ -223,32 +250,59 @@ class Player(
         return null
     }
 
-    /** Free reroll if nothing is wanted, then buy in the build's order whatever the coins allow. */
+    /** Buy wanted skills the coins can pay, refreshing while a refresh still leaves a wanted buy. */
     internal fun shop(texts0: List<Text>) {
         var texts = texts0
-        var rerolledShop = false
+        var freeUsed = false
         val tapped = HashSet<String>()
         repeat(MAX_SHOP_STEPS) {
             val shop = Screens.parseShop(texts) ?: return
             val money = shop.money ?: return
             val cards = shop.cards.filter { !it.sold && it.cost != null && it.name !in tapped }
             val skills = cards.map(::skill)
-            val order = Choice.shopOrder(skills, build, state, canReroll = shop.freeReroll != null && !rerolledShop, fill = false)
-            if (order == null) {
-                Log.info("Shop: no preferred skill in ${skills.map { it.name }}, free reroll")
-                device.tap(shop.freeReroll!!.center)
-                rerolledShop = true
-            } else if (order.isEmpty()) {
-                return  // nothing of the build, and the reroll is not free
+            val preferred = Choice.shopOrder(skills, build, state, canReroll = true, fill = false)
+            if (preferred != null && preferred.isNotEmpty()) {
+                val affordable = preferred.filter { cards[it].cost!! <= money }
+                if (affordable.isNotEmpty()) buy(shop, cards, skills, affordable[0], tapped)
+                else if (!refreshShop(shop, preferred.map { cards[it].cost!! }, freeUsed)) return
+                else freeUsed = freeUsed || shop.freeReroll != null
+            } else if (refreshShop(shop, emptyList(), freeUsed)) {
+                freeUsed = freeUsed || shop.freeReroll != null
             } else {
-                val i = order.firstOrNull { cards[it].cost!! <= money } ?: return
-                Log.info("Shop: buying ${skills[i].name} for ${cards[i].cost} (coins $money)")
-                device.tap(cards[i].price!!.center)
-                tapped.add(cards[i].name)
-                state.take(skills[i])
+                val fallback = Choice.shopOrder(skills, build, state, canReroll = false, fill = false) ?: emptyList()
+                val affordable = fallback.filter { cards[it].cost!! <= money }
+                if (affordable.isEmpty()) return
+                buy(shop, cards, skills, affordable[0], tapped)
             }
             texts = ocr.read(device.screenshot())
         }
+    }
+
+    private fun buy(shop: Screens.Shop, cards: List<Screens.SkillCard>, skills: List<Skill>, i: Int, tapped: MutableSet<String>) {
+        Log.info("Shop: buying ${skills[i].name} for ${cards[i].cost} (coins ${shop.money})")
+        device.tap(cards[i].price!!.center)
+        tapped.add(cards[i].name)
+        state.take(skills[i])
+    }
+
+    private fun refreshShop(shop: Screens.Shop, wantedCosts: List<Int>, freeUsed: Boolean): Boolean {
+        val free = shop.freeReroll
+        if (free != null && !freeUsed) {
+            Log.info("Shop: no affordable wanted skill, free refresh")
+            device.tap(free.center)
+            return true
+        }
+        val cost = shop.rerollCost
+        val money = shop.money
+        val button = shop.reroll
+        if (button == null || cost == null || money == null) return false
+        if (!refreshLeavesABuy(money, cost, wantedCosts)) {
+            Log.info("Shop: refresh ($cost) would leave too few coins (have $money)")
+            return false
+        }
+        Log.info("Shop: refresh for $cost (coins $money)")
+        device.tap(button.center)
+        return true
     }
 
     /** Switch the game to x2 speed when it shows x1. Returns true if it tapped. */

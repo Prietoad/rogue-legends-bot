@@ -147,19 +147,23 @@ def test_repeat_until_out_of_energy_claims_free_energy_first(monkeypatch):
     assert report.results == [V, D, V] and report.repeat
 
 
-def test_repeat_latest_pins_level_after_victory(monkeypatch):
-    nav = FakeNav(energy=15)
+def test_last_unlocked_win_advances_and_a_loss_falls_back(monkeypatch):
+    """Win the frontier, keep playing it (the lobby start). Lose it, farm the previous level.
+    Win that fallback and the frontier is tried again. Normal and elite share the rule."""
+    nav = FakeNav(energy=15, latest=13)
     run_with(monkeypatch, nav, [D, V, V], RunRequest(Mode.NORMAL, None, repeat=True))
-    # Defeat: still the latest level. Victory unlocks 14, so replay 13 from Desafío de Estrellas.
-    assert nav.started == ["detect", ("latest", 13), ("latest", 13), ("stars", 13)]
+    assert nav.started == ["detect", ("latest", 13), ("stars", 12), ("latest", 13)]
+    elite = FakeNav(energy=20, latest=80)
+    run_with(monkeypatch, elite, [V, D, V, V], RunRequest(Mode.ELITE, None, repeat=True))
+    assert elite.started == ["detect", ("latest", 80), ("latest", 80), ("stars", 79), ("latest", 80)]
 
 
-def test_repeat_latest_pin_follows_the_lobby_when_the_start_read_was_low(monkeypatch):
-    """A stale "38" at the start must not stick when the lobby after the win shows ~77."""
+def test_last_unlocked_loss_uses_the_lobby_when_the_start_read_was_low(monkeypatch):
+    """A stale "38" at the start must not stick when the lobby after the loss shows 80."""
     nav = FakeNav(energy=10, latest=38)
-    nav.go_to_lobby = lambda: FakeLobby(nav.energy, "77. High End")
-    run_with(monkeypatch, nav, [V, V], RunRequest(Mode.NORMAL, None, repeat=True))
-    assert nav.started == ["detect", ("latest", 38), ("stars", 76)]
+    nav.go_to_lobby = lambda: FakeLobby(nav.energy, "80. High End")
+    run_with(monkeypatch, nav, [D, V], RunRequest(Mode.NORMAL, None, repeat=True))
+    assert nav.started == ["detect", ("latest", 38), ("stars", 79)]
 
 
 def test_repeat_without_any_energy_is_an_error(monkeypatch):
@@ -584,8 +588,7 @@ def test_missing_elite_mode_stops_without_restarting(monkeypatch):
 
 
 def test_without_star_challenge_a_won_level_is_not_pinned(monkeypatch):
-    """Review: "last unlocked" + repeat pins the won level and replays it from the star list, which this
-    account doesn't have: fall back to the last unlocked level and stop trying the star list."""
+    """A win of the last unlocked level starts the new one from the lobby, not the star list."""
     class Nav(FakeNav):
         def start_star_challenge(self, mode, level):
             self.started.append(("stars?", level))
@@ -593,7 +596,19 @@ def test_without_star_challenge_a_won_level_is_not_pinned(monkeypatch):
     nav = Nav(energy=15)
     report = run_with(monkeypatch, nav, [V, V, V], RunRequest(Mode.NORMAL, None, repeat=True))
     assert report.results == [V, V, V]
-    assert nav.started == ["detect", ("latest", 13), ("stars?", 13), ("latest", 13), ("latest", 13)]
+    assert nav.started == ["detect", ("latest", 13), ("latest", 13), ("latest", 13)]
+
+
+def test_without_star_challenge_a_loss_retries_the_frontier(monkeypatch):
+    """No star list: the fallback level can't be opened, so the frontier is played again."""
+    class Nav(FakeNav):
+        def start_star_challenge(self, mode, level):
+            self.started.append(("stars?", level))
+            raise main.StarsUnavailable("Desafio de Estrellas is not unlocked on this account")
+    nav = Nav(energy=15)
+    report = run_with(monkeypatch, nav, [D, V, V], RunRequest(Mode.NORMAL, None, repeat=True))
+    assert report.results == [D, V, V]
+    assert nav.started == ["detect", ("latest", 13), ("stars?", 12), ("latest", 13), ("latest", 13)]
 
 
 def test_failed_patrol_is_retried_much_later(monkeypatch):

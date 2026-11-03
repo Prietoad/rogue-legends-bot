@@ -457,14 +457,17 @@ object Screens {
         return texts.firstOrNull { it.norm.isDigits() && it.center.x in r.x1..r.x2 && it.center.y in r.y1..r.y2 }?.norm?.toInt()
     }
 
-    data class Shop(val money: Int?, val cards: List<SkillCard>, val freeReroll: Text?, val exit: Text)
+    data class Shop(val money: Int?, val cards: List<SkillCard>, val freeReroll: Text?, val exit: Text,
+        val rerollCost: Int? = null, val reroll: Text? = null)
 
     fun parseShop(texts: List<Text>): Shop? {
         val leave = find(texts, L.LEAVE, exact = true)
         val reroll = find(texts, L.SHOP_REROLL)
         if (leave == null || reroll == null || find(texts, L.BLACK_MARKET) != null) return null
-        val free = if (below(reroll, texts).any { matches(it, L.FREE, exact = true) }) reroll else null
-        return Shop(parseMoney(texts), parseSkillCards(texts), free, leave)
+        val under = below(reroll, texts)
+        val free = if (under.any { matches(it, L.FREE, exact = true) }) reroll else null
+        val cost = if (free != null) null else under.firstOrNull { it.norm.isDigits() }?.norm?.toInt()
+        return Shop(parseMoney(texts), parseSkillCards(texts), free, leave, cost, reroll)
     }
 
     /** "Adivino": orbs left and each ball's buy button by its chance (100, 70, 40). */

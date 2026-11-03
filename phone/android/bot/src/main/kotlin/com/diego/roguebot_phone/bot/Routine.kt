@@ -222,11 +222,17 @@ open class Routine(
     open fun daily(): String {
         if (!openMenu(L.MENU_DAILY)) return Parts.SKIPPED
         try {
-            tap(waitFor("daily rewards popup") { _, texts -> ModeScreens.dailyClaim(texts) })
+            val texts = waitFor("daily rewards popup") { _, t -> if (find(t, L.DAILY_TITLE) != null) t else null }
+            val claim = ModeScreens.dailyClaim(texts)
+            if (claim == null) {
+                Log.info("Daily rewards: claim unavailable; closing the popup")
+                return Parts.DONE
+            }
+            tap(claim)
             try {
-                val claim = waitFor("daily reward web page") { _, texts -> find(texts, L.DAILY_WEB_CLAIM) }
+                val web = waitFor("daily reward web page") { _, t -> find(t, L.DAILY_WEB_CLAIM) }
                 Log.info("Daily rewards: claiming on the web page")
-                tap(claim)
+                tap(web)
                 clock.sleep(Config.VIDEO_SETTLE)
             } catch (e: NavigationError) {
                 Log.info("Daily rewards: web claim not shown; closing the popup")
@@ -446,7 +452,7 @@ open class Routine(
         repeat(6) {
             val (img, texts) = capture()
             if (find(texts, title) == null) return
-            val close = Screens.closeButton(img)
+            val close = Screens.closeButton(img) ?: Screens.closeButtonAnySize(img)
             if (close != null) {
                 Log.info("Closing ${title.variants.firstOrNull() ?: "popup"}")
                 device.tap(close)

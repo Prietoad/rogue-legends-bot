@@ -91,6 +91,7 @@ object L {
     val FORTUNE_TELLER = l("adivino", "fortune teller")
     val MONK = l("monje sabio", "wise monk")
     val MONK_SPIN = l("girar", "spin")  // exact; not "girar!" (lucky wheel)
+    val MONK_REWARD = l(en = "you received")  // claim overlay banner. Spanish not seen.
     val FIGHT_SKIP = l(en = "skip")     // exact; green fight button. Spanish not seen.
     val FIGHT_ROUND = l("ronda", "round")
     val REVIVE_PROMPT = l("revivir ahora", "revive")
@@ -121,6 +122,7 @@ object L {
     val MENU_MAIL = l("correo", "mail")
     val DAILY_TITLE = l("recompensas diarias", "daily rewards")
     val DAILY_CLAIM = l("reclamar", "claim")
+    val DAILY_CLAIM_REWARDS = l(en = "claim reward")  // "Claim Rewards"; not "Enter Code"
     val DAILY_WEB_CLAIM = l("reclamar ahora", "claim now")
     val MAIL_TITLE = l("correo", "mail")
     val VIP_CARDS = l(listOf("tarjetas vip", "tarjetas", "vip"), listOf("vip cards", "cards", "vip"))

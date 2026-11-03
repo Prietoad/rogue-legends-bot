@@ -527,6 +527,39 @@ def test_daily_rewards_closes_the_popup_when_the_browser_never_opens(monkeypatch
     assert (989, 1415) not in r.device.taps
 
 
+EN_MENU = [Text("Patrol", 650, 1900, 790, 1945), Text("Mail", 336, 449, 461, 498),
+           Text("Daily Rewards", 180, 1040, 520, 1100)]
+EN_DAILY = [Text("Daily Rewards", 420, 880, 1020, 935), Text("Claim Rewards", 500, 1138, 940, 1218),
+            Text("Enter Code", 470, 1360, 970, 1430)]
+EN_WEB = [Text("roguelegend.io", 220, 130, 390, 170), Text("Claim Now", 824, 1392, 1154, 1438)]
+
+
+def test_english_daily_rewards_taps_claim_rewards_not_enter_code(monkeypatch):
+    labels.set_language("en")
+    monkeypatch.setattr(routine.config, "VIDEO_SETTLE", 0)
+    lobby = [Text("Patrol", 650, 1900, 790, 1945), Text("OFF", 900, 2060, 970, 2095),
+             Text("START", 600, 2070, 716, 2115)]
+    r = make([lobby, EN_MENU, EN_DAILY, EN_WEB, EN_WEB])
+    r.device.apps = ["com.android.chromium", "com.android.chromium"]
+    assert r.daily() == routine.DONE
+    assert (720, 1178) in r.device.taps  # Claim Rewards
+    assert (720, 1395) not in r.device.taps  # Enter Code
+    assert (989, 1415) in r.device.taps  # Claim Now on the web page
+
+
+def test_daily_rewards_without_a_claim_button_is_closed(monkeypatch):
+    labels.set_language("en")
+    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
+    monkeypatch.setattr(routine, "close_button", lambda img: (720, 1600))
+    no_claim = [Text("Daily Rewards", 420, 880, 1020, 935), Text("Enter Code", 470, 1360, 970, 1430)]
+    lobby = [Text("Patrol", 650, 1900, 790, 1945), Text("OFF", 900, 2060, 970, 2095),
+             Text("START", 600, 2070, 716, 2115)]
+    r = make(itertools.chain([lobby, EN_MENU], itertools.repeat(no_claim)))
+    assert r.daily() == routine.DONE
+    assert (720, 1395) not in r.device.taps
+    assert r.device.taps.count((720, 1600)) >= 1
+
+
 def test_menu_entry_missing_skips_the_part(monkeypatch):
     labels.set_language("es")
     r = make([ES_LOBBY, ES_MENU[:-2]])  # menu without "Recompensas Diarias"

@@ -118,6 +118,7 @@ SHOP_PRICE_MIN_X = 1080                  # shop card price buttons (and "SALE!")
 SKILL_NAME_BELOW_TAG = (-10, 70)         # the name line sits right of the rarity tag, this far below its center
 SKILL_CARD_HEIGHT = 330                  # band of the last card (others end at the next card's tag)
 REROLL_COUNT_BELOW = 110                 # skill pick "(1)" / shop "FREE" sit this far below their button
+SHOP_SKILL_FLOOR = 48                    # cheapest skill price seen in a shop; a paid refresh must leave at least this
 MONEY_REGION = (0, 140, 320, 210)        # in-level coins counter, top-left
 DUEL_STAND_AT = 15                       # dice duel: stop rolling at this score
 SAME_TAP_TOLERANCE = 25                  # taps this close on the same screen kind count as repeats

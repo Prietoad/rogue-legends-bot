@@ -58,6 +58,7 @@ open class Navigator(
     val eliteCost: Int = Config.ELITE_COST_DEFAULT,
 ) {
     var resumeLevel: (() -> Any)? = null  // plays an interrupted run to its end
+    private var dailyClaimTapped = false  // one Claim Rewards attempt per run; a popup that stays is closed
 
     // --- public API ---
 
@@ -253,12 +254,25 @@ open class Navigator(
             // Quick Patrol is a sheet over the Patrol menu. Both draw an ✕; the menu's is dimmed and
             // does not receive the tap.
             val sheet = ModeScreens.quickPatrolClose(c.first, texts)
+            val claim = ModeScreens.dailyClaim(texts)
             when {
                 Screens.isLoading(texts) -> clock.sleep(Config.UI_SETTLE)
                 sheet != null -> { Log.info("Closing Quick Patrol"); device.tap(sheet) }
                 ModeScreens.quickPatrolOpen(texts) -> {
                     Log.info("Quick Patrol is open; not closing the Patrol menu under it")
                     clock.sleep(Config.UI_SETTLE)
+                }
+                claim != null && !dailyClaimTapped -> {
+                    Log.info("Daily rewards: tapping Claim Rewards")
+                    dailyClaimTapped = true
+                    tapText(claim)
+                }
+                find(texts, L.DAILY_TITLE) != null && (dailyClaimTapped || claim == null) -> {
+                    val close = closeX ?: Screens.closeButtonAnySize(c.first)
+                    if (close != null) {
+                        Log.info("Closing Daily Rewards")
+                        device.tap(close)
+                    } else clock.sleep(Config.UI_SETTLE)
                 }
                 closeText != null -> { Log.info("Closing popup"); tapText(closeText) }
                 closeX != null -> { Log.info("Closing popup (✕)"); device.tap(closeX!!) }

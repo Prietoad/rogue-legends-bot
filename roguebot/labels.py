@@ -109,6 +109,7 @@ CAMPFIRE_TRAIN = _l("entrenar")          # exact; campfire book ("Mejora 1 Habil
 FORTUNE_TELLER = _l("adivino", "fortune teller")             # balls that may give a skill, paid with run orbs
 MONK = _l("monje sabio", "wise monk")                        # wheel banner, seen in both languages
 MONK_SPIN = _l("girar", "spin")                              # exact; second spin of that wheel. Not "girar!" (lucky wheel)
+MONK_REWARD = _l(en="you received")                          # yellow banner on the spin's claim overlay. Spanish not seen.
 FIGHT_SKIP = _l(en="skip")                                   # exact; green button on arena/tower fights. Spanish not seen.
 FIGHT_ROUND = _l("ronda", "round")                   # "Ronda 3/30" / "Round 4/30"
 REVIVE_PROMPT = _l("revivir ahora", "revive")        # "¡Revivir ahora!" on death, 10 s countdown (English guessed)
@@ -139,6 +140,7 @@ MENU_DAILY = _l(("diarias", "recompensas diarias"), ("daily", "daily rewards")) 
 MENU_MAIL = _l("correo", "mail")                     # exact; top-left menu; en (?)
 DAILY_TITLE = _l("recompensas diarias", "daily rewards")  # daily rewards popup; en (?)
 DAILY_CLAIM = _l("reclamar", "claim")                # exact; daily rewards popup: opens the game's web store
+DAILY_CLAIM_REWARDS = _l(en="claim reward")          # "Claim Rewards" on the English popup (not "Enter Code")
 DAILY_WEB_CLAIM = _l("reclamar ahora", "claim now")  # web store page (browser) "Reclamar ahora!"; en (?)
 MAIL_TITLE = _l("correo", "mail")                    # exact; mail popup title; en (?)
 VIP_CARDS = _l(("tarjetas vip", "tarjetas", "vip"), ("vip cards", "cards", "vip"))  # exact; lobby left column icon; OCR splits it ("Tarjetas / VIP", "VIP / Cards") and garbles "VIP" in English ("VIPS", "LVIP")

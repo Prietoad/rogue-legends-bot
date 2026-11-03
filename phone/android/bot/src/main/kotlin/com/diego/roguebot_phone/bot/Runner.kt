@@ -61,10 +61,15 @@ fun levelInProgress(img: Frame, texts: List<Text>): Boolean = Screens.classifyLe
     LevelScreen.EVENT, LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.VICTORY,
     LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD, LevelScreen.FORTUNE_TELLER, LevelScreen.MONK) && !Screens.lobbyBehind(texts)
 
-/** Level to keep replaying after winning the last unlocked one. A stale low read is corrected from the lobby. */
-fun pinLevel(played: Int?, unlocked: Int?): Int? {
-    if (unlocked != null && unlocked >= 2 && (played == null || unlocked > played + 1)) return unlocked - 1
-    return played
+/** Star-challenge level to run next, or null to start the lobby's last unlocked level.
+ *  A win advances to the new frontier. A loss on it falls back to the previous beaten level. */
+fun nextFarmLevel(played: Int?, won: Boolean, lobbyLevel: Int?, replaying: Int?): Int? {
+    if (won) return null
+    if (replaying != null) return replaying
+    var frontier = played
+    if (lobbyLevel != null && (frontier == null || lobbyLevel > frontier)) frontier = lobbyLevel
+    if (frontier == null || frontier < 2) return null
+    return frontier - 1
 }
 
 /** Errors that differ only in numbers or screenshot paths count as the same error. */
@@ -94,6 +99,7 @@ class Runner(
         var progress = RoutineProgress()  // routine parts done: a recovery resumes at the part that broke
         var routineDone = false
         var noStars = false
+        val latestFarm = request.level == null && !request.lastBeaten && !request.pendingStars
         var patrolNext = 0.0
         var patrolFails = 0
         var resumed = 0  // interrupted levels played out (progress for the same-error count)
@@ -223,10 +229,11 @@ class Runner(
                 }
                 results.add(Player(device, ocr, request.build, catalog, request.ads, clock, debug).playLevel())
                 val lobby = nav.goToLobby()
-                if (request.level == null && !request.lastBeaten && results.last() == LevelScreen.VICTORY && !state.noStars) {
-                    val pinned = pinLevel(played, parseLevelNumber(lobby.levelTitle ?: ""))
-                    if (pinned != null) {
-                        request = request.copy(level = pinned)  // keep replaying the level just played
+                if (state.latestFarm && !state.noStars) {
+                    val nxt = nextFarmLevel(played, results.last() == LevelScreen.VICTORY,
+                        parseLevelNumber(lobby.levelTitle ?: ""), request.level)
+                    if (nxt != request.level) {
+                        request = request.copy(level = nxt)
                         state.request = request
                     }
                 }

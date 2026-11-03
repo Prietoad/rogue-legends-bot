@@ -672,6 +672,12 @@ class Shop:
     cards: list[SkillCard]
     free_reroll: Text | None     # the reroll button while it says FREE (afterwards it costs coins)
     exit: Text
+    reroll_cost: int | None = None  # coin price under the button once it is no longer free
+    reroll: Text | None = None       # the reroll button, free or paid
+
+
+def _reroll_cost(reroll: Text, texts: list[Text]) -> int | None:
+    return next((int(t.norm) for t in _below(reroll, texts) if t.norm.isdigit()), None)
 
 
 def parse_shop(texts: list[Text]) -> Shop | None:
@@ -679,8 +685,9 @@ def parse_shop(texts: list[Text]) -> Shop | None:
     reroll = find(texts, L.SHOP_REROLL)
     if not (leave and reroll) or find(texts, L.BLACK_MARKET):
         return None
-    free = reroll if reroll and any(matches(t, L.FREE, exact=True) for t in _below(reroll, texts)) else None
-    return Shop(parse_money(texts), parse_skill_cards(texts), free, leave)
+    free = reroll if any(matches(t, L.FREE, exact=True) for t in _below(reroll, texts)) else None
+    return Shop(parse_money(texts), parse_skill_cards(texts), free, leave,
+                None if free else _reroll_cost(reroll, texts), reroll)
 
 
 @dataclass(frozen=True)

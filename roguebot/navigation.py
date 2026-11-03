@@ -9,7 +9,7 @@ import cv2
 
 from roguebot import config, labels
 from roguebot.device import Device
-from roguebot.mode_screens import back_arrow, parse_fight_result, quick_patrol_close, quick_patrol_open
+from roguebot.mode_screens import back_arrow, daily_claim, parse_fight_result, quick_patrol_close, quick_patrol_open
 from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, close_button_any_size,
                               footer_visible, is_loading, is_star_list, lobby_behind, outside_tap_clear,
                               parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list, popup_close,
@@ -90,6 +90,7 @@ class Navigator:
         self.ads = ads  # watch ads (energy videos); only with an account that skips them
         self.elite_cost = elite_cost if elite_cost in config.ELITE_COSTS else config.ELITE_COST_DEFAULT
         self.resume_level: Callable[[], object] | None = None  # plays an interrupted run to its end
+        self._daily_claim_tapped = False  # one Claim Rewards attempt per run; a popup that stays is closed
 
     # --- public API -------------------------------------------------------------------
 
@@ -283,6 +284,17 @@ class Navigator:
             elif quick_patrol_open(texts):
                 log.info("Quick Patrol is open; not closing the Patrol menu under it")
                 time.sleep(config.UI_SETTLE)
+            elif (claim := daily_claim(texts)) and not self._daily_claim_tapped:
+                log.info("Daily rewards: tapping Claim Rewards")
+                self._daily_claim_tapped = True
+                self._tap_text(claim)
+            elif find(texts, labels.DAILY_TITLE) and (self._daily_claim_tapped or daily_claim(texts) is None):
+                close = close_x or close_button_any_size(img)
+                if close:
+                    log.info("Closing Daily Rewards")
+                    self.device.tap(*close)
+                else:
+                    time.sleep(config.UI_SETTLE)
             elif close_text:
                 log.info("Closing popup")
                 self._tap_text(close_text)

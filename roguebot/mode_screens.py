@@ -404,11 +404,18 @@ def menu_entry(texts: list[Text], label: L.Label) -> Text | None:
 
 
 def daily_claim(texts: list[Text]) -> Text | None:
-    """The "Recompensas Diarias" popup's "Reclamar" (it opens the game's web store in a browser)."""
+    """The daily rewards popup's claim button ("Reclamar", "Claim" or "Claim Rewards").
+
+    It opens the game's web store. "Introducir Código" / "Enter Code" is never this button.
+    """
     title = find(texts, L.DAILY_TITLE)
     if not title:
         return None
-    return next((t for t in texts if matches(t, L.DAILY_CLAIM, exact=True) and t.center[1] > title.center[1]), None)
+    below = [t for t in texts if t.center[1] > title.center[1]]
+    rewards = next((t for t in below if matches(t, L.DAILY_CLAIM_REWARDS)), None)
+    if rewards:
+        return rewards
+    return next((t for t in below if matches(t, L.DAILY_CLAIM, exact=True)), None)
 
 
 def mail_claim_all(texts: list[Text]) -> Text | None:

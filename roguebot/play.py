@@ -21,7 +21,27 @@ from roguebot.vision import Ocr, find
 log = logging.getLogger(__name__)
 
 DEBUG_DIR = Path("debug")
-MAX_SHOP_STEPS = 8  # rerolls + purchases in one shop visit
+MAX_SHOP_STEPS = 16  # refreshes + purchases in one shop visit
+
+
+def refresh_leaves_a_buy(money: int, cost: int, wanted_costs: list[int],
+                         floor: int = config.SHOP_SKILL_FLOOR) -> bool:
+    """True when paying `cost` still leaves a wanted skill buyable.
+
+    A free refresh (cost 0) always passes. If a wanted skill is already affordable, the
+    coins left must still cover the cheapest of those: refreshing must not spend the
+    money that would buy it. If none is affordable yet, keep enough for the cheapest
+    skill a shop rolls (`floor`) so a later wanted card can be bought.
+    """
+    if cost <= 0:
+        return money >= 0
+    if money < cost:
+        return False
+    after = money - cost
+    affordable = [c for c in wanted_costs if c <= money]
+    if affordable:
+        return after >= min(affordable)
+    return after >= floor
 
 
 class PlayError(Exception):
@@ -173,32 +193,58 @@ class Player:
         return config.SCREEN_SIZE[0] // 2, cards[i].tag.center[1] + config.SKILL_TAP_BELOW_RARITY
 
     def _shop(self, texts) -> None:
-        """Free reroll if nothing is wanted, then buy in the build's order whatever the coins allow."""
-        rerolled, tapped = False, set()
+        """Buy wanted skills the coins can pay, refreshing to find one while a refresh stays safe.
+
+        An already-affordable wanted skill is bought before any refresh. A refresh (free, then
+        paid, more than once) is used only when it leaves enough coins for a wanted skill.
+        """
+        tapped, free_used = set(), False
         for _ in range(MAX_SHOP_STEPS):
             shop = parse_shop(texts)
             if shop is None or shop.money is None:
                 return
             cards = [c for c in shop.cards if not c.sold and c.cost is not None and c.name not in tapped]
             skills = [self._skill(c) for c in cards]
-            order = shop_order(skills, self.build, self._state,
-                               can_reroll=shop.free_reroll is not None and not rerolled, fill=False)
-            if order is None:
-                log.info("Shop: no preferred skill in %s, free reroll", [s.name for s in skills])
-                self.device.tap(*shop.free_reroll.center)
-                rerolled = True
-            elif not order:
-                return  # nothing of the build, and the reroll is not free: leave the coins
-            else:
-                i = next((i for i in order if cards[i].cost <= shop.money), None)
-                if i is None:
+            preferred = shop_order(skills, self.build, self._state, can_reroll=True, fill=False)
+            if preferred:
+                affordable = [i for i in preferred if cards[i].cost <= shop.money]
+                if affordable:
+                    self._buy(shop, cards, skills, affordable[0], tapped)
+                elif not self._refresh_shop(shop, [cards[i].cost for i in preferred], free_used):
                     return
-                log.info("Shop: buying %s (%s) for %d (coins %d)", skills[i].name,
-                         skills[i].damage_type or skills[i].role, cards[i].cost, shop.money)
-                self.device.tap(*cards[i].price.center)
-                tapped.add(cards[i].name)
-                self._state.take(skills[i])
+                else:
+                    free_used = free_used or shop.free_reroll is not None
+            elif self._refresh_shop(shop, [], free_used):
+                free_used = free_used or shop.free_reroll is not None
+            else:
+                fallback = shop_order(skills, self.build, self._state, can_reroll=False, fill=False) or []
+                affordable = [i for i in fallback if cards[i].cost <= shop.money]
+                if not affordable:
+                    return
+                self._buy(shop, cards, skills, affordable[0], tapped)
             texts = self.ocr.read(self.device.screenshot())
+
+    def _buy(self, shop, cards, skills, i: int, tapped: set) -> None:
+        log.info("Shop: buying %s (%s) for %d (coins %d)", skills[i].name,
+                 skills[i].damage_type or skills[i].role, cards[i].cost, shop.money)
+        self.device.tap(*cards[i].price.center)
+        tapped.add(cards[i].name)
+        self._state.take(skills[i])
+
+    def _refresh_shop(self, shop, wanted_costs: list[int], free_used: bool) -> bool:
+        """Tap the reroll when it is free, or when paying for it still leaves a wanted buy."""
+        if shop.free_reroll is not None and not free_used:
+            log.info("Shop: no affordable wanted skill, free refresh")
+            self.device.tap(*shop.free_reroll.center)
+            return True
+        if shop.reroll is None or shop.reroll_cost is None or shop.money is None:
+            return False
+        if not refresh_leaves_a_buy(shop.money, shop.reroll_cost, wanted_costs):
+            log.info("Shop: refresh (%d) would leave too few coins (have %d)", shop.reroll_cost, shop.money)
+            return False
+        log.info("Shop: refresh for %d (coins %d)", shop.reroll_cost, shop.money)
+        self.device.tap(*shop.reroll.center)
+        return True
 
     def _fortune(self, texts) -> tuple[int, int] | None:
         """Fortune Teller: buy the balls in FORTUNE_BUYS order while the orbs allow, then the back arrow.
@@ -220,12 +266,31 @@ class Player:
                     return teller.balls[chance]
         return config.FORTUNE_TELLER_BACK
 
-    def _monk_tap(self, texts) -> tuple[int, int] | None:
-        """Wise Monk: spin twice, then leave. HP is never a reason to stop early.
+    def _monk_claim(self, texts) -> tuple[int, int] | None:
+        """The reward overlay after a spin ("Tap anywhere to claim" / "You Received")."""
+        claim = find(texts, labels.TAP_TO_CLAIM)
+        if claim is not None:
+            return claim.center
+        if find(texts, labels.MONK_REWARD) is not None:
+            return config.SCREEN_SIZE[0] // 2, config.SCREEN_SIZE[1] // 2
+        return None
 
-        A spin counts once the button has had time to register, or once it leaves the screen.
+    def _monk_tap(self, texts) -> tuple[int, int] | None:
+        """Wise Monk: spin twice, claim each reward, then leave. HP is never a reason to stop early.
+
+        A spin counts once the button has had time to register, once it leaves the screen, or
+        once the claim overlay is up. The overlay is tapped before the next spin or Leave.
         Salir before both spins is ignored until the spin button fails to come back.
         """
+        claim = self._monk_claim(texts)
+        if claim is not None:
+            if self._monk_armed is not None:
+                self._monk_spins += 1
+                self._monk_armed = None
+                log.info("Wise Monk: spin %d/%d done", self._monk_spins, config.MONK_SPINS)
+            self._monk_leave_since = None
+            log.info("Wise Monk: claiming the reward")
+            return claim
         spin = find(texts, labels.MONK_SPIN, exact=True)
         if spin is not None and spin.center[1] <= config.MONK_SPIN_MIN_Y:
             spin = None

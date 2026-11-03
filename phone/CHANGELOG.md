@@ -1,6 +1,7 @@
 # Changelog (phone app)
 
 ## Unreleased
+- Same 1.11.0 farm fixes as the desktop bot: Wise Monk claims each spin's reward, Last unlocked advances on a win and falls back one level on a loss, shops can pay to refresh more than once without spending the coins a wanted skill needs, and the English Daily Rewards popup's "Claim Rewards" is tapped (or the popup is closed). World 2 is unchanged.
 - Same campfire, skill-shop and star-list changes as the desktop bot: upgrade at the campfire unless HP is under 40%, shops buy only the build, and the star list keeps scrolling to the target level. Pause/Resume is on the desktop window.
 - Same 1.10.0 farm changes as the desktop bot: star list keeps scrolling while the target is still above the page, last-unlocked pin follows the lobby, elite energy 5/10/15 (default 5), daily popup is closed, patrol claims the timed reward before Quick Patrol, optional green Skip, Wise Monk spins twice, and named skill presets.
 

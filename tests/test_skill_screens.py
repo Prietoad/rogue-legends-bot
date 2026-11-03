@@ -63,6 +63,7 @@ def test_shop(ocr, name, money, cards, free_reroll):
     assert shop is not None and shop.money == money
     assert [(c.name, c.cost, c.sold) for c in shop.cards] == cards
     assert (shop.free_reroll is not None) == free_reroll
+    assert shop.reroll_cost == (None if free_reroll else 10)
     assert classify_level_screen(img, texts).kind is LevelScreen.SHOP
 
 
@@ -143,12 +144,41 @@ def price_at(i):
 
 def test_shop_buys_wanted_first_then_what_coins_allow(tmp_path):
     frames = [shop_screen(155, [(*RECOVERY, False), (*FIRE_WAVE, True), (*EXECUTIONER, False)], free=False),
-              shop_screen(107, [(*RECOVERY, True), (*FIRE_WAVE, True), (*EXECUTIONER, False)], free=False)]
+              shop_screen(40, [(*RECOVERY, False), (*FIRE_WAVE, True), (*EXECUTIONER, False)], free=False)]
     p = player(tmp_path, Build("magic"), frames)
     p._shop(shop_screen(250, [(*RECOVERY, False), (*FIRE_WAVE, False), (*EXECUTIONER, False)]))
     # Fire Wave is the magic skill. Recovery (support) and Executioner (untyped physical) are not bought.
-    assert p.device.taps == [price_at(1)]
+    # After the buy, one paid refresh is still safe (155 - 10 >= the cheap-skill floor); 40 is not.
+    assert p.device.taps == [price_at(1), (855, 2385)]
     assert p._state.taken == ["Fire Wave"]
+
+
+def test_shop_refreshes_more_than_once_until_a_wanted_skill_shows(tmp_path):
+    frames = [shop_screen(110, [(*RECOVERY, False)], free=False),
+              shop_screen(100, [(*FIRE_WAVE, False)], free=False),
+              shop_screen(5, [(*FIRE_WAVE, True)], free=False)]
+    p = player(tmp_path, Build("magic"), frames)
+    p._shop(shop_screen(120, [(*RECOVERY, False)], free=False))
+    assert p.device.taps == [(855, 2385), (855, 2385), price_at(0)]
+    assert p._state.taken == ["Fire Wave"]
+
+
+def test_shop_does_not_refresh_away_from_an_affordable_wanted_skill(tmp_path):
+    """55 coins, skill 48, refresh 10: buying leaves the skill; refreshing would not."""
+    cheap = ("Common", "Fire Wave", "Cast Fire Wave.", 48)
+    frames = [shop_screen(7, [cheap + (True,)], free=False)]
+    p = player(tmp_path, Build("magic"), frames)
+    p._shop(shop_screen(55, [cheap + (False,)], free=False))
+    assert p.device.taps == [price_at(0)]
+
+
+def test_shop_refreshes_past_a_wanted_skill_that_costs_too_much(tmp_path):
+    expensive = ("Legendary", "Fire Wave", "Cast Fire Wave.", 190)
+    frames = [shop_screen(90, [expensive + (False,)], free=False),
+              shop_screen(40, [(*FIRE_WAVE, False)], free=False)]
+    p = player(tmp_path, Build("magic"), frames)
+    p._shop(shop_screen(100, [expensive + (False,)], free=False))
+    assert p.device.taps == [(855, 2385), (855, 2385)]
 
 
 def test_shop_uses_the_free_reroll_when_nothing_fits(tmp_path):

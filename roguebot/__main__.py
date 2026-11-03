@@ -29,17 +29,25 @@ ENERGY_READS = 3
 LOG_FILE_BYTES = 5_000_000
 PATROL_FAILS_TO_BACK_OFF = 2  # after-level patrol failures in a row before trying it only hours later
 
-def pin_level(played: int | None, unlocked: int | None) -> int | None:
-    """Level to keep replaying after winning the last unlocked one.
+def next_farm_level(played: int | None, won: bool, lobby_level: int | None,
+                    replaying: int | None) -> int | None:
+    """Star-challenge level to run next, or None to start the lobby's last unlocked level.
 
-    A win moves the lobby title up by one, so the level just played is ``unlocked - 1``.
-    Use that when it is higher than ``played``: the title read at the start can be a stale
-    low number (38) while the lobby is on ~76. A correct read (the lobby is exactly
-    ``played + 1``) stays ``played``.
+    Last-unlocked farming: a win moves on to the new frontier (the lobby start button;
+    that level is not in the star list yet). A loss on the frontier falls back to the
+    previous beaten level. A loss while already replaying that beaten level stays there.
+    A stale low start read loses to a higher lobby title (38 read, lobby on 80 → 79).
     """
-    if unlocked is not None and unlocked >= 2 and (played is None or unlocked > played + 1):
-        return unlocked - 1
-    return played
+    if won:
+        return None
+    if replaying is not None:
+        return replaying
+    frontier = played
+    if lobby_level is not None and (frontier is None or lobby_level > frontier):
+        frontier = lobby_level
+    if frontier is None or frontier < 2:
+        return None
+    return frontier - 1
 
 
 def _start_level(nav: Navigator, request: RunRequest) -> int | None:
@@ -176,14 +184,13 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
                     played = nav.start_latest(request.mode)
                 results.append(Player(device, ocr, request.build, catalog, request.ads).play_level())
                 lobby = nav.go_to_lobby()
-                if (request.level is None and not request.last_beaten and results[-1] is LevelScreen.VICTORY
-                        and not state.get("no_stars")):
-                    # Winning unlocked the next level; keep replaying this one from Desafío de Estrellas.
-                    # The number is the level just played, corrected from the lobby title when the
-                    # start read was a stale low number.
-                    pinned = pin_level(played, parse_level_number(lobby.level_title or ""))
-                    if pinned is not None:
-                        request = state["request"] = replace(request, level=pinned)
+                if state.get("latest_farm") and not state.get("no_stars"):
+                    # Win the frontier → the new last unlocked (lobby start). Lose it → the
+                    # previous beaten level. A win of that fallback tries the frontier again.
+                    nxt = next_farm_level(played, results[-1] is LevelScreen.VICTORY,
+                                          parse_level_number(lobby.level_title or ""), request.level)
+                    if nxt != request.level:
+                        request = state["request"] = replace(request, level=nxt)
                 log.info("Level finished: %s (run %d)", results[-1].value, len(results))
                 if not request.repeat:
                     return Report(results)
@@ -204,7 +211,8 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
             stop.clear()
         if pause is not None:
             pause.clear()
-        state = {"request": request, "results": [], "parts": [], "routine_done": False}
+        state = {"request": request, "results": [], "parts": [], "routine_done": False,
+                 "latest_farm": request.level is None and not request.last_beaten and not request.pending_stars}
         errors: dict[str, int] = {}
         progress = 0
         while True:

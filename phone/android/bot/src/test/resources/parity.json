@@ -12503,6 +12503,14 @@
 2370,
 511,
 2464
+],
+"reroll_cost": null,
+"reroll": [
+"Reroll",
+757,
+2349,
+951,
+2421
 ]
 },
 "parse_fortune_teller": null,
@@ -12963,6 +12971,14 @@
 2370,
 511,
 2464
+],
+"reroll_cost": 10,
+"reroll": [
+"Reroll",
+756,
+2349,
+951,
+2421
 ]
 },
 "parse_fortune_teller": null,
@@ -13422,6 +13438,14 @@
 2370,
 511,
 2464
+],
+"reroll_cost": null,
+"reroll": [
+"Reroll",
+757,
+2349,
+951,
+2421
 ]
 },
 "parse_fortune_teller": null,
@@ -13874,6 +13898,14 @@
 2370,
 511,
 2464
+],
+"reroll_cost": null,
+"reroll": [
+"Reroll",
+757,
+2349,
+951,
+2421
 ]
 },
 "parse_fortune_teller": null,
@@ -30249,6 +30281,14 @@
 2371,
 522,
 2464
+],
+"reroll_cost": null,
+"reroll": [
+"Nueva tirada",
+673,
+2354,
+1033,
+2415
 ]
 },
 "parse_fortune_teller": null,
@@ -30715,6 +30755,14 @@
 2371,
 522,
 2464
+],
+"reroll_cost": null,
+"reroll": [
+"Nueva tirada",
+673,
+2354,
+1033,
+2415
 ]
 },
 "parse_fortune_teller": null,

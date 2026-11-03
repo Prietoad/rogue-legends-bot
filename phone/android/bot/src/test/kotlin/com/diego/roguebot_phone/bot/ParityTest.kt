@@ -56,7 +56,8 @@ class ParityTest {
             "skill_reroll" to text(Screens.skillReroll(texts)),
             "parse_money" to (Screens.parseMoney(texts) ?: JSONObject.NULL),
             "parse_shop" to nul(Screens.parseShop(texts)) {
-                obj("money" to it.money, "cards" to JSONArray(it.cards.map(::card)), "free_reroll" to text(it.freeReroll), "exit" to text(it.exit))
+                obj("money" to it.money, "cards" to JSONArray(it.cards.map(::card)), "free_reroll" to text(it.freeReroll),
+                    "exit" to text(it.exit), "reroll_cost" to it.rerollCost, "reroll" to text(it.reroll))
             },
             "parse_fortune_teller" to nul(Screens.parseFortuneTeller(texts)) {
                 obj("orbs" to it.orbs, "balls" to JSONObject().apply { it.balls.forEach { (k, v) -> put(k.toString(), p(v)) } })

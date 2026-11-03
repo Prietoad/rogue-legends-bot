@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.0 (2026-11-03)
+- Wise Monk: after each of the two spins, the reward overlay ("Tap anywhere to claim" / "You Received") is dismissed before the next spin or Leave. A spin no longer sits on that overlay until the run restarts.
+- Last unlocked (normal and elite): a win starts the newly unlocked level from the lobby. A loss on that level falls back to the previous one. A win of the fallback tries the new level again. The level just won is no longer pinned and replayed.
+- Shops refresh more than once while the coins allow, to find a skill the build wants. A refresh is skipped when paying it would leave too few coins to buy a wanted skill that is already affordable, or to buy a cheap skill the next roll could offer.
+- Daily rewards (English): the lobby popup's "Claim Rewards" is tapped. "Enter Code" is not. If that button is missing, or the claim does not leave the popup, the popup is closed so mail and the rest of the routine can continue.
+- Elite energy stays a choice of 5, 10 or 15 (default 5). The bot spends that much when the counter can pay it, otherwise the next lower cost.
+- World 2 (lobby `2-N` titles, path choice, and World 2 events) is unchanged.
+
 ## 1.10.0 (2026-11-01)
 - Star Challenge keeps scrolling up when the list is stuck on a high page. The same frame no longer counts as the end of the list while the target level is still above the lowest card on screen (that used to stop the run with "Level X not found (list ends at Y)").
 - Last unlocked: after a win, the level that gets replayed is the one just played. A stale low number (38 while the lobby is on ~76) is corrected from the lobby title.

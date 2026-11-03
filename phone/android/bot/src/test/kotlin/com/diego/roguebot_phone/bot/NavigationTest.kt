@@ -544,9 +544,9 @@ class NavigationTest {
     fun shopBuysWantedFirstThenWhatCoinsAllow() {
         val (p, device) = player(Build(Skills.MAGIC), listOf(
             shop(155, listOf(recovery, fireWave.copy(sold = true), executioner), free = false),
-            shop(107, listOf(recovery.copy(sold = true), fireWave.copy(sold = true), executioner), free = false)))
+            shop(40, listOf(recovery, fireWave.copy(sold = true), executioner), free = false)))
         p.shop(shop(250, listOf(recovery, fireWave, executioner)))
-        assertEquals(listOf(priceAt(1)), device.taps)
+        assertEquals(listOf(priceAt(1), P(855, 2385)), device.taps)
         assertEquals(listOf("Fire Wave"), p.state.taken)
     }
 

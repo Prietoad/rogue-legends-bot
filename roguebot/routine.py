@@ -15,7 +15,8 @@ from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, fight_s
                                    vip_cards_icon, vip_claim_all)
 from roguebot.navigation import NavigationError, Navigator, _still_there
 from roguebot.play import PlayError
-from roguebot.screens import close_button, parse_energy, parse_lobby, parse_skill_cards, popup_close, rarity_name
+from roguebot.screens import (close_button, close_button_any_size, parse_energy, parse_lobby, parse_skill_cards,
+                              popup_close, rarity_name)
 from roguebot.skills import Catalog, Skill
 from roguebot.vision import Ocr, Text, find
 
@@ -225,11 +226,16 @@ class Routine:
         if not self._open_menu(L.MENU_DAILY):
             return SKIPPED
         try:
-            self._tap(self._wait_for(lambda img, texts: daily_claim(texts), "daily rewards popup"))
+            texts = self._wait_for(lambda img, texts: find(texts, L.DAILY_TITLE) and texts, "daily rewards popup")
+            claim = daily_claim(texts)
+            if claim is None:
+                log.info("Daily rewards: claim unavailable; closing the popup")
+                return DONE
+            self._tap(claim)
             try:
-                claim = self._wait_for(lambda img, texts: find(texts, L.DAILY_WEB_CLAIM), "daily reward web page")
+                web = self._wait_for(lambda img, texts: find(texts, L.DAILY_WEB_CLAIM), "daily reward web page")
                 log.info("Daily rewards: claiming on the web page")
-                self._tap(claim)
+                self._tap(web)
                 time.sleep(config.VIDEO_SETTLE)  # the page loads the store with the claimed day
             except NavigationError:
                 log.info("Daily rewards: web claim not shown; closing the popup")
@@ -436,7 +442,7 @@ class Routine:
             img, texts = self._capture()
             if find(texts, title) is None:
                 return
-            close = close_button(img)
+            close = close_button(img) or close_button_any_size(img)
             if close:
                 log.info("Closing %s", title.variants[0] if title.variants else "popup")
                 self.device.tap(*close)

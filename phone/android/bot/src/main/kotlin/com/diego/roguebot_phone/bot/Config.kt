@@ -111,6 +111,7 @@ object Config {
     val SKILL_NAME_BELOW_TAG = -10..70
     const val SKILL_CARD_HEIGHT = 330
     const val REROLL_COUNT_BELOW = 110
+    const val SHOP_SKILL_FLOOR = 48
     val MONEY_REGION = Region(0, 140, 320, 210)
     const val DUEL_STAND_AT = 15
     const val SAME_TAP_TOLERANCE = 25

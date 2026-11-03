@@ -52,10 +52,6 @@ run at the next step.
 
 See `CLAUDE.md` for how it works inside: architecture, game knowledge, and every screen the bot knows.
 
-## 1.10.0 Known Issues - Planned Upgrades
+## Known issues
 
-1. Hangs on Monk Spin when claiming skill
-2. Shop logic won't use low amount of coins to refresh, it will be added in the next update.
-3. "Last Unlocked" behavior will be upgraded to continue running the most recent unlock, not rerun the last beaten one until a loss occurs.
-4. Daily rewards, still broken (VIP)
-5. World 2 Maps have path Selection, currently the bot doesn't interact with it and closes the game. Looking up the best path to take for farming.
+World 2 maps (lobby titles `2-N`, the path choice, and World 2 events) are not handled yet. The bot does not pick a path and can stop on that screen. World 1 `N.` levels are what Last unlocked farms.

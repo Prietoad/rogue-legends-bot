@@ -231,7 +231,9 @@ object ModeScreens {
 
     fun dailyClaim(texts: List<Text>): Text? {
         val title = find(texts, L.DAILY_TITLE) ?: return null
-        return texts.firstOrNull { matches(it, L.DAILY_CLAIM, exact = true) && it.center.y > title.center.y }
+        val below = texts.filter { it.center.y > title.center.y }
+        return below.firstOrNull { matches(it, L.DAILY_CLAIM_REWARDS) }
+            ?: below.firstOrNull { matches(it, L.DAILY_CLAIM, exact = true) }
     }
 
     fun mailClaimAll(texts: List<Text>): Text? {
