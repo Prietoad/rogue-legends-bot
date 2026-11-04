@@ -730,9 +730,10 @@ def _star_nav(monkeypatch, pages):
     return nav
 
 
-def _card(n, stars, y):
+def _card(n, stars, y, known=True):
     from roguebot.screens import Card
-    return Card(n, Text(f"{n}. Level", 100, y - 400, 460, y - 360), Text("INICIO", 640, y - 20, 800, y + 20), stars)
+    return Card(n, Text(f"{n}. Level", 100, y - 400, 460, y - 360), Text("INICIO", 640, y - 20, 800, y + 20),
+                stars, known)
 
 
 def test_pending_stars_plays_the_clipped_card_above_a_complete_last_beaten(monkeypatch):
@@ -740,7 +741,8 @@ def test_pending_stars_plays_the_clipped_card_above_a_complete_last_beaten(monke
     The scan must start 49, not scroll away and fall through to 50."""
     from roguebot import navigation
     from roguebot.screens import Mode
-    nav = _star_nav(monkeypatch, [[_card(50, 3, 1400)]])
+    page = [_card(50, 3, 1400)]
+    nav = _star_nav(monkeypatch, [page, page])
     clip = _card(49, 2, 520)
     monkeypatch.setattr(navigation, "clipped_star_card", lambda img, texts, cards: clip)
     assert nav.start_pending_stars(Mode.NORMAL) == 49
@@ -750,10 +752,47 @@ def test_pending_stars_plays_the_clipped_card_above_a_complete_last_beaten(monke
 
 def test_pending_stars_plays_a_level_missing_stars(monkeypatch):
     from roguebot.screens import Mode
-    nav = _star_nav(monkeypatch, [[_card(12, 2, 1080), _card(13, 3, 1650)]])
-    nav._scroll_to = lambda level: _card(level, 2, 1080)
+    page = [_card(12, 2, 1080), _card(13, 3, 1650)]
+    nav = _star_nav(monkeypatch, [page, page])  # seen twice in place, like a settled scroll-to
     assert nav.start_pending_stars(Mode.NORMAL) == 12
     assert nav.started == [(720, 1080)] and nav.drags == []
+
+
+def test_missing_stars_scrolls_past_the_opened_last_beaten_card(monkeypatch):
+    """The list opens on level 50 with 3 stars. Level 49, above it, misses one.
+    The hunt must scroll. It must not start 50."""
+    from roguebot.screens import Card, Mode
+    locked = _card(51, 3, 1967)
+    locked = Card(locked.number, locked.header, None, 3, True)  # not yet beaten: no Start
+    opened = [_card(50, 3, 1400), locked]
+    found = [_card(49, 2, 1080), _card(50, 3, 1650)]
+    nav = _star_nav(monkeypatch, [opened, found, found])
+    assert nav.start_pending_stars(Mode.NORMAL) == 49
+    assert nav.drags and all(d < 0 for d in nav.drags)
+    assert nav.started == [found[0].button.center]
+
+
+def test_missing_stars_does_not_treat_an_unread_star_row_as_a_miss(monkeypatch):
+    """A header whose stars were not read used to count as 0/3, so the opened last
+    beaten level was started and the list never scrolled."""
+    from roguebot.screens import Mode
+    unread = [_card(50, 0, 1400, known=False)]
+    found = [_card(49, 1, 1080)]
+    nav = _star_nav(monkeypatch, [unread, found, found])
+    assert nav.start_pending_stars(Mode.NORMAL) == 49
+    assert nav.drags  # scrolled away from the unreadable 50
+    assert nav.started == [found[0].button.center]
+
+
+def test_missing_stars_keeps_scrolling_until_an_incomplete_card_or_level_1(monkeypatch):
+    """Several full pages of 3-star cards, then one miss. Every page before it is scrolled."""
+    from roguebot.screens import Mode
+    pages = [[_card(50 - i, 3, 1080), _card(51 - i, 3, 1650)] for i in range(4)]
+    hit = [_card(40, 2, 1080), _card(41, 3, 1650)]
+    nav = _star_nav(monkeypatch, pages + [hit, hit])
+    assert nav.start_pending_stars(Mode.NORMAL) == 40
+    assert len(nav.drags) == 4
+    assert all(d == -min(config.CARD_PITCH, config.MAX_DRAG) for d in nav.drags)
 
 
 def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
@@ -810,10 +849,10 @@ def test_pending_stars_retries_a_scroll_that_does_not_move(monkeypatch):
     from roguebot.screens import Mode
     high = [_card(12, 3, 1080), _card(13, 3, 1650)]
     low = [_card(4, 1, 1080), _card(5, 3, 1650)]
-    nav = _star_nav(monkeypatch, [high, high, low])
-    nav._scroll_to = lambda level: _card(level, 1, 1080)
+    nav = _star_nav(monkeypatch, [high, high, low, low])
     assert nav.start_pending_stars(Mode.NORMAL) == 4
-    assert nav.drags == [-config.MAX_DRAG, -config.MAX_DRAG]
+    step = -min(config.CARD_PITCH, config.MAX_DRAG)
+    assert nav.drags == [step, step]
 
 
 def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
@@ -844,7 +883,7 @@ def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.10.1"
+    assert roguebot.__version__ == "1.10.2"
 
 
 def test_next_farm_level_advances_on_a_win_and_falls_back_on_a_loss():

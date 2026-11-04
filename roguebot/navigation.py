@@ -120,43 +120,42 @@ class Navigator:
         self._press_start(card.button, mode)
 
     def start_pending_stars(self, mode: Mode) -> int | None:
-        """Start a beaten level that still misses stars (each star gives rewards, diamonds included).
+        """Start the beaten level nearest the end that still misses a star.
 
-        The list opens on the last beaten level, and the card above it is often cut off: its header
-        (where the star icons sit) is above the screen while its Start button is not. That card is
-        checked first. The scan then goes upwards. None means every beaten level really has 3 stars
-        (the list was read through level 1). A scroll that does not move, or a frame with no numbers,
-        is not that: those used to fall through to the last beaten level while a missing star was
-        still on screen.
+        The list opens on the last beaten level. That card is not the search: it is only started
+        when its stars were actually read and one of them is missing. Otherwise the list is
+        scrolled toward level 1 the same way a Star Challenge scroll-to-target moves (a long drag,
+        retried when the page does not move, and a tap only after the same card sits still).
+        None means the scan reached level 1 and every beaten level has 3 stars.
         """
         self._open_star_list(mode)
-        prev, stuck = None, 0
+        prev, stuck, choice = None, 0, None
         saw_level_one = False
-        for _ in range(MAX_SCROLLS):
+        img = None
+        for _ in range(MAX_SCROLLS * 2):  # one card per drag, so a level between pages is not skipped
             img, texts = self._capture()
             cards = parse_star_list(img, texts, self.ocr)
-            pending = [c for c in cards if c.button and c.stars < 3]
+            pending = [c for c in cards if c.button and c.stars_known and c.stars < 3
+                       and config.LIST_TOP + 40 < c.header.center[1] < config.LIST_BOTTOM]
             clip = clipped_star_card(img, texts, cards)
-            if clip and clip.stars < 3 and all(c.number != clip.number for c in pending):
-                log.info("Star list: level %d is cut off at the top and still misses a star (%d/3)",
-                         clip.number, clip.stars)
+            if clip and clip.stars_known and clip.stars < 3 and all(c.number != clip.number for c in pending):
                 pending.append(clip)
             if pending:
-                card = max(pending, key=lambda c: c.number)  # nearest the end, never the last beaten over this
-                if card is clip:
+                card = max(pending, key=lambda c: c.number)  # nearest the end
+                if (choice and choice.number == card.number and choice.button and card.button
+                        and _same_place(choice.button, card.button)):
                     log.info("Starting %s star challenge for missing stars: level %d (%d/3)", mode.value,
                              card.number, card.stars)
                     self._press_start(card.button, mode)
                     return card.number
-                card = self._scroll_to(card.number)  # settled position (scroll inertia)
-                log.info("Starting %s star challenge for missing stars: %s (%d/3)", mode.value, card.header.text,
-                         card.stars)
-                self._press_start(card.button, mode)
-                return card.number
+                log.info("Missing stars: level %d shows %d/3, waiting for the list to settle", card.number, card.stars)
+                choice = card
+                time.sleep(config.SCROLL_SETTLE)
+                continue
+            choice = None
             numbers = [c.number for c in cards]
             if not numbers:
-                # Mid-scroll the level numbers are unreadable. That is not the top of the list.
-                time.sleep(config.SCROLL_SETTLE)
+                time.sleep(config.SCROLL_SETTLE)  # mid-scroll: not the top of the list
                 continue
             if numbers[0] == 1:
                 saw_level_one = True
@@ -168,7 +167,10 @@ class Navigator:
             else:
                 stuck = 0
                 prev = numbers
-            self._drag_list(-config.MAX_DRAG)  # towards lower levels
+            log.info("Missing stars: list shows %s with no confirmed miss, scrolling up", numbers)
+            # Same drag _scroll_to uses while the target is still above this page, but only one
+            # card so the level just above the opened last-beaten card cannot jump past the sample.
+            self._drag_list(-min(config.CARD_PITCH, config.MAX_DRAG))
             time.sleep(config.SCROLL_SETTLE)
         if not saw_level_one:
             self._fail("Star list did not reach level 1; missing stars were not ruled out", img)

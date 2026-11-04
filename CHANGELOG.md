@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.10.2 (2026-11-04)
+- Missing stars scrolls the Star Challenge list the way a scroll-to-level does: up from the card the list opens on, one card at a time, until a level whose stars were actually read is under 3, or the list has been read through level 1. The last beaten card that is already on screen is not started just because the list opened there. A header whose star icons were not read is not treated as 0/3.
+
 ## 1.10.1 (2026-11-04)
 - Version 1.11.0 was an interim label for this tree. This release is 1.10.1.
 - Tower: a win that shows Next (floors 1–9, also "Next Floor" / "Próximo piso") continues straight to the next floor. Floor 10 has no Next: Okay, then the chest. A ticket-count guess no longer taps Okay and bounces back to the tower menu while Next is on screen.

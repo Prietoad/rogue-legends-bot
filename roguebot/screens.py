@@ -42,6 +42,7 @@ class Card:
     header: Text
     button: Text | None          # None when locked or the button is out of view
     stars: int = 3               # earned stars (gold icons in the header); each one gives rewards
+    stars_known: bool = False    # False: the icons were not read. That is not "missing stars".
 
 
 def parse_lobby(texts: list[Text]) -> Lobby | None:
@@ -564,13 +565,37 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
 
 
 def card_stars(img: np.ndarray, header: Text) -> int:
-    """Gold star icons (earned) right of a card header; missing ones are grey-blue."""
-    y = header.center[1]
-    earned = 0
-    for x in config.STAR_ICONS_X:
-        b, g, r = img[y - 12:y + 12, x - 12:x + 12].reshape(-1, 3).mean(0)
-        earned += _star_kind(b, g, r) == "gold"
-    return earned
+    """Gold star icons (earned) right of a card header; missing ones are grey-blue.
+
+    The count is only meaningful when `header_stars` says the read is known. A short count
+    from a sample that missed the icons is not a level with missing stars.
+    """
+    count, _known = header_stars(img, header)
+    return count
+
+
+def header_stars(img: np.ndarray, header: Text) -> tuple[int, bool]:
+    """(gold stars, known). Known only when all three icons are gold or grey.
+
+    The header text box is not always on the icon row, so a few rows around it are tried.
+    Unknown (the second value False) must not be treated as "fewer than 3".
+    """
+    y0 = int(header.center[1])
+    for dy in range(0, 49, 8):
+        for sign in (1, -1) if dy else (1,):
+            yy = y0 + sign * dy
+            if yy < 12 or yy + 12 >= img.shape[0]:
+                continue
+            kinds = []
+            for x in config.STAR_ICONS_X:
+                if x < 12 or x + 12 >= img.shape[1]:
+                    kinds.append(None)
+                    continue
+                b, g, r = img[yy - 10:yy + 10, x - 10:x + 10].reshape(-1, 3).mean(0)
+                kinds.append(_star_kind(float(b), float(g), float(r)))
+            if all(k in ("gold", "grey") for k in kinds):
+                return sum(k == "gold" for k in kinds), True
+    return 3, False
 
 
 def _star_kind(b: float, g: float, r: float) -> str | None:
@@ -628,12 +653,12 @@ def clipped_star_card(img: np.ndarray | None, texts: list[Text], cards: list[Car
         return None
     gold, grey = _objective_stars(img, texts, config.LIST_TOP, button.center[1] - 40)
     if grey:
-        stars = min(gold, 2)
+        stars, known = min(gold, 2), True
     elif gold >= 3:
-        stars = 3
+        stars, known = 3, True
     else:
-        return None  # the missing row may still be off screen: let a short scroll reveal the header
-    return Card(first.number - 1, first.header, button, stars)
+        return None  # the missing row may still be off screen: the hunt scrolls the header into view
+    return Card(first.number - 1, first.header, button, stars, known)
 
 
 def parse_star_list(img: np.ndarray, texts: list[Text], ocr: Ocr) -> list[Card]:
@@ -655,13 +680,14 @@ def parse_star_list(img: np.ndarray, texts: list[Text], ocr: Ocr) -> list[Card]:
         for h in ocr.read(img, region):
             n = parse_level_number(h.text)
             if n is not None:
-                stars = card_stars(img, h)
-                # A grey condition star wins over a header sample that landed on the bar
-                # and counted every icon as earned.
+                stars, known = header_stars(img, h)
+                # A grey condition star confirms a miss when the header icons were not read.
+                # A header that already shows three gold stars is left alone (a stray sample
+                # must not turn the last beaten level into a "missing stars" tap).
                 _, grey = _objective_stars(img, texts, h.center[1] + 30, b.center[1] - 30)
-                if grey:
-                    stars = min(stars, 3 - min(grey, 3))
-                cards[n] = Card(n, h, b, stars)
+                if grey and not (known and stars == 3):
+                    stars, known = min(stars if known else 2, 3 - min(grey, 3)), True
+                cards[n] = Card(n, h, b, stars, known)
                 break
     for t in texts:
         n = parse_level_number(t.text)
