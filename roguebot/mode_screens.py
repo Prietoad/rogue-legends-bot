@@ -63,6 +63,66 @@ def guild_hall_donate(texts: list[Text]) -> Text | None:
     return next((t for t in texts if matches(t, L.DONATE, exact=True) and t.center[1] > 2100), None)
 
 
+def is_guild_map(texts: list[Text]) -> bool:
+    """The guild map (castle, raid boss, or vault). Not the raid fight and not the donation popup."""
+    if find(texts, L.RAID_TITLE) or find(texts, L.DONATION_TITLE):
+        return False
+    return guild_hall(texts) is not None or find(texts, L.RAID_BOSS) is not None
+
+
+def guild_vault(texts: list[Text]) -> Text | None:
+    """The guild map's Vault / Bóveda building."""
+    if not is_guild_map(texts):
+        return None
+    return find(texts, L.GUILD_VAULT, exact=True)
+
+
+def _gem_price(button: Text, texts: list[Text]) -> bool:
+    """A digit or a $ price sitting on the button. Those are gem or cash spends."""
+    for t in texts:
+        if abs(t.center[0] - button.center[0]) > 180 or abs(t.center[1] - button.center[1]) > 90:
+            continue
+        if t.norm.isdigit() or "$" in t.text or "usd" in t.norm:
+            return True
+    return False
+
+
+def personal_vault_claim(texts: list[Text]) -> Text | None:
+    """The free daily personal vault claim. A priced button is never returned."""
+    if is_guild_map(texts) or not find(texts, L.PERSONAL_VAULT):
+        return None
+    claims = [t for t in texts if matches(t, L.VAULT_CLAIM, exact=True) and not _gem_price(t, texts)]
+    if not claims:
+        return None
+    anchor = find(texts, L.PERSONAL_VAULT)
+    return min(claims, key=lambda c: abs(c.center[1] - anchor.center[1]))
+
+
+def web_daily_claim(texts: list[Text]) -> Text | None:
+    """The store page's daily-reward button ("Reclamar ahora" / "Claim Now"). Not a price."""
+    if not find(texts, L.WEB_STORE):
+        return None
+    button = find(texts, L.DAILY_WEB_CLAIM)
+    if button and not _gem_price(button, texts):
+        return button
+    return None
+
+
+def web_free_spin(texts: list[Text]) -> Text | None:
+    """The store's free daily spin: the wheel tab, or Spin/Girar next to a Free/Gratis label."""
+    if not find(texts, L.WEB_STORE):
+        return None
+    tab = find(texts, L.DAILY_WHEEL)
+    if tab and not _gem_price(tab, texts):
+        return tab
+    spin = find(texts, L.WEB_SPIN, exact=True)
+    if spin and not _gem_price(spin, texts) and any(
+            matches(t, L.FREE, exact=True) and abs(t.center[1] - spin.center[1]) < 140
+            and abs(t.center[0] - spin.center[0]) < 240 for t in texts):
+        return spin
+    return None
+
+
 def free_donation(texts: list[Text]) -> Text | None:
     """The donation popup's button, only while it says "Gratis"/"Free". After the free one it
     shows a gem price ("25"), which is never returned."""
@@ -496,13 +556,19 @@ class FightResult:
     next_floor: Text | None = None  # tower victory: "Próximo piso" (the next fight right away, one more ticket)
 
 
+def tower_next_floor(texts: list[Text]) -> Text | None:
+    """Tower victory "Next" / "Próximo piso". Absent on floor 10 (Okay only)."""
+    return find(texts, L.TOWER_NEXT_FLOOR) or find(texts, L.TOWER_NEXT, exact=True)
+
+
 def parse_fight_result(texts: list[Text]) -> FightResult | None:
     """End of an arena / tower / mines / pets / raid fight."""
-    button = find(texts, L.OK, exact=True) or find(texts, L.TAP_TO_CONTINUE)
+    nxt = tower_next_floor(texts)
+    button = find(texts, L.OK, exact=True) or find(texts, L.TAP_TO_CONTINUE) or nxt
     if not button:
         return None
     if find(texts, L.VICTORY):
-        return FightResult(True, button, find(texts, L.TOWER_NEXT_FLOOR))
+        return FightResult(True, button, nxt)
     if find(texts, L.DEFEAT):
         return FightResult(False, button)
     return None

@@ -564,6 +564,40 @@ def test_star_list_cards_know_their_stars(ocr):
     assert cards[14].button is None
 
 
+@pytest.mark.parametrize("name, number", [
+    ("en_stars_normal_end.png", 10),
+    ("stars_normal_end.png", 10),
+    ("stars_pending.png", 11),
+])
+def test_clipped_card_above_the_list_still_misses_a_star(ocr, name, number):
+    """The list opens on the last beaten level. The card above it is cut off: its header
+    (and the header stars) are off screen, but a grey condition star and Start are visible."""
+    from roguebot.screens import clipped_star_card
+    img, texts = load(ocr, name)
+    cards = parse_star_list(img, texts, ocr)
+    clip = clipped_star_card(img, texts, cards)
+    assert clip is not None and clip.number == number and clip.stars < 3 and clip.button
+    assert clip.number == min(c.number for c in cards) - 1
+
+
+def test_the_top_of_the_star_list_has_no_clipped_card(ocr):
+    from roguebot.screens import clipped_star_card
+    img, texts = load(ocr, "stars_normal_top.png")
+    cards = parse_star_list(img, texts, ocr)
+    assert clipped_star_card(img, texts, cards) is None
+
+
+def test_dive_victory_okay_and_tap_to_continue_are_dismissed():
+    import numpy as np
+    from roguebot.screens import LevelScreen, classify_level_screen
+    img = np.zeros((2560, 1440, 3), np.uint8)
+    okay = classify_level_screen(img, [Text("VICTORY!", 560, 900, 880, 980), Text("Okay", 600, 2100, 840, 2160)])
+    assert okay.kind is LevelScreen.VICTORY and okay.tap == (720, 2130)
+    cont = classify_level_screen(img, [Text("VICTORY", 560, 900, 880, 980),
+                                       Text("Tap to Continue", 520, 2280, 920, 2340)])
+    assert cont.kind is LevelScreen.VICTORY and cont.tap == (720, 2310)
+
+
 @pytest.mark.parametrize("name, in_level", [
     ("level_board_ready.png", True), ("en_level_fight.png", True), ("en_level_skill_levelup.png", True),
     ("en_lobby_normal.png", False), ("en_tower.png", False), ("en_level_event_result.png", False),

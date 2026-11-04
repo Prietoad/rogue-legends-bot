@@ -1,10 +1,18 @@
 # Changelog
 
-## 1.11.0 (2026-11-03)
+## 1.10.1 (2026-11-04)
+- Version 1.11.0 was an interim label for this tree. This release is 1.10.1.
+- Tower: a win that shows Next (floors 1–9, also "Next Floor" / "Próximo piso") continues straight to the next floor. Floor 10 has no Next: Okay, then the chest. A ticket-count guess no longer taps Okay and bounces back to the tower menu while Next is on screen.
+- Tower: a full-screen Loading… after a fight is a transition, not a loss. The bot waits through it and reads Victory, Next, or Okay again before it can call the fight failed.
+- Daily rewards: the web store is given time to load, the daily reward is claimed, the page is scrolled, and the free spin (Daily Wheel / Ruleta diaria) is taken. Then the bot returns to the game and continues with VIP. Opening the site from a lobby pass and leaving at once is no longer done.
+- Dungeon Dive: a victory with Okay, Confirm, or Tap to Continue is dismissed so the routine moves on.
+- Guild: after the raid the bot stays on the guild map for the free donation, then claims the Guild Vault's free daily personal reward, and only then returns to the main menu.
+- Dojo and guild raid skill picks reroll once when the offer has nothing the build wants, the same way a level does. Dungeon Dive already rerolls through the level player.
+- Missing stars: a card cut off at the top of Star Challenge (its header is off screen, a grey condition star is still visible) is played. The scan no longer gives up on a loading or empty frame and falls through to the last beaten level while that card still misses a star. When every beaten level really has 3 stars, the bot keeps playing the last beaten level (lobby level − 1) in the selected mode until energy is gone or Stop. It does not switch that run to Last unlocked.
 - Wise Monk: after each of the two spins, the reward overlay ("Tap anywhere to claim" / "You Received") is dismissed before the next spin or Leave. A spin no longer sits on that overlay until the run restarts.
 - Last unlocked (normal and elite): a win starts the newly unlocked level from the lobby. A loss on that level falls back to the previous one. A win of the fallback tries the new level again. The level just won is no longer pinned and replayed.
 - Shops refresh more than once while the coins allow, to find a skill the build wants. A refresh is skipped when paying it would leave too few coins to buy a wanted skill that is already affordable, or to buy a cheap skill the next roll could offer.
-- Daily rewards (English): the lobby popup's "Claim Rewards" is tapped. "Enter Code" is not. If that button is missing, or the claim does not leave the popup, the popup is closed so mail and the rest of the routine can continue.
+- Daily rewards (English): "Claim Rewards" is tapped from the lobby menu. "Enter Code" is not. If that button is missing, the popup is closed so mail and the rest of the routine can continue.
 - Elite energy stays a choice of 5, 10 or 15 (default 5). The bot spends that much when the counter can pay it, otherwise the next lower cost.
 - World 2 (lobby `2-N` titles, path choice, and World 2 events) is unchanged.
 

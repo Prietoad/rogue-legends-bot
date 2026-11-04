@@ -540,6 +540,53 @@ def test_pending_stars_falls_back_to_the_last_beaten_level(monkeypatch):
     nav.start_last_beaten = lambda mode: nav.started.append(("beaten", 13)) or 13
     run_with(monkeypatch, nav, [V], RunRequest(Mode.NORMAL, None, last_beaten=True, pending_stars=True))
     assert ("beaten", 13) in nav.started
+    assert ("latest", 13) not in nav.started
+
+
+def test_missing_stars_keeps_the_incomplete_level_over_last_beaten(monkeypatch):
+    nav = FakeNav(energy=10, latest=51)
+
+    def start_pending(mode):
+        nav.energy -= 5
+        nav.started.append(("pending", mode, 49))
+        return 49
+
+    nav.start_pending_stars = start_pending
+    nav.start_last_beaten = lambda mode: nav.started.append(("beaten", mode)) or (_ for _ in ()).throw(
+        AssertionError("last beaten while 49 still misses stars"))
+    report = run_with(monkeypatch, nav, [V, V], RunRequest(
+        Mode.ELITE, None, repeat=True, last_beaten=True, pending_stars=True))
+    assert report.results == [V, V]
+    assert nav.started == ["detect", ("pending", Mode.ELITE, 49), ("pending", Mode.ELITE, 49)]
+
+
+def test_missing_stars_then_replays_last_beaten_without_switching_mode(monkeypatch):
+    """Once no card is under 3 stars, keep last beaten (lobby − 1). Do not rescan forever and
+    do not switch the run to Last unlocked. Mode and repeat stay as selected."""
+    nav = FakeNav(energy=15, latest=51)
+    scans = {"n": 0}
+
+    def start_beaten(mode):
+        nav.energy -= 5
+        nav.started.append(("beaten", mode))
+        return 50
+
+    nav.start_last_beaten = start_beaten
+
+    def pending_then_clear(mode):
+        scans["n"] += 1
+        if scans["n"] == 1:
+            nav.energy -= 5
+            nav.started.append(("pending", 49))
+            return 49
+        return None
+
+    nav.start_pending_stars = pending_then_clear
+    report = run_with(monkeypatch, nav, [V, V, V], RunRequest(
+        Mode.ELITE, None, repeat=True, last_beaten=True, pending_stars=True))
+    assert report.results == [V, V, V]
+    assert nav.started == ["detect", ("pending", 49), ("beaten", Mode.ELITE), ("beaten", Mode.ELITE)]
+    assert scans["n"] == 2  # one more scan finds none left; the run after that does not scan again
 
 
 def test_patrol_is_skipped_until_its_reward_is_due(monkeypatch):

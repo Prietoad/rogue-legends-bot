@@ -25,6 +25,10 @@ class FakeDevice:
     def foreground_package(self):
         return self.apps.pop(0) if self.apps else routine.config.PACKAGE
 
+    def swipe(self, start, end, duration=0.6, settle=0):
+        self.swipes = getattr(self, "swipes", [])
+        self.swipes.append((start, end))
+
     def screenshot(self):
         return None
 
@@ -52,7 +56,15 @@ def make(screens, ads=False):
     """Routine whose captures return the given OCR text lists in order."""
     r = Routine(FakeDevice(), None, FakeNav(), ads)
     frames = iter(screens)
-    r._capture = lambda: (None, next(frames))
+
+    def capture():
+        if r._pushed is not None:
+            frame = r._pushed
+            r._pushed = None
+            return frame
+        return None, next(frames)
+
+    r._capture = capture
     return r
 
 
@@ -72,15 +84,18 @@ def test_failed_part_is_reported_and_the_next_one_runs(monkeypatch):
     monkeypatch.setattr(r, "raid", lambda: routine.SKIPPED)
     monkeypatch.setattr(r, "vip", lambda: routine.DONE)
     monkeypatch.setattr(r, "donate", lambda: routine.DONE)
+    monkeypatch.setattr(r, "vault", lambda: routine.DONE)
     monkeypatch.setattr(r, "patrol", lambda: routine.DONE)
+    monkeypatch.setattr(r, "_back_to_guild", lambda: False)
     for part in ("daily", "mail", "dojo", "dive"):
         monkeypatch.setattr(r, part, lambda: routine.DONE)
     results = r.run_parts()
-    assert results == [("vip", "done"), ("daily", "done"), ("mail", "done"), ("patrol", "done"), ("arena", "failed"),
+    assert results == [("daily", "done"), ("vip", "done"), ("mail", "done"), ("patrol", "done"), ("arena", "failed"),
                        ("dojo", "done"), ("tower", "done"), ("dive", "done"), ("mines", "done"), ("pets", "done"),
-                       ("raid", "skipped"), ("donate", "done")]
+                       ("raid", "skipped"), ("donate", "done"), ("vault", "done")]
     assert ran == ["ok"]
-    assert r.nav.lobby_visits == 7  # stays in the modes tab; lobby after VIP, daily, mail, patrol, modes, raid, donation
+    # Stays in the modes tab. Lobby after daily, VIP, mail, patrol, the modes, raid, donation, vault.
+    assert r.nav.lobby_visits == 8
 
 
 def skill_screen(chosen, needed, rarities):
@@ -253,6 +268,30 @@ def test_donate_only_the_free_donation():
     # the gem price ("25") was never tapped
 
 
+def test_donation_from_the_guild_map_does_not_leave_and_reenter():
+    """After the raid the bot is already on the map: it must not go back to the lobby first."""
+    labels.set_language("es")
+    r = make([GUILD_MAP, GUILD_HALL, DONATION_FREE, DONATION_FREE, CLAIM_ES, DONATION_PAID])
+    assert r.donate() == routine.DONE
+    assert routine.config.GUILD_BUTTON not in r.device.taps
+    assert (720, 1607) in r.device.taps  # the free donation
+
+
+def test_vault_claims_the_free_personal_reward_and_not_a_price():
+    labels.set_language("en")
+    guild_map = [Text("Guild Hall", 640, 980, 860, 1040), Text("Raid Boss", 1000, 1400, 1200, 1460),
+                 Text("Vault", 160, 1480, 320, 1540)]
+    inside = [Text("Personal Vault", 480, 400, 960, 460), Text("Daily", 560, 900, 760, 950),
+              Text("Claim", 600, 1100, 840, 1160)]
+    priced = [Text("Personal Vault", 480, 400, 960, 460), Text("Claim", 1000, 1100, 1200, 1160),
+              Text("50", 1080, 1160, 1160, 1200)]
+    r = make([guild_map, inside, priced])
+    assert r.vault() == routine.DONE
+    assert r.device.taps[0] == (240, 1510)  # the vault building
+    assert (720, 1130) in r.device.taps  # free Claim
+    assert (1100, 1130) not in r.device.taps  # the gem-priced claim
+
+
 def test_donate_skipped_outside_a_guild():
     labels.set_language("es")
     r = make([ES_LOBBY])
@@ -349,10 +388,11 @@ def test_open_mode_waits_for_the_list_to_stop_after_scrolling():
 def test_a_stuck_lobby_between_parts_does_not_abort_the_routine(monkeypatch):
     """Review: go_to_lobby raising between parts used to skip every remaining part."""
     r = make([])
-    for part in ("vip", "daily", "mail", "arena", "dojo", "tower", "dive", "patrol", "raid", "donate"):
+    for part in ("vip", "daily", "mail", "arena", "dojo", "tower", "dive", "patrol", "raid", "donate", "vault"):
         monkeypatch.setattr(r, part, lambda: routine.DONE)
     monkeypatch.setattr(r, "dungeon", lambda label: routine.DONE)
     monkeypatch.setattr(r, "_back_to_modes", lambda: True)
+    monkeypatch.setattr(r, "_back_to_guild", lambda: False)
 
     def stuck():
         raise NavigationError("Could not reach the Aventura lobby")
@@ -492,15 +532,23 @@ DAILY_POPUP = [Text("Recompensas Diarias", 420, 880, 1020, 935), Text("Reclamar"
                Text("Introducir Código", 470, 1360, 970, 1430)]
 WEB_PAGE = [Text("roguelegend.io", 220, 130, 390, 170), Text("TIENDA", 780, 310, 890, 350),
             Text("Reclamar ahora!", 824, 1392, 1154, 1438)]
+WEB_CLAIMED = [Text("roguelegend.io", 220, 130, 390, 170), Text("Día 1", 200, 1100, 320, 1150)]
+WEB_WHEEL = [Text("roguelegend.io", 220, 130, 390, 170), Text("Ruleta diaria", 1080, 2380, 1380, 2440),
+             Text("GRATIS", 1180, 2300, 1300, 2340)]
 
 
-def test_daily_rewards_claims_on_the_web_page_and_goes_back_to_the_game(monkeypatch):
+def test_daily_rewards_claims_scrolls_for_the_free_spin_and_goes_back(monkeypatch):
     labels.set_language("es")
     monkeypatch.setattr(routine.config, "VIDEO_SETTLE", 0)
-    r = make([ES_LOBBY, ES_MENU, DAILY_POPUP, WEB_PAGE, WEB_PAGE])  # last frame: popup already gone
+    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
+    monkeypatch.setattr(routine.config, "SCROLL_SETTLE", 0)
+    r = make([ES_LOBBY, ES_MENU, DAILY_POPUP, WEB_PAGE, WEB_PAGE, WEB_CLAIMED, WEB_CLAIMED, WEB_WHEEL,
+              WEB_WHEEL, WEB_CLAIMED])
     r.device.apps = ["com.android.chromium", "com.android.chromium"]  # Back twice: page history, then the game
     assert r.daily() == routine.DONE
-    assert r.device.taps == [routine.config.MENU_BUTTON, (397, 1084), (696, 1178), (989, 1415)]
+    assert r.device.taps[:4] == [routine.config.MENU_BUTTON, (397, 1084), (696, 1178), (989, 1415)]
+    assert (1230, 2410) in r.device.taps  # Ruleta diaria, after the claim
+    assert r.device.swipes  # scrolled down to find the spin
     assert r.device.backs == 2
 
 
@@ -508,6 +556,7 @@ def test_daily_rewards_goes_back_to_the_game_even_without_the_web_claim(monkeypa
     """Another account may not be logged in on the web store: no "Reclamar ahora!". The lobby is left clean."""
     labels.set_language("es")
     monkeypatch.setattr(routine, "SCREEN_TIMEOUT", 0.05)
+    monkeypatch.setattr(routine.config, "WEB_PAGE_TIMEOUT", 0.05)
     login = [Text("roguelegend.io", 220, 130, 390, 170), Text("Iniciar sesión", 500, 1200, 900, 1260)]
     r = make(itertools.chain([ES_LOBBY, ES_MENU, DAILY_POPUP], itertools.repeat(login)))
     r.device.apps = ["com.android.chromium"]
@@ -519,6 +568,7 @@ def test_daily_rewards_closes_the_popup_when_the_browser_never_opens(monkeypatch
     """The claim window used to stay up, so mail started on the wrong screen and the run restarted."""
     labels.set_language("es")
     monkeypatch.setattr(routine, "SCREEN_TIMEOUT", 0.05)
+    monkeypatch.setattr(routine.config, "WEB_PAGE_TIMEOUT", 0.05)
     monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
     monkeypatch.setattr(routine, "close_button", lambda img: (720, 1500))
     r = make(itertools.chain([ES_LOBBY, ES_MENU, DAILY_POPUP], itertools.repeat(DAILY_POPUP)))
@@ -537,14 +587,20 @@ EN_WEB = [Text("roguelegend.io", 220, 130, 390, 170), Text("Claim Now", 824, 139
 def test_english_daily_rewards_taps_claim_rewards_not_enter_code(monkeypatch):
     labels.set_language("en")
     monkeypatch.setattr(routine.config, "VIDEO_SETTLE", 0)
+    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
+    monkeypatch.setattr(routine.config, "SCROLL_SETTLE", 0)
     lobby = [Text("Patrol", 650, 1900, 790, 1945), Text("OFF", 900, 2060, 970, 2095),
              Text("START", 600, 2070, 716, 2115)]
-    r = make([lobby, EN_MENU, EN_DAILY, EN_WEB, EN_WEB])
+    claimed = [Text("roguelegend.io", 220, 130, 390, 170), Text("Day 1", 200, 1100, 320, 1150)]
+    wheel = [Text("roguelegend.io", 220, 130, 390, 170), Text("Daily Wheel", 1080, 2380, 1380, 2440),
+             Text("FREE", 1180, 2300, 1300, 2340)]
+    r = make([lobby, EN_MENU, EN_DAILY, EN_WEB, EN_WEB, claimed, claimed, wheel, wheel, claimed])
     r.device.apps = ["com.android.chromium", "com.android.chromium"]
     assert r.daily() == routine.DONE
     assert (720, 1178) in r.device.taps  # Claim Rewards
     assert (720, 1395) not in r.device.taps  # Enter Code
     assert (989, 1415) in r.device.taps  # Claim Now on the web page
+    assert (1230, 2410) in r.device.taps  # free daily wheel
 
 
 def test_daily_rewards_without_a_claim_button_is_closed(monkeypatch):
@@ -584,18 +640,37 @@ def tower(tickets):
             Text("Challenge", 620, 2395, 820, 2440)]
 
 
-def tower_win(next_floor=True):
-    return [Text("VICTORY!", 600, 1000, 840, 1055), Text("Confirm", 290, 1925, 640, 2005)] + (
-        [Text("Next Floor", 760, 1925, 1190, 2005)] if next_floor else [])
+def tower_win(next_floor=True, label="Next Floor"):
+    return [Text("VICTORY!", 600, 1000, 840, 1055), Text("Okay", 290, 1925, 640, 2005)] + (
+        [Text(label, 760, 1925, 1190, 2005)] if next_floor else [])
 
 
-def test_tower_goes_on_with_next_floor_while_another_ticket_is_left(monkeypatch):
-    r = make([tower(3), LOADING, tower_win(), LOADING, tower_win(), LOADING, tower_win(), tower(0)])
+def test_tower_goes_on_with_next_while_it_is_shown(monkeypatch):
+    """Floors that show Next stay in the fight. The clear (no Next) taps Okay, then the tower screen."""
+    r = make([tower(3), LOADING, tower_win(), LOADING, tower_win(label="Next"), LOADING,
+              tower_win(next_floor=False), tower(0)])
     monkeypatch.setattr(r, "_open_mode", lambda label: None)
     assert r.tower() == routine.DONE
-    challenge, confirm, next_floor = (720, 2417), (465, 1965), (975, 1965)
-    # 3 tickets: Challenge, next floor, next floor; the last ticket's win is confirmed (never "next" at 0)
-    assert r.device.taps == [challenge, next_floor, next_floor, confirm]
+    challenge, okay, nxt = (720, 2417), (465, 1965), (975, 1965)
+    assert r.device.taps == [challenge, nxt, nxt, okay]
+
+
+def test_tower_next_is_tapped_even_when_the_ticket_counter_says_one(monkeypatch):
+    """A wrong ticket count used to tap Okay and bounce to the tower menu while Next was on screen."""
+    r = make([tower(1), LOADING, tower_win(label="Next"), LOADING, tower_win(next_floor=False), tower(0)])
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    assert r.tower() == routine.DONE
+    assert r.device.taps[1] == (975, 1965)  # Next, not Okay at (465, 1965)
+
+
+def test_tower_waits_through_loading_before_reading_the_result(monkeypatch):
+    """A full-screen Loading... after a won fight is not a failure."""
+    monkeypatch.setattr(routine.config, "MODE_FIGHT_TIMEOUT", 0)
+    monkeypatch.setattr(routine.config, "FIGHT_LOADING_WAIT", 30)
+    r = make([LOADING, LOADING, tower_win(label="Next"), LOADING])
+    result = r._fight(next_floor=True)
+    assert result.victory and result.next_floor is not None
+    assert r.device.taps == [(975, 1965)]
 
 
 def test_tower_next_floor_then_defeat_ends_the_tower(monkeypatch):
@@ -654,8 +729,27 @@ def test_dojo_and_raid_skill_picks_follow_the_build(tmp_path):
     assert set(r.catalog.skills) >= {"fireball", "iceshard", "superflash", "glasscannon"}  # learned by the catalog
 
 
+def test_raid_rerolls_once_when_nothing_fits_the_build(tmp_path):
+    from roguebot.build import Build
+    from roguebot.skills import Catalog
+    unwanted = [("Common", "Venom Drip", "Every 2 rounds, cast Venom."),
+                ("Rare", "Poison Cloud", "Venom damage each round.")]
+    wanted = [("Common", "Fire Ball", "Every 2 rounds, cast a Fireball.")] + unwanted
+    reroll = [Text("Reroll", 280, 2100, 520, 2160), Text("(1)", 360, 2168, 440, 2210)]
+    r = make([named_skill_screen(0, 1, unwanted) + reroll,
+              named_skill_screen(0, 1, wanted),
+              named_skill_screen(1, 1, wanted),
+              [Text("DEFEAT", 600, 880, 840, 940), Text("OK", 680, 2300, 760, 2350)]])
+    r.build = Build(nature="magic", order=("fire",))
+    r.catalog = Catalog(tmp_path / "skills.json")
+    r._fight()
+    assert r.device.taps[0] == (400, 2130)  # the reroll, not a venom card
+    assert r.device.taps[1][1] == 755 + 90  # then the fire card
+
+
 def test_run_parts_resumes_after_a_restart_at_the_part_that_broke(monkeypatch):
     r = make([MODES_TOP] * 20)
+    monkeypatch.setattr(r, "_back_to_guild", lambda: False)
     calls = []
 
     def part(name, error=None):
@@ -665,7 +759,7 @@ def test_run_parts_resumes_after_a_restart_at_the_part_that_broke(monkeypatch):
                 raise error
             return routine.DONE
         return run
-    for name in ("vip", "daily", "mail", "arena", "dojo", "dive", "patrol", "raid", "donate"):
+    for name in ("vip", "daily", "mail", "arena", "dojo", "dive", "patrol", "raid", "donate", "vault"):
         monkeypatch.setattr(r, name, part(name))
     monkeypatch.setattr(r, "tower", part("tower", RuntimeError("emulator froze")))
     monkeypatch.setattr(r, "dungeon", lambda label: routine.DONE)
@@ -676,13 +770,13 @@ def test_run_parts_resumes_after_a_restart_at_the_part_that_broke(monkeypatch):
     calls.clear()
     monkeypatch.setattr(r, "tower", part("tower"))
     results = r.run_parts(progress)  # after the restart: from the tower on, nothing done twice
-    assert calls == ["tower", "dive", "raid", "donate"]  # the patrol ran before the modes
+    assert calls == ["tower", "dive", "raid", "donate", "vault"]  # the patrol ran before the modes
     assert [p for p, _ in results] == list(routine.PARTS)
 
 
 def test_a_part_that_keeps_breaking_the_run_is_marked_failed(monkeypatch):
     r = make([MODES_TOP] * 40)
-    for name in ("vip", "daily", "mail", "arena", "dojo", "dive", "patrol", "raid", "donate", "tower"):
+    for name in ("vip", "daily", "mail", "arena", "dojo", "dive", "patrol", "raid", "donate", "vault", "tower"):
         monkeypatch.setattr(r, name, lambda: routine.DONE)
     monkeypatch.setattr(r, "dungeon", lambda label: (_ for _ in ()).throw(RuntimeError("frozen")))
     progress = {}
@@ -698,8 +792,9 @@ def test_a_failed_part_left_stuck_restarts_and_resumes_at_the_next_part(monkeypa
     """A part that fails where the lobby can't be reached any more (a screen nothing recognizes) used to
     make every following part fail too; now the run restarts the emulator and goes on with the next part."""
     r = make([])
-    for part in ("vip", "daily", "mail", "dojo", "tower", "dive", "patrol", "raid", "donate"):
+    for part in ("vip", "daily", "mail", "dojo", "tower", "dive", "patrol", "raid", "donate", "vault"):
         monkeypatch.setattr(r, part, lambda: routine.DONE)
+    monkeypatch.setattr(r, "_back_to_guild", lambda: False)
     monkeypatch.setattr(r, "dungeon", lambda label: routine.DONE)
     monkeypatch.setattr(r, "arena", lambda: (_ for _ in ()).throw(NavigationError("Expected the arena screen")))
     monkeypatch.setattr(r, "_back_to_modes", lambda: False)

@@ -594,9 +594,9 @@ def test_go_to_lobby_claims_english_daily_rewards_or_closes_it(monkeypatch):
         nav.go_to_lobby()
     finally:
         labels.set_language(None)
-    assert nav.device.taps[0] == (720, 1140)  # Claim Rewards
+    assert (720, 1140) not in nav.device.taps  # Claim Rewards opens the browser; the daily part does that
     assert (720, 1340) not in nav.device.taps  # Enter Code
-    assert (720, 1600) in nav.device.taps  # popup stayed: the ✕
+    assert (720, 1600) in nav.device.taps  # the ✕, so the lobby can be read
 
 
 def test_go_to_lobby_resumes_an_interrupted_level(monkeypatch):
@@ -735,6 +735,19 @@ def _card(n, stars, y):
     return Card(n, Text(f"{n}. Level", 100, y - 400, 460, y - 360), Text("INICIO", 640, y - 20, 800, y + 20), stars)
 
 
+def test_pending_stars_plays_the_clipped_card_above_a_complete_last_beaten(monkeypatch):
+    """Level 50 (last beaten) has 3 stars. Level 49 is cut off at the top and still misses one.
+    The scan must start 49, not scroll away and fall through to 50."""
+    from roguebot import navigation
+    from roguebot.screens import Mode
+    nav = _star_nav(monkeypatch, [[_card(50, 3, 1400)]])
+    clip = _card(49, 2, 520)
+    monkeypatch.setattr(navigation, "clipped_star_card", lambda img, texts, cards: clip)
+    assert nav.start_pending_stars(Mode.NORMAL) == 49
+    assert nav.started == [clip.button.center]
+    assert nav.drags == []
+
+
 def test_pending_stars_plays_a_level_missing_stars(monkeypatch):
     from roguebot.screens import Mode
     nav = _star_nav(monkeypatch, [[_card(12, 2, 1080), _card(13, 3, 1650)]])
@@ -831,7 +844,7 @@ def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.11.0"
+    assert roguebot.__version__ == "1.10.1"
 
 
 def test_next_farm_level_advances_on_a_win_and_falls_back_on_a_loss():

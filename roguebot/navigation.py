@@ -9,10 +9,11 @@ import cv2
 
 from roguebot import config, labels
 from roguebot.device import Device
-from roguebot.mode_screens import back_arrow, daily_claim, parse_fight_result, quick_patrol_close, quick_patrol_open
+from roguebot.mode_screens import back_arrow, parse_fight_result, quick_patrol_close, quick_patrol_open
 from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, close_button_any_size,
                               footer_visible, is_loading, is_star_list, lobby_behind, outside_tap_clear,
-                              parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list, popup_close,
+                              parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list,
+                              clipped_star_card, popup_close,
                               resume_prompt, tutorial_hand, update_required)
 from roguebot.vision import Ocr, Text, find, parse_level_number
 
@@ -90,7 +91,6 @@ class Navigator:
         self.ads = ads  # watch ads (energy videos); only with an account that skips them
         self.elite_cost = elite_cost if elite_cost in config.ELITE_COSTS else config.ELITE_COST_DEFAULT
         self.resume_level: Callable[[], object] | None = None  # plays an interrupted run to its end
-        self._daily_claim_tapped = False  # one Claim Rewards attempt per run; a popup that stays is closed
 
     # --- public API -------------------------------------------------------------------
 
@@ -121,32 +121,57 @@ class Navigator:
 
     def start_pending_stars(self, mode: Mode) -> int | None:
         """Start a beaten level that still misses stars (each star gives rewards, diamonds included).
-        The list opens near its end: scan upwards, page by page. Returns the level, or None if every
-        beaten level has 3 stars (nothing started)."""
+
+        The list opens on the last beaten level, and the card above it is often cut off: its header
+        (where the star icons sit) is above the screen while its Start button is not. That card is
+        checked first. The scan then goes upwards. None means every beaten level really has 3 stars
+        (the list was read through level 1). A scroll that does not move, or a frame with no numbers,
+        is not that: those used to fall through to the last beaten level while a missing star was
+        still on screen.
+        """
         self._open_star_list(mode)
         prev, stuck = None, 0
+        saw_level_one = False
         for _ in range(MAX_SCROLLS):
             img, texts = self._capture()
             cards = parse_star_list(img, texts, self.ocr)
             pending = [c for c in cards if c.button and c.stars < 3]
+            clip = clipped_star_card(img, texts, cards)
+            if clip and clip.stars < 3 and all(c.number != clip.number for c in pending):
+                log.info("Star list: level %d is cut off at the top and still misses a star (%d/3)",
+                         clip.number, clip.stars)
+                pending.append(clip)
             if pending:
-                card = max(pending, key=lambda c: c.number)  # nearest to the end: fewest scrolls
+                card = max(pending, key=lambda c: c.number)  # nearest the end, never the last beaten over this
+                if card is clip:
+                    log.info("Starting %s star challenge for missing stars: level %d (%d/3)", mode.value,
+                             card.number, card.stars)
+                    self._press_start(card.button, mode)
+                    return card.number
                 card = self._scroll_to(card.number)  # settled position (scroll inertia)
                 log.info("Starting %s star challenge for missing stars: %s (%d/3)", mode.value, card.header.text,
                          card.stars)
                 self._press_start(card.button, mode)
                 return card.number
             numbers = [c.number for c in cards]
-            if not numbers or numbers[0] == 1:
+            if not numbers:
+                # Mid-scroll the level numbers are unreadable. That is not the top of the list.
+                time.sleep(config.SCROLL_SETTLE)
+                continue
+            if numbers[0] == 1:
+                saw_level_one = True
                 break
             if numbers == prev:
                 stuck += 1
-                if stuck >= SCROLL_STUCK_TRIES:  # one drag that does not move the list is not the end of it
-                    break
+                if stuck >= SCROLL_STUCK_TRIES:
+                    self._fail("Star list stopped scrolling before level 1; a missing star may still be above", img)
             else:
                 stuck = 0
                 prev = numbers
             self._drag_list(-config.MAX_DRAG)  # towards lower levels
+            time.sleep(config.SCROLL_SETTLE)
+        if not saw_level_one:
+            self._fail("Star list did not reach level 1; missing stars were not ruled out", img)
         log.info("Every beaten %s level has 3 stars", mode.value)
         return None
 
@@ -284,11 +309,9 @@ class Navigator:
             elif quick_patrol_open(texts):
                 log.info("Quick Patrol is open; not closing the Patrol menu under it")
                 time.sleep(config.UI_SETTLE)
-            elif (claim := daily_claim(texts)) and not self._daily_claim_tapped:
-                log.info("Daily rewards: tapping Claim Rewards")
-                self._daily_claim_tapped = True
-                self._tap_text(claim)
-            elif find(texts, labels.DAILY_TITLE) and (self._daily_claim_tapped or daily_claim(texts) is None):
+            elif find(texts, labels.DAILY_TITLE):
+                # The daily part owns the web claim (wait, daily reward, free spin). Tapping
+                # Claim here opened the browser and Back returned to the game at once.
                 close = close_x or close_button_any_size(img)
                 if close:
                     log.info("Closing Daily Rewards")

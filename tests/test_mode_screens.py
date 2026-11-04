@@ -264,6 +264,14 @@ def test_vip_cards_claim_all_never_a_price(ocr):
     assert vip_claim_all(lobby) is None
 
 
+@pytest.mark.parametrize("name", ["en_guild.png", "guild_map.png", "guild_map_garbled.png"])
+def test_guild_map_vault(ocr, name):
+    from roguebot.mode_screens import guild_vault
+    _, texts = load(ocr, name)
+    vault = guild_vault(texts)
+    assert vault is not None and vault.center[0] < 600 and 1400 < vault.center[1] < 1900
+
+
 def test_guild_hall_and_donation(ocr):
     from roguebot.mode_screens import free_donation, guild_hall_donate
     from roguebot.mode_screens import guild_hall

@@ -264,7 +264,7 @@ def test_missing_stars_source_builds_a_pending_request(app, monkeypatch):
     finally:
         app.source.set("latest")
         app._toggle_level()
-    assert requests[0].pending_stars and requests[0].level is None
+    assert requests[0].pending_stars and requests[0].last_beaten and requests[0].level is None
 
 
 def test_window_has_the_game_icon(app):

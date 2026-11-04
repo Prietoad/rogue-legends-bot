@@ -497,7 +497,9 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
     double = find(texts, L.DOUBLE_REWARD)
     if proceed and double:  # always double the reward with the (VIP-skipped) ad before continuing
         return LevelState(LevelScreen.DOUBLE_REWARD, double.center)
-    end = proceed or find(texts, L.CONFIRM, exact=True)  # Dungeon Dive ends with "Confirmar"
+    # Dive / tower ends: Continue, Confirm, Okay, or "Tap to Continue".
+    end = (proceed or find(texts, L.CONFIRM, exact=True) or find(texts, L.OK, exact=True)
+           or find(texts, L.TAP_TO_CONTINUE))
     if end and find(texts, L.DEFEAT):
         return LevelState(LevelScreen.DEFEAT, end.center)
     if end and find(texts, L.VICTORY):
@@ -567,8 +569,71 @@ def card_stars(img: np.ndarray, header: Text) -> int:
     earned = 0
     for x in config.STAR_ICONS_X:
         b, g, r = img[y - 12:y + 12, x - 12:x + 12].reshape(-1, 3).mean(0)
-        earned += r > 180 and b < 150
+        earned += _star_kind(b, g, r) == "gold"
     return earned
+
+
+def _star_kind(b: float, g: float, r: float) -> str | None:
+    """'gold' earned star, 'grey' missing star, or None (card background and text)."""
+    if r > 180 and b < 160 and r - b > 80:
+        return "gold"
+    if b > 180 and g > 160 and abs(r - b) < 50:
+        return "grey"
+    return None
+
+
+def _objective_stars(img: np.ndarray, texts: list[Text], y0: float, y1: float) -> tuple[int, int]:
+    """(gold, grey) objective-row stars between two y positions. The icon sits just left of the text."""
+    x0, x1 = config.OBJECTIVE_TEXT_X
+    gold = grey = 0
+    for t in texts:
+        if not (y0 < t.center[1] < y1 and x0 <= t.x1 <= x1):
+            continue
+        x, y = int(t.x1 - config.OBJECTIVE_STAR_DX), int(t.center[1])
+        if y < 8 or x < 8 or y + 8 >= img.shape[0] or x + 8 >= img.shape[1]:
+            continue
+        b, g, r = img[y - 8:y + 8, x - 8:x + 8].reshape(-1, 3).mean(0)
+        kind = _star_kind(b, g, r)
+        gold += kind == "gold"
+        grey += kind == "grey"
+    return gold, grey
+
+
+def clipped_star_card(img: np.ndarray | None, texts: list[Text], cards: list[Card]) -> Card | None:
+    """The card cut off at the top of the star list.
+
+    The list opens on the last beaten level. The card above it (often the one that still
+    misses a star) has its header — and the header's star icons — above the screen, while
+    its Start button and condition rows are visible. `card_stars` never sees it, so a scan
+    that only reads headers plays the last beaten level instead.
+
+    Its number is the one just below the first full card. A grey condition star means it
+    is still incomplete. None when the top card is fully on screen or its stars can't be read.
+    """
+    if img is None or not cards:
+        return None
+    first = min(cards, key=lambda c: c.header.center[1])
+
+    def linked(t: Text) -> bool:
+        return any(c.button and abs(c.button.center[1] - t.center[1]) < 25 for c in cards)
+
+    orphans = [t for t in texts if any(matches(t, lbl, exact=True) for lbl in START_LABEL.values())
+               and config.LIST_TOP < t.center[1] < first.header.center[1] and not linked(t)]
+    if not orphans:
+        return None
+    button = min(orphans, key=lambda t: first.header.center[1] - t.center[1])
+    if not (0 < first.header.center[1] - button.center[1] < config.CARD_PITCH):
+        return None
+    if first.number < 2:
+        return None
+    gold, grey = _objective_stars(img, texts, config.LIST_TOP, button.center[1] - 40)
+    if grey:
+        stars = min(gold, 2)
+    elif gold >= 3:
+        stars = 3
+    else:
+        return None  # the missing row may still be off screen: let a short scroll reveal the header
+    return Card(first.number - 1, first.header, button, stars)
 
 
 def parse_star_list(img: np.ndarray, texts: list[Text], ocr: Ocr) -> list[Card]:
@@ -590,7 +655,13 @@ def parse_star_list(img: np.ndarray, texts: list[Text], ocr: Ocr) -> list[Card]:
         for h in ocr.read(img, region):
             n = parse_level_number(h.text)
             if n is not None:
-                cards[n] = Card(n, h, b, card_stars(img, h))
+                stars = card_stars(img, h)
+                # A grey condition star wins over a header sample that landed on the bar
+                # and counted every icon as earned.
+                _, grey = _objective_stars(img, texts, h.center[1] + 30, b.center[1] - 30)
+                if grey:
+                    stars = min(stars, 3 - min(grey, 3))
+                cards[n] = Card(n, h, b, stars)
                 break
     for t in texts:
         n = parse_level_number(t.text)

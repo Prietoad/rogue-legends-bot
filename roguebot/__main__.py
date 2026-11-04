@@ -50,13 +50,22 @@ def next_farm_level(played: int | None, won: bool, lobby_level: int | None,
     return frontier - 1
 
 
-def _start_level(nav: Navigator, request: RunRequest) -> int | None:
-    """Start the requested level; returns its number when known."""
-    if request.pending_stars:
+def _start_level(nav: Navigator, request: RunRequest, state: dict | None = None) -> int | None:
+    """Start the requested level; returns its number when known.
+
+    Missing stars plays a beaten level that still has fewer than 3 stars. Only when that
+    scan has reached level 1 and found none does it fall through to the last beaten level
+    (lobby level − 1), and it keeps doing that — same mode, same keep-running loop — until
+    energy runs out. It does not switch the run over to Last unlocked.
+    """
+    state = state if state is not None else {}
+    if request.pending_stars and not state.get("stars_cleared"):
         played = nav.start_pending_stars(request.mode)
         if played is not None:
             return played
-    if request.last_beaten:
+        log.info("Missing stars: no card left under 3 stars; playing the last beaten level")
+        state["stars_cleared"] = True
+    if request.last_beaten or state.get("stars_cleared"):
         return nav.start_last_beaten(request.mode)
     if request.level is None:
         return nav.start_latest(request.mode)
@@ -155,7 +164,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
             nav.wait_for_lobby(config.GAME_LOAD_TIMEOUT)
         nav.detect_language()
         if dry_run:
-            _start_level(nav, request)
+            _start_level(nav, request, state)
             return Report(dry_run=True)
         results = state["results"]
         cycle = 0
@@ -176,8 +185,12 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
                     if nav.claim_free_energy() < config.MIN_RUN_ENERGY:
                         break
                 try:
-                    played = _start_level(nav, request)
-                except StarsUnavailable as e:  # no star list or no beaten level on this account (yet)
+                    played = _start_level(nav, request, state)
+                except StarsUnavailable as e:  # the star list is not on this account (yet)
+                    # A finished missing-stars scan already chose last beaten. Do not turn that
+                    # into Last unlocked because one lobby read missed the button.
+                    if state.get("stars_cleared"):
+                        raise
                     log.warning("%s: playing the last unlocked level instead", e)
                     state["no_stars"] = True  # remembered: no pinning, no more star list attempts
                     request = state["request"] = replace(request, level=None, last_beaten=False, pending_stars=False)

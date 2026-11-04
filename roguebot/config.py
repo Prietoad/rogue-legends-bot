@@ -55,6 +55,8 @@ MIN_RUN_ENERGY = 5           # cheapest run (normal, or elite at x5)
 
 # Elite start dialog ("Modo Élite")
 STAR_ICONS_X = (1245, 1312, 1379)  # the 3 star icons right of a star list card header (gold = earned)
+OBJECTIVE_STAR_DX = 66               # objective-row star sits this far left of the condition text
+OBJECTIVE_TEXT_X = (250, 500)        # condition lines ("Clear with more than 65% HP"); not the header
 ELITE_COSTS = (5, 10, 15)    # energy per run; the window picks one (default the cheapest: more runs)
 ELITE_COST_DEFAULT = ELITE_COSTS[0]
 ELITE_COST_MINUS = (480, 1747)
@@ -167,6 +169,10 @@ MODE_SUBTITLE_BELOW = 150  # px from a mode card title to its subtitle line ("Ab
 MODES_SCROLL_UP = ((720, 700), (720, 2000))  # finger drags down = list scrolls up
 MODES_MAX_SCROLLS = 3
 MODE_FIGHT_TIMEOUT = 240                 # one mode/raid fight, seconds
+FIGHT_LOADING_WAIT = 90                  # extra seconds a Loading screen may last before a fight is a fail
+WEB_PAGE_TIMEOUT = 25                    # daily-reward store page (it keeps loading after the first paint)
+WEB_SCROLLS = 4                          # scrolls down the store page looking for the free spin
+WEB_SCROLL_DOWN = ((720, 1700), (720, 700))  # finger moves up: the page scrolls down
 MAX_MODE_ACTIONS = 40                    # taps within one mode before giving up
 DOJO_TICKETS_REGION = (1270, 45, 1420, 130)  # dojo ticket count (top-right); full-frame OCR misses it
 DOJO_CHEST_Y = (2000, 2250)              # dojo progress chest "RECLAMAR" ("Intenta el Dojo N veces")
