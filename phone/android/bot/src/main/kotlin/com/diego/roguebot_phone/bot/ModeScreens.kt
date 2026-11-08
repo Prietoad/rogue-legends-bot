@@ -140,11 +140,13 @@ object ModeScreens {
             } ?: cropPower(Region(Config.ARENA_ROW_POWER_X.first, b.center.y + lo, Config.ARENA_ROW_POWER_X.second, b.center.y + hi))
             if (power != null) opponents.add(Opponent(power, b))
         }
+        opponents.sortBy { it.challenge!!.center.y }  // list order, top first
         return ArenaOpponents(own, opponents, find(texts, L.FREE_REFRESH))
     }
 
-    /** The strongest opponent that is not stronger than us, or null if all are stronger. */
-    fun pickOpponent(ownPower: Long, opponents: List<Opponent>): Opponent? = opponents.filter { it.power <= ownPower }.maxByOrNull { it.power }
+    /** The highest opponent in the list (it gives the most arena points) that is not stronger than us,
+     *  or null if all are stronger. [opponents] is in list order, top first. */
+    fun pickOpponent(ownPower: Long, opponents: List<Opponent>): Opponent? = opponents.firstOrNull { it.power <= ownPower }
 
     data class TowerScreen(val challenge: Text, val tickets: Int)
 

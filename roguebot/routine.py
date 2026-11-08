@@ -91,7 +91,7 @@ class Routine:
     # --- parts ---------------------------------------------------------------------------
 
     def arena(self) -> str:
-        """While there are tickets: fight the strongest opponent that is not stronger than us."""
+        """While there are tickets: fight the highest opponent in the list that is not stronger than us."""
         if not self._open_mode(L.ARENA):
             log.info("Arena: closed for now")
             return SKIPPED

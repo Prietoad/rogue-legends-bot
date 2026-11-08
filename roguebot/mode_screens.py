@@ -224,13 +224,14 @@ def parse_arena_opponents(texts: list[Text], img: np.ndarray | None = None, ocr:
                                 config.ARENA_ROW_POWER_X[1], b.center[1] + dy[1]))
         if power is not None:
             opponents.append(Opponent(power, b))
+    opponents.sort(key=lambda o: o.challenge.center[1])  # list order, top first
     return ArenaOpponents(own, opponents, find(texts, L.FREE_REFRESH))
 
 
 def pick_opponent(own_power: int, opponents: list[Opponent]) -> Opponent | None:
-    """The strongest opponent that is not stronger than us, or None if all are stronger."""
-    weaker = [o for o in opponents if o.power <= own_power]
-    return max(weaker, key=lambda o: o.power) if weaker else None
+    """The highest opponent in the list (it gives the most arena points) that is not stronger than us,
+    or None if all are stronger. `opponents` is in list order, top first."""
+    return next((o for o in opponents if o.power <= own_power), None)
 
 
 @dataclass(frozen=True)

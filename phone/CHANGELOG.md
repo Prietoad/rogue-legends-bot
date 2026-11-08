@@ -1,5 +1,8 @@
 # Changelog (phone app)
 
+## 0.5.0 (2026-11-08)
+- Same change as the desktop bot 1.10.0: in the arena the bot fights the opponent highest in the list that is not stronger (higher rows give more arena points).
+
 ## 0.4.0 (2026-10-21)
 - Same change as the desktop bot 1.7.0: at the Fortune Teller the bot tries the 40% ball once, then the 70% ball up to 3 times, while the orbs allow.
 

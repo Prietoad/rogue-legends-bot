@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.10.0 (2026-11-08)
+- Arena: the bot now fights the opponent highest in the list that is not stronger than you, since higher rows give more arena points. It used to pick the strongest opponent below your power, wherever it was in the list. If every opponent is stronger, nothing changes (free refresh, then the weakest).
+
 ## 1.9.0 (2026-10-28)
 - Uses far less CPU: about 1.5 cores on average while running instead of 2.6–3.8 (−60% to −65% CPU per screen read), at the same speed in levels and ~35% faster when going back to the lobby and in the full routine. The text reader no longer keeps the processor busy while it waits, uses at most 4 cores, and no longer runs a step that turned short texts upside down, so it now reads texts like "x1", "x5", "Modos" or "3,3m" correctly. Finding the ✕, back arrow and tutorial hand on screen is ~15 times faster.
 - Uses far less memory: ~120 MB committed instead of ~600 MB. Most of it was reserved at startup by a math library the bot doesn't need, once per processor core.

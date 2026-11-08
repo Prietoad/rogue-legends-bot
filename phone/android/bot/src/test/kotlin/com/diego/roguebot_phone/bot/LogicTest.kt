@@ -138,7 +138,8 @@ class LogicTest {
             "70.7K" to 70700L, "Win:" to null, "x1" to null)
         for ((s, v) in cases) assertEquals(s, v, ModeScreens.parsePower(s))
         val opponents = listOf(600L, 100L, 499L, 500L, 501L).map { ModeScreens.Opponent(it, null) }
-        assertEquals(500L, ModeScreens.pickOpponent(500, opponents)!!.power)
+        assertEquals(100L, ModeScreens.pickOpponent(500, opponents)!!.power)  // the top row we can beat, not the strongest
+        assertEquals(600L, ModeScreens.pickOpponent(600, opponents)!!.power)
         assertNull(ModeScreens.pickOpponent(50, opponents))
     }
 

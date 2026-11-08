@@ -64,8 +64,8 @@ def test_arena_screen_absent_under_opponent_panel(ocr):
 
 
 @pytest.mark.parametrize("name, powers, best", [
-    ("en_arena_opponents.png", [201400, 129400, 287700, 70700, 250100], 287700),
-    ("en_arena_opponents_2.png", [3400000, 316800, 252100, 201400, 339000], 339000),  # 3,4m is stronger: skipped
+    ("en_arena_opponents.png", [201400, 129400, 287700, 70700, 250100], 201400),  # the top row: most points
+    ("en_arena_opponents_2.png", [3400000, 316800, 252100, 201400, 339000], 316800),  # 3,4m is stronger: skipped
 ])
 def test_arena_opponents(ocr, name, powers, best):
     _, texts = load(ocr, name)
@@ -291,7 +291,7 @@ def test_arena_opponents_spanish(ocr):
     assert panel.own_power == 668800
     assert [o.power for o in panel.opponents] == [3500000, 717100, 107500, 440200, 248400]
     assert panel.free_refresh.norm == "recarga gratis"
-    assert pick_opponent(panel.own_power, panel.opponents).power == 440200
+    assert pick_opponent(panel.own_power, panel.opponents).power == 107500  # highest row not stronger, not 440,2k
 
 
 def test_arena_opponents_garbled_power_is_read_from_a_crop(ocr):
@@ -300,7 +300,7 @@ def test_arena_opponents_garbled_power_is_read_from_a_crop(ocr):
     assert panel.own_power == 9800000
     assert [o.power for o in panel.opponents] == [261500000, 12700000, 4100000, 3300000, 2100000]
     assert all(abs(o.challenge.center[0] - 1071) < 20 for o in panel.opponents)
-    assert pick_opponent(panel.own_power, panel.opponents).power == 4100000
+    assert pick_opponent(panel.own_power, panel.opponents).power == 4100000  # the 3rd row, the first one not stronger
 
 
 @pytest.mark.parametrize("name", ["en_lobby_normal.png", "en_lobby_elite.png", "en_lobby_guild_popup.png"])
