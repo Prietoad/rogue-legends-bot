@@ -14,7 +14,8 @@ from roguebot import config, labels
 from roguebot.build import Build, BuildState, choose, shop_order
 from roguebot.device import Device
 from roguebot.screens import (LevelScreen, LevelState, SkillCard, campfire_non_heal_tap, classify_level_screen,
-                              game_speed, parse_fortune_teller, parse_shop, parse_skill_cards, skill_reroll)
+                              game_speed, monk_spin_button, parse_fortune_teller, parse_shop, parse_skill_cards,
+                              skill_reroll)
 from roguebot.skills import Catalog, Skill, infer_tags
 from roguebot.vision import Ocr, find
 
@@ -74,9 +75,12 @@ class Player:
         self._auto_misses = 0       # such missed holds in a row
         self._fortune_bought = []   # Fortune Teller balls bought this visit (chances)
         self._fortune_tap = None    # (chance, orbs before, time) of the last ball tap, until the orbs drop
-        self._monk_spins = 0        # Wise Monk spins finished this visit
-        self._monk_armed: float | None = None  # when the current spin was tapped
+        self._monk_spins = 0        # Wise Monk spins whose reward was claimed this visit
+        self._monk_armed: float | None = None  # when the current spin was tapped; cleared when its reward is claimed
         self._monk_leave_since: float | None = None  # Salir showed while a spin was still owed
+        self._monk_since: float | None = None  # start of the current unresolved Monk wait
+        self._monk_retapped = False  # the in-flight spin was tapped a second time (the first one missed)
+        self._monk_yielded = False  # timed out: the generic level loop owns this screen
         self._campfire_waits = 0  # frames the upgrade label was missing at HP that must not heal
 
     def play_level(self) -> LevelScreen:
@@ -85,25 +89,35 @@ class Player:
         last_tap, repeats, first_repeat = None, 0, time.monotonic()
         self._state, self._rerolled, self._doubles, self._last_offer = BuildState(), False, 0, None
         self._fortune_bought, self._fortune_tap = [], None
-        self._monk_spins, self._monk_armed, self._monk_leave_since = 0, None, None
+        self._reset_monk()
         self._campfire_waits = 0
         while True:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
             state = classify_level_screen(img, texts)
             log.debug("screen: %s", state.kind.value)
+            raw_kind = state.kind
 
-            if state.kind is LevelScreen.SKILL_PICK:
+            if raw_kind is LevelScreen.SKILL_PICK:
                 state = LevelState(state.kind, self._pick_skill(texts) or state.tap)
-            elif state.kind is LevelScreen.SHOP:
+            elif raw_kind is LevelScreen.SHOP:
                 self._shop(texts)  # buys what the build wants and the coins allow; then state.tap exits
-            elif state.kind is LevelScreen.FORTUNE_TELLER:
+            elif raw_kind is LevelScreen.FORTUNE_TELLER:
                 state = LevelState(state.kind, self._fortune(texts))
-            elif state.kind is LevelScreen.MONK:
-                state = LevelState(state.kind, self._monk_tap(texts))
-            elif state.kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY):
+            elif raw_kind is LevelScreen.MONK and not self._monk_yielded:
+                tap = self._monk_tap(texts, img)
+                if self._monk_yielded and tap is None and state.tap is None:
+                    state = LevelState(LevelScreen.UNKNOWN)  # nothing to tap: the unknown-screen guard applies
+                elif not (self._monk_yielded and tap is None):
+                    state = LevelState(LevelScreen.MONK, tap)
+                # yielded with no handler tap but the classifier found SPIN/Leave: that tap is the recovery
+            elif raw_kind is LevelScreen.MONK and state.tap is None:
+                state = LevelState(LevelScreen.UNKNOWN)
+            elif raw_kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY):
                 self._fortune_bought = []  # back on the board: a later Fortune Teller is a new visit
-                self._monk_spins, self._monk_armed, self._monk_leave_since = 0, None, None
+                self._reset_monk()
+            if raw_kind is not LevelScreen.MONK:
+                self._monk_yielded = False
 
             if state.kind is LevelScreen.DOUBLE_REWARD:
                 self._doubles += 1
@@ -288,6 +302,10 @@ class Player:
                     return teller.balls[chance]
         return config.FORTUNE_TELLER_BACK
 
+    def _reset_monk(self) -> None:
+        self._monk_spins, self._monk_armed, self._monk_leave_since = 0, None, None
+        self._monk_since, self._monk_retapped, self._monk_yielded = None, False, False
+
     def _monk_claim(self, texts) -> tuple[int, int] | None:
         """The reward overlay after a spin ("Tap anywhere to claim" / "You Received")."""
         claim = find(texts, labels.TAP_TO_CLAIM)
@@ -297,12 +315,56 @@ class Player:
             return config.SCREEN_SIZE[0] // 2, config.SCREEN_SIZE[1] // 2
         return None
 
-    def _monk_tap(self, texts) -> tuple[int, int] | None:
+    def _monk_wait(self, img, texts, message: str) -> tuple[int, int] | None:
+        """One frame of a Monk wait. Past MONK_WAIT_TIMEOUT, recover instead of returning None forever."""
+        now = time.monotonic()
+        if self._monk_since is None:
+            self._monk_since = now
+        if now - self._monk_since >= config.MONK_WAIT_TIMEOUT:
+            return self._monk_give_up(img, texts)
+        log.info(message)
+        return None
+
+    def _monk_give_up(self, img, texts) -> tuple[int, int] | None:
+        """The wait never ended. Warn, keep a screenshot, tap a reward or Leave if one is readable,
+        and hand the screen back to the level loop (unknown-screen / repeated-tap guards)."""
+        waited = 0.0 if self._monk_since is None else time.monotonic() - self._monk_since
+        log.warning("Wise Monk: timed out after %.0fs with %d/%d spins claimed; recovering",
+                    waited, self._monk_spins, config.MONK_SPINS)
+        if img is not None:
+            DEBUG_DIR.mkdir(exist_ok=True)
+            path = DEBUG_DIR / f"monk_{time.strftime('%Y%m%d_%H%M%S')}.png"
+            cv2.imwrite(str(path), img)
+            log.warning("Wise Monk: saved %s", path)
+        self._monk_yielded = True
+        self._monk_armed = None
+        self._monk_since = None
+        self._monk_leave_since = None
+        self._monk_retapped = False
+        claim = self._monk_claim(texts)
+        if claim is not None:
+            log.info("Wise Monk: recovery tap on the reward")
+            return claim
+        cont = find(texts, labels.TAP_TO_CONTINUE) or find(texts, labels.CONTINUE, exact=True)
+        if cont is not None:
+            log.info("Wise Monk: recovery tap to continue")
+            return cont.center
+        leave = find(texts, labels.LEAVE, exact=True)
+        if leave is not None:
+            log.info("Wise Monk: recovery tap on Leave")
+            return leave.center
+        log.info("Wise Monk: no reward or Leave to tap; back to screen detection")
+        return None
+
+    def _monk_tap(self, texts, img=None) -> tuple[int, int] | None:
         """Wise Monk: spin twice, claim each reward, then leave. HP is never a reason to stop early.
 
-        A spin counts once the button has had time to register, once it leaves the screen, or
-        once the claim overlay is up. The overlay is tapped before the next spin or Leave.
-        Salir before both spins is ignored until the spin button fails to come back.
+        A spin counts only when its reward overlay is tapped, so the next spin cannot start
+        on the assumption that the previous one finished. The button still being there after
+        MONK_SPIN_SETTLE means the tap missed: it is tapped once more and still not counted.
+        The button leaving the screen means the wheel is spinning; that is not a finished spin.
+        Salir before both claims is ignored until the spin button fails to come back.
+        Every wait is bounded by MONK_WAIT_TIMEOUT.
         """
         claim = self._monk_claim(texts)
         if claim is not None:
@@ -311,43 +373,51 @@ class Player:
                 self._monk_armed = None
                 log.info("Wise Monk: spin %d/%d done", self._monk_spins, config.MONK_SPINS)
             self._monk_leave_since = None
+            self._monk_since = None
+            self._monk_retapped = False
             log.info("Wise Monk: claiming the reward")
             return claim
-        spin = find(texts, labels.MONK_SPIN, exact=True)
-        if spin is not None and spin.center[1] <= config.MONK_SPIN_MIN_Y:
-            spin = None
+        spin = monk_spin_button(texts)
         leave = find(texts, labels.LEAVE, exact=True)
         if spin is not None and self._monk_spins < config.MONK_SPINS:
             self._monk_leave_since = None
+            now = time.monotonic()
             if self._monk_armed is None:
-                self._monk_armed = time.monotonic()
+                self._monk_armed = now
+                self._monk_since = now
+                self._monk_retapped = False
                 log.info("Wise Monk: spin %d/%d", self._monk_spins + 1, config.MONK_SPINS)
                 return spin.center
-            if time.monotonic() - self._monk_armed >= config.MONK_SPIN_SETTLE:
-                self._monk_spins += 1
-                self._monk_armed = None
-                log.info("Wise Monk: spin %d/%d done", self._monk_spins, config.MONK_SPINS)
-                if self._monk_spins < config.MONK_SPINS:
-                    self._monk_armed = time.monotonic()
-                    log.info("Wise Monk: spin %d/%d", self._monk_spins + 1, config.MONK_SPINS)
-                    return spin.center
-            return None  # let the spin register; don't tap it every frame
-        if self._monk_armed is not None and spin is None:
-            self._monk_spins += 1
-            self._monk_armed = None
-            log.info("Wise Monk: spin %d/%d done", self._monk_spins, config.MONK_SPINS)
-        if leave is not None and self._monk_spins >= config.MONK_SPINS:
+            if not self._monk_retapped and now - self._monk_armed >= config.MONK_SPIN_SETTLE:
+                self._monk_retapped = True
+                self._monk_armed = now
+                log.info("Wise Monk: spin %d/%d was not claimed; tapping SPIN again",
+                         self._monk_spins + 1, config.MONK_SPINS)
+                return spin.center
+            return self._monk_wait(img, texts, "Wise Monk: waiting for the reward of spin %d/%d"
+                                    % (self._monk_spins + 1, config.MONK_SPINS))
+        if leave is not None and self._monk_armed is None and self._monk_spins >= config.MONK_SPINS:
+            self._monk_since = None
             return leave.center
-        if leave is not None and self._monk_spins < config.MONK_SPINS:
+        if leave is not None and spin is None:
             if self._monk_leave_since is None:
                 self._monk_leave_since = time.monotonic()
             if time.monotonic() - self._monk_leave_since >= config.MONK_LEAVE_WAIT:
-                log.info("Wise Monk: spin button did not return (%d/%d); leaving",
+                log.info("Wise Monk: spin button did not return (%d/%d claimed); leaving",
                          self._monk_spins, config.MONK_SPINS)
+                self._monk_armed = None
+                self._monk_since = None
+                self._monk_retapped = False
                 return leave.center
-            log.info("Wise Monk: waiting to spin again (%d/%d)", self._monk_spins, config.MONK_SPINS)
-            return None
-        return None
+            return self._monk_wait(img, texts, "Wise Monk: waiting to spin again (%d/%d)"
+                                    % (self._monk_spins, config.MONK_SPINS))
+        if self._monk_armed is not None:
+            return self._monk_wait(img, texts, "Wise Monk: waiting for the reward of spin %d/%d"
+                                    % (self._monk_spins + 1, config.MONK_SPINS))
+        if self._monk_spins >= config.MONK_SPINS:
+            return self._monk_wait(img, texts, "Wise Monk: waiting to leave")
+        return self._monk_wait(img, texts, "Wise Monk: waiting to spin again (%d/%d)"
+                                % (self._monk_spins, config.MONK_SPINS))
 
     def _ensure_double_speed(self, texts) -> bool:
         """Switch the game to x2 speed when it shows x1. Returns True if it tapped."""
