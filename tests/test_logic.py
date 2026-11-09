@@ -855,6 +855,36 @@ def test_pending_stars_retries_a_scroll_that_does_not_move(monkeypatch):
     assert nav.drags == [step, step]
 
 
+def test_missing_stars_does_not_start_on_one_zero_read(monkeypatch):
+    """A single 0/3 (the cream-body misread) must not start the level, even after it settles once."""
+    from roguebot.screens import Mode
+    zero = [_card(51, 0, 1400)]
+    done = [_card(1, 3, 600)]
+    nav = _star_nav(monkeypatch, [zero, zero, done])
+    assert nav.start_pending_stars(Mode.NORMAL) is None
+    assert nav.started == []
+
+
+def test_missing_stars_starts_a_zero_only_after_three_agreeing_reads(monkeypatch):
+    from roguebot.screens import Mode
+    zero = [_card(51, 0, 1400)]
+    nav = _star_nav(monkeypatch, [zero, zero, zero])
+    assert nav.start_pending_stars(Mode.NORMAL) == 51
+    assert nav.started == [zero[0].button.center]
+
+
+def test_missing_stars_drops_a_zero_that_rereads_as_three(monkeypatch):
+    """The log line is the first sighting. The fresh screenshot says 3/3, so the level is not started."""
+    from roguebot.screens import Mode
+    bad = [_card(51, 0, 1400)]
+    good = [_card(51, 3, 1400)]
+    done = [_card(1, 3, 600)]
+    nav = _star_nav(monkeypatch, [bad, good, done])
+    assert nav.start_pending_stars(Mode.NORMAL) is None
+    assert nav.started == []
+    assert nav.drags  # scrolled on, it did not tap level 51
+
+
 def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
     import threading
     import time
@@ -883,7 +913,7 @@ def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.10.2"
+    assert roguebot.__version__ == "1.10.3"
 
 
 def test_next_farm_level_advances_on_a_win_and_falls_back_on_a_loss():
@@ -1066,6 +1096,43 @@ def _play(monkeypatch, kinds, texts=()):
             return list(texts)
     play.Player(Dev(), NoOcr()).play_level()
     return Dev.actions
+
+
+def test_campfire_rereads_then_taps_the_upgrade_side_not_the_heart(monkeypatch):
+    """HP is full and only the heal label is on the first frames. Do not tap it."""
+    import numpy as np
+    from roguebot import play
+    from roguebot.screens import LevelScreen
+    monkeypatch.setattr(play.config, "CAMPFIRE_REREADS", 1)
+    monkeypatch.setattr(play.config, "POLL_INTERVAL", 0)
+    monkeypatch.setattr(play.time, "sleep", lambda s: None)
+    heal = Text("Descansar", 400, 1760, 620, 1820)
+    camp = [Text("Un momento de descanso", 500, 1360, 940, 1440),
+            Text("150k/200k", 420, 58, 663, 100), heal,
+            Text("Restaura", 400, 2240, 620, 2300), Text("30% de HP", 400, 2300, 620, 2360)]
+    victory = [Text("VICTORY!", 560, 900, 880, 980), Text("Continue", 600, 2100, 840, 2160)]
+    frames = iter([camp, camp, victory])
+
+    class Dev:
+        taps = []
+
+        def screenshot(self):
+            return np.zeros((2560, 1440, 3), np.uint8)
+
+        def tap(self, x, y, settle=0):
+            Dev.taps.append((x, y))
+
+        def hold(self, x, y, seconds, settle=0):
+            Dev.taps.append(("hold", x, y))
+
+    class Read:
+        def read(self, img):
+            return next(frames)
+
+    play.Player(Dev(), Read()).play_level()
+    assert Dev.taps[0][0] != heal.center[0]
+    assert Dev.taps[0] == (config.SCREEN_SIZE[0] - heal.center[0],
+                           heal.center[1] + config.EVENT_ICON_BELOW_LABEL)
 
 
 def test_red_dice_is_held_for_auto_play_then_left_alone(monkeypatch):

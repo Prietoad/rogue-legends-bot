@@ -73,6 +73,10 @@ object Choice {
     private fun preferred(skills: List<Skill>, build: Build, state: BuildState): List<Int> =
         ranked(skills, build, state).filter { skills[it].role == Skills.SUPPORT || skills[it].damageType != null }
 
+    /** Fewer preferred skills than this step must take: reroll instead of filling with off-build cards. */
+    fun offerIsUnfavorable(skills: List<Skill>, build: Build, state: BuildState, picks: Int = 1): Boolean =
+        preferred(skills, build, state).size < maxOf(1, picks)
+
     /** Index of the card to take, or null to use the reroll. */
     fun choose(skills: List<Skill>, build: Build, state: BuildState, canReroll: Boolean): Int? {
         val pref = preferred(skills, build, state)

@@ -230,12 +230,9 @@ open class Routine(
             }
             tap(claim)
             try {
-                val web = waitFor("daily reward web page") { _, t -> find(t, L.DAILY_WEB_CLAIM) }
-                Log.info("Daily rewards: claiming on the web page")
-                tap(web)
-                clock.sleep(Config.VIDEO_SETTLE)
+                claimWebDaily()
             } catch (e: NavigationError) {
-                Log.info("Daily rewards: web claim not shown; closing the popup")
+                Log.info("Daily rewards: web claim not finished; returning to the game")
             } finally {
                 backToGame()
             }
@@ -472,6 +469,7 @@ open class Routine(
         val state = BuildState()  // skills taken in this fight
         var learned: List<String>? = null  // the last offer learned
         var skipped = false
+        var rerolledOffer: List<String>? = null
         while (clock.now() < deadline) {
             val c = capture()
             img = c.first
@@ -500,6 +498,16 @@ open class Routine(
                 continue
             }
             val skills = choiceSkills(c.second, choice)
+            val reroll = Screens.skillReroll(c.second)
+            val offer = skills.map { it.name }
+            val picks = choice.needed - choice.chosen
+            if (choice.chosen == 0 && reroll != null && offer != rerolledOffer
+                && Choice.offerIsUnfavorable(skills, build, state, picks)) {
+                Log.info("No wanted skill in ${skills.map { it.name }}: rerolling")
+                rerolledOffer = offer
+                tap(reroll)
+                continue
+            }
             val order = Choice.shopOrder(skills, build, state, canReroll = false)!!  // wanted first, then rarest
             if (choice.chosen < choice.needed) {
                 if (choice.chosen >= choice.cards.size) fail("Skill cards not recognized", c.first)
@@ -510,6 +518,7 @@ open class Routine(
                 val offer = skills.map { it.name }
                 if (offer != learned) order.take(choice.needed).forEach { state.take(skills[it]) }  // a repeat: the Learn tap did not land
                 learned = offer
+                rerolledOffer = null
                 tap(choice.learn)
             }
         }
@@ -565,6 +574,87 @@ open class Routine(
     private fun waitChange(changed: (List<Text>) -> Boolean) {
         val deadline = clock.now() + Config.CHANGE_TIMEOUT
         while (!changed(capture().second) && clock.now() < deadline) clock.sleep(Config.POLL_INTERVAL)
+    }
+
+    private fun <T> until(pred: (List<Text>) -> T?, timeout: Double): T? {
+        val deadline = clock.now() + timeout
+        while (true) {
+            val found = pred(capture().second)
+            if (found != null) return found
+            if (clock.now() >= deadline) return null
+            clock.sleep(Config.POLL_INTERVAL)
+        }
+    }
+
+    private fun dismissWebPopup(title: (List<Text>) -> Text?, what: String) {
+        val back = until({ t -> if (title(t) != null) ModeScreens.webBackToShop(t) else null }, Config.WEB_POPUP_TIMEOUT)
+        if (back == null) {
+            Log.info("Daily rewards: $what popup had no Back to the shop")
+            return
+        }
+        Log.info("Daily rewards: $what, back to the shop")
+        tap(back)
+        until({ t -> if (title(t) == null) true else null }, Config.WEB_POPUP_TIMEOUT)
+    }
+
+    /** Collect, confirm, free wheel, then return. Missing buttons are skipped. The caller leaves the browser. */
+    private fun claimWebDaily() {
+        Log.info("Daily rewards: waiting for the shop page to render")
+        waitFor("daily reward web page") { _, t -> ModeScreens.webPageReady(t) }
+        val collect = until(ModeScreens::webDailyClaim, Config.WEB_CONTENT_TIMEOUT)
+        if (collect == null) {
+            Log.info("Daily rewards: no Collect button; already collected or not offered")
+        } else {
+            Log.info("Daily rewards: collecting the daily reward")
+            tap(collect)
+            when (until({ t ->
+                when {
+                    ModeScreens.webCollected(t) != null -> "popup"
+                    ModeScreens.webDailyClaim(t) == null -> "gone"
+                    else -> null
+                }
+            }, Config.WEB_POPUP_TIMEOUT)) {
+                "popup" -> dismissWebPopup(ModeScreens::webCollected, "collected")
+                "gone" -> Log.info("Daily rewards: collect button left the page")
+                else -> Log.info("Daily rewards: collect was not confirmed; continuing")
+            }
+        }
+        var spun = false
+        for (i in 0..Config.WEB_SCROLLS) {
+            val spin = ModeScreens.webFreeSpin(capture().second)
+            if (spin != null) {
+                Log.info("Daily rewards: free spin")
+                tap(spin)
+                spun = true
+                break
+            }
+            if (i == Config.WEB_SCROLLS) break
+            Log.info("Daily rewards: scrolling for the free spin")
+            device.swipe(Config.WEB_SCROLL_DOWN.first, Config.WEB_SCROLL_DOWN.second, duration = Config.SCROLL_DURATION)
+            val arrived = until(ModeScreens::webFreeSpin, Config.SCROLL_SETTLE)
+            if (arrived != null) {
+                Log.info("Daily rewards: free spin")
+                tap(arrived)
+                spun = true
+                break
+            }
+        }
+        if (!spun) {
+            Log.info("Daily rewards: no free spin")
+            return
+        }
+        val wheel = until(ModeScreens::webWheelSpin, Config.WHEEL_SPIN_TIMEOUT)
+        if (wheel == null) {
+            Log.info("Daily rewards: wheel did not open")
+            return
+        }
+        Log.info("Daily rewards: spinning the wheel")
+        tap(wheel)
+        if (until(ModeScreens::webYouWon, Config.WHEEL_SPIN_TIMEOUT) == null) {
+            Log.info("Daily rewards: spin finished without a prize popup")
+            return
+        }
+        dismissWebPopup(ModeScreens::webYouWon, "you won")
     }
 
     private fun <T> waitFor(what: String, parse: (Frame, List<Text>) -> T?): T {

@@ -143,8 +143,13 @@ DAILY_TITLE = _l("recompensas diarias", "daily rewards")  # daily rewards popup;
 DAILY_CLAIM = _l("reclamar", "claim")                # exact; daily rewards popup: opens the game's web store
 DAILY_CLAIM_REWARDS = _l(en="claim reward")          # "Claim Rewards" on the English popup (not "Enter Code")
 DAILY_WEB_CLAIM = _l("reclamar ahora", "claim now")  # web store page (browser) "Reclamar ahora!"; en (?)
-DAILY_WHEEL = _l(("ruleta diaria", "ruleta"), ("daily wheel", "daily spin", "free spin"))  # store tab / section, free
-WEB_SPIN = _l(("girar", "giro gratis"), ("spin", "free spin"))  # exact; the free spin itself, next to Gratis/Free
+DAILY_WEB_COLLECT = _l(en="collect")                 # exact; green button under the current day card. Not "Collected".
+WEB_COLLECTED = _l(en="collected")                   # popup after Collect: "Day N has been sent to your in-game mailbox"
+WEB_BACK_TO_SHOP = _l(en="back to the shop")         # green button on the Collected and You won popups
+WEB_YOU_WON = _l(en="you won")                       # popup after the daily wheel stops
+DAILY_WHEEL = _l(("ruleta diaria", "ruleta"), ("daily wheel", "daily spin"))  # store section / wheel popup title
+WEB_FREE_SPIN = _l("giro gratis", "free spin")       # exact; green button in the Daily Wheel section
+WEB_SPIN = _l("girar", "spin")                       # exact; the wheel popup's SPIN. Not "free spin" (that is the page button).
 WEB_STORE = _l("roguelegend.io", "roguelegend.io")   # browser address; keeps a game "Spin" from matching
 MAIL_TITLE = _l("correo", "mail")                    # exact; mail popup title; en (?)
 VIP_CARDS = _l(("tarjetas vip", "tarjetas", "vip"), ("vip cards", "cards", "vip"))  # exact; lobby left column icon; OCR splits it ("Tarjetas / VIP", "VIP / Cards") and garbles "VIP" in English ("VIPS", "LVIP")

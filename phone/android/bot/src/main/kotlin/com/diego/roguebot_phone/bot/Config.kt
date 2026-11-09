@@ -92,6 +92,7 @@ object Config {
     const val EVENT_COLUMN_X = 160
     const val EVENT_DISABLED_MAX_SATURATION = 70
     const val CAMPFIRE_HEAL_BELOW = 0.40
+    const val CAMPFIRE_REREADS = 4
     val FLIP_CARDS = listOf(1280, 1560, 1840).flatMap { y -> listOf(299, 579, 859, 1139).map { x -> P(x, y) } }
     const val FLIP_FACE_DOWN_MIN_FRACTION = 0.25
     const val MONK_SPINS = 2
@@ -165,5 +166,12 @@ object Config {
     val MENU_BUTTON = P(80, 310)
     const val MENU_MAX_X = 700
     const val BROWSER_BACK_MAX = 5
+    const val WEB_PAGE_TIMEOUT = 25.0
+    const val WEB_CONTENT_TIMEOUT = 12.0
+    const val WEB_POPUP_TIMEOUT = 8.0
+    const val WHEEL_SPIN_TIMEOUT = 12.0
+    const val WEB_SCROLLS = 4
+    val WEB_SCROLL_DOWN = P(720, 1700) to P(720, 700)
+    const val WEB_NAV_MIN_Y = 2280
     val OTHER_APP_AD_TAP = P(720, 1280)
 }

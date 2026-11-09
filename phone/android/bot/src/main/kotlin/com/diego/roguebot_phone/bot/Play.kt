@@ -48,6 +48,7 @@ class Player(
     private var monkSpins = 0
     private var monkArmed: Double? = null
     private var monkLeaveSince: Double? = null
+    private var campfireWaits = 0
 
     /** Play until the level ends; returns VICTORY or DEFEAT. */
     fun playLevel(): LevelScreen {
@@ -58,6 +59,7 @@ class Player(
         state = BuildState(); rerolled = false; doubles = 0; lastOffer = null
         fortuneBought = ArrayList(); fortuneTap = null
         monkSpins = 0; monkArmed = null; monkLeaveSince = null
+        campfireWaits = 0
         while (true) {
             val img = device.screenshot()
             val texts = ocr.read(img)
@@ -100,6 +102,26 @@ class Player(
                     Log.info("Holding the dice did not start auto-play; rolling by taps")
                     autoMissing = true
                 }
+            }
+
+            if (s.kind == LevelScreen.EVENT && s.tap == null) {
+                campfireWaits += 1
+                if (campfireWaits <= Config.CAMPFIRE_REREADS) {
+                    Log.info("Campfire: skill upgrade not readable, rereading ($campfireWaits)")
+                    clock.sleep(Config.POLL_INTERVAL)
+                    continue
+                }
+                val fallback = Screens.campfireNonHealTap(texts)
+                campfireWaits = 0
+                if (fallback == null) {
+                    Log.info("Campfire: no non-heal option; not restoring HP")
+                    clock.sleep(Config.POLL_INTERVAL)
+                    continue
+                }
+                Log.info("Campfire: upgrade still unreadable; choosing the non-heal option")
+                s = LevelState(LevelScreen.EVENT, fallback)
+            } else {
+                campfireWaits = 0
             }
 
             if (s.kind == LevelScreen.VICTORY || s.kind == LevelScreen.DEFEAT) {

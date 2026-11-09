@@ -542,8 +542,11 @@ def test_daily_rewards_claims_scrolls_for_the_free_spin_and_goes_back(monkeypatc
     monkeypatch.setattr(routine.config, "VIDEO_SETTLE", 0)
     monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
     monkeypatch.setattr(routine.config, "SCROLL_SETTLE", 0)
+    monkeypatch.setattr(routine.config, "WEB_POPUP_TIMEOUT", 0)
+    monkeypatch.setattr(routine.config, "WHEEL_SPIN_TIMEOUT", 0)
+    monkeypatch.setattr(routine.config, "WEB_CONTENT_TIMEOUT", 0)
     r = make([ES_LOBBY, ES_MENU, DAILY_POPUP, WEB_PAGE, WEB_PAGE, WEB_CLAIMED, WEB_CLAIMED, WEB_WHEEL,
-              WEB_WHEEL, WEB_CLAIMED])
+              WEB_WHEEL, ES_LOBBY])
     r.device.apps = ["com.android.chromium", "com.android.chromium"]  # Back twice: page history, then the game
     assert r.daily() == routine.DONE
     assert r.device.taps[:4] == [routine.config.MENU_BUTTON, (397, 1084), (696, 1178), (989, 1415)]
@@ -586,21 +589,50 @@ EN_WEB = [Text("roguelegend.io", 220, 130, 390, 170), Text("Claim Now", 824, 139
 
 def test_english_daily_rewards_taps_claim_rewards_not_enter_code(monkeypatch):
     labels.set_language("en")
-    monkeypatch.setattr(routine.config, "VIDEO_SETTLE", 0)
-    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
-    monkeypatch.setattr(routine.config, "SCROLL_SETTLE", 0)
+    for name in ("VIDEO_SETTLE", "UI_SETTLE", "SCROLL_SETTLE", "WEB_POPUP_TIMEOUT",
+                 "WHEEL_SPIN_TIMEOUT", "WEB_CONTENT_TIMEOUT"):
+        monkeypatch.setattr(routine.config, name, 0)
     lobby = [Text("Patrol", 650, 1900, 790, 1945), Text("OFF", 900, 2060, 970, 2095),
              Text("START", 600, 2070, 716, 2115)]
-    claimed = [Text("roguelegend.io", 220, 130, 390, 170), Text("Day 1", 200, 1100, 320, 1150)]
-    wheel = [Text("roguelegend.io", 220, 130, 390, 170), Text("Daily Wheel", 1080, 2380, 1380, 2440),
-             Text("FREE", 1180, 2300, 1300, 2340)]
-    r = make([lobby, EN_MENU, EN_DAILY, EN_WEB, EN_WEB, claimed, claimed, wheel, wheel, claimed])
+    store = [Text("roguelegend.io", 220, 130, 390, 170)]
+    page = store + [Text("Daily Rewards", 400, 700, 900, 760), Text("Collect", 560, 1480, 880, 1560)]
+    collected = store + [Text("Collected", 500, 360, 940, 440), Text("Back to the shop", 480, 1760, 960, 1840)]
+    shop = store + [Text("Points Store", 400, 900, 800, 960)]
+    free = store + [Text("Daily Wheel", 480, 1200, 900, 1260), Text("FREE SPIN", 520, 1680, 920, 1760)]
+    popup = store + [Text("Daily Wheel", 500, 280, 940, 360), Text("SPIN", 560, 1980, 880, 2060)]
+    won = store + [Text("You won!", 520, 360, 920, 440), Text("Back to the shop", 480, 1760, 960, 1840)]
+    r = make([lobby, EN_MENU, EN_DAILY, page, page, collected, collected, shop, shop, free, popup, won, won,
+              lobby, lobby])
     r.device.apps = ["com.android.chromium", "com.android.chromium"]
     assert r.daily() == routine.DONE
     assert (720, 1178) in r.device.taps  # Claim Rewards
     assert (720, 1395) not in r.device.taps  # Enter Code
-    assert (989, 1415) in r.device.taps  # Claim Now on the web page
-    assert (1230, 2410) in r.device.taps  # free daily wheel
+    assert (720, 1520) in r.device.taps  # Collect
+    assert (720, 1800) in r.device.taps  # Back to the shop, twice (collected, then you won)
+    assert r.device.taps.count((720, 1800)) == 2
+    assert (720, 1720) in r.device.taps  # FREE SPIN
+    assert (720, 2020) in r.device.taps  # SPIN
+    assert r.device.swipes
+    assert r.device.backs == 2
+
+
+def test_daily_rewards_skips_a_missing_collect_and_a_missing_spin(monkeypatch):
+    labels.set_language("en")
+    for name in ("UI_SETTLE", "SCROLL_SETTLE", "WEB_POPUP_TIMEOUT", "WHEEL_SPIN_TIMEOUT", "WEB_CONTENT_TIMEOUT"):
+        monkeypatch.setattr(routine.config, name, 0)
+    monkeypatch.setattr(routine.config, "WEB_SCROLLS", 1)
+    monkeypatch.setattr(routine, "close_button", lambda img: None)
+    monkeypatch.setattr(routine, "close_button_any_size", lambda img: None)
+    lobby = [Text("Patrol", 650, 1900, 790, 1945), Text("OFF", 900, 2060, 970, 2095),
+             Text("START", 600, 2070, 716, 2115)]
+    shop = [Text("roguelegend.io", 220, 130, 390, 170), Text("Daily Rewards", 400, 700, 900, 760),
+            Text("Day 7", 200, 1100, 400, 1160)]
+    r = make(itertools.chain([lobby, EN_MENU, EN_DAILY], itertools.repeat(shop)))
+    r.device.apps = ["com.android.chromium"]
+    assert r.daily() == routine.DONE
+    assert (720, 1178) in r.device.taps  # the lobby still opens the page
+    assert all(y < 1600 or y > 2100 for _, y in r.device.taps)  # no Collect, no SPIN
+    assert r.device.backs == 1
 
 
 def test_daily_rewards_without_a_claim_button_is_closed(monkeypatch):
@@ -727,6 +759,27 @@ def test_dojo_and_raid_skill_picks_follow_the_build(tmp_path):
     fire_y, ice_y = 755 + 306 + 90, 755 + 306 * 3 + 90
     assert r.device.taps[:2] == [(800, fire_y), (800, ice_y)]  # magic, fire first: not the rarest cards
     assert set(r.catalog.skills) >= {"fireball", "iceshard", "superflash", "glasscannon"}  # learned by the catalog
+
+
+def test_raid_rerolls_when_one_wanted_skill_cannot_fill_the_pick(tmp_path):
+    """Need two skills. One fire card is not enough for a fire-only build: reroll, do not take the venom."""
+    from roguebot.build import Build
+    from roguebot.skills import Catalog
+    mixed = [("Common", "Fire Ball", "Every 2 rounds, cast a Fireball."),
+             ("Common", "Venom Drip", "Every 2 rounds, cast Venom.")]
+    both = [("Common", "Fire Ball", "Every 2 rounds, cast a Fireball."),
+            ("Common", "Fire Wave", "Cast a wave of Fire.")]
+    reroll = [Text("Reroll (1)", 280, 2100, 520, 2160)]
+    r = make([named_skill_screen(0, 2, mixed) + reroll,
+              named_skill_screen(0, 2, both),
+              named_skill_screen(1, 2, both),
+              named_skill_screen(2, 2, both),
+              [Text("DEFEAT", 600, 880, 840, 940), Text("OK", 680, 2300, 760, 2350)]])
+    r.build = Build(nature="magic", order=("fire",), strict=True)
+    r.catalog = Catalog(tmp_path / "skills.json")
+    r._fight()
+    assert r.device.taps[0] == (400, 2130)
+    assert r.device.taps[1][1] == 755 + 90  # the fire card, after the reroll
 
 
 def test_raid_rerolls_once_when_nothing_fits_the_build(tmp_path):

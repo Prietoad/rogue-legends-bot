@@ -93,6 +93,15 @@ def test_type_beats_rarity_and_rarity_breaks_ties():
     assert choose([FIRE, legendary_fire], build, BuildState(), can_reroll=False) == 1
 
 
+def test_an_offer_that_cannot_fill_the_pick_is_unfavorable():
+    from roguebot.build import offer_is_unfavorable
+    build = Build("magic", ("fire",), strict=True)
+    assert offer_is_unfavorable([FIRE, VENOM], build, BuildState(), picks=2)
+    assert offer_is_unfavorable([VENOM], build, BuildState(), picks=1)
+    assert offer_is_unfavorable([FIRE, FIRE], build, BuildState(), picks=2) is False
+    assert offer_is_unfavorable([FIRE], build, BuildState(), picks=1) is False
+
+
 def test_nothing_wanted_rerolls_then_takes_the_rarest_then_the_first():
     build = Build("magic")
     offer = [VENOM, sk("rare venom", "venom", rarity="legendary"), SHIELD]

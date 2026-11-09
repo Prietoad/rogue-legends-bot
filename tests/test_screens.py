@@ -167,6 +167,31 @@ def test_campfire_upgrades_when_hp_is_unreadable(ocr, caplog):
     assert "HP unreadable" in caplog.text
 
 
+def test_campfire_at_full_hp_does_not_heal_when_the_upgrade_is_missing(caplog):
+    """The frame after a skill pick can show only Descansar. That is not a heal at 100% HP."""
+    img = np.zeros((2560, 1440, 3), np.uint8)
+    heal = Text("Descansar", 400, 1760, 620, 1820)
+    texts = [Text("Un momento de descanso", 500, 1360, 940, 1440),
+             Text("150k/200k", 420, 58, 663, 100), heal,
+             Text("Restaura", 400, 2240, 620, 2300), Text("30% de HP", 400, 2300, 620, 2360)]
+    with caplog.at_level(logging.INFO, logger="roguebot.screens"):
+        state = classify_level_screen(img, texts)
+    assert state.kind is LevelScreen.EVENT and state.tap is None
+    assert "not healing" in caplog.text
+    low = [Text("40k/200k", 420, 58, 663, 100) if t.text.startswith("150k") else t for t in texts]
+    healed = classify_level_screen(img, low)  # 20%: the heart is the right tap
+    assert healed.tap[0] == heal.center[0]
+
+
+def test_campfire_fallback_is_the_other_column_not_the_heart():
+    from roguebot.screens import campfire_non_heal_tap
+    heal = Text("Descansar", 400, 1760, 620, 1820)
+    texts = [Text("Un momento de descanso", 500, 1360, 940, 1440), heal]
+    tap = campfire_non_heal_tap(np.zeros((2560, 1440, 3), np.uint8), texts)
+    assert tap[0] == config.SCREEN_SIZE[0] - heal.center[0]
+    assert tap[0] != heal.center[0]
+
+
 def test_campfire_english_bodies_pick_the_upgrade_without_rest_or_train_labels():
     """No English fixture: match restore/heal HP and upgrade/improve skill, not guessed button words."""
     img = np.zeros((2560, 1440, 3), np.uint8)
@@ -562,6 +587,94 @@ def test_star_list_cards_know_their_stars(ocr):
     assert cards[12].stars == 2 and cards[12].button
     assert cards[13].stars == 3
     assert cards[14].button is None
+
+
+def test_header_below_the_icons_is_not_read_as_zero_stars(ocr):
+    """The cream body under the title bar matches the empty-star colour. It is not 0/3."""
+    from roguebot.screens import header_stars
+    from roguebot.vision import Text
+    img, texts = load(ocr, "stars_pending.png")
+    card = next(c for c in parse_star_list(img, texts, ocr) if c.number == 13)
+    h = card.header
+    shifted = Text(h.text, h.x1, h.y1 + 36, h.x2, h.y2 + 36)
+    stars, known = header_stars(img, shifted)
+    assert not (known and stars == 0)
+    assert stars == 3
+    far = Text(h.text, h.x1, h.y1 + 220, h.x2, h.y2 + 220)
+    stars, known = header_stars(img, far)
+    assert not (known and stars == 0)
+    # A false 0/3 is corrected by the objective rows on the real list.
+    from roguebot.screens import _with_objectives
+    card12 = next(c for c in parse_star_list(img, texts, ocr) if c.number == 12)
+    fixed, known = _with_objectives(img, texts, card.header, card.button.center[1], 0, True)
+    assert known and fixed == 3
+    fixed, known = _with_objectives(img, texts, card12.header, card12.button.center[1], 0, True)
+    assert known and fixed == 2
+
+
+def _mount_star_crop(name: str, card_top: int, card_bottom: int):
+    """Place one card from a ground-truth crop onto the 1440x2560 star layout.
+
+    The crop is a phone-sized picture of the cards. Scale it so the title-bar stars
+    land on STAR_ICONS_X, which is where the bot samples a full screenshot.
+    """
+    crop = cv2.imread(str(FIXTURES / name))
+    card = crop[card_top:card_bottom]
+    b, g, r = [card.astype(int)[..., i] for i in range(3)]
+    purple = (b > 160) & (r > 120) & (g < 140) & (b > g + 40)
+    band = purple[:70]
+    cols = np.where(band.any(0))[0]
+    cols = cols[cols > card.shape[1] * 0.7]
+    groups, start, prev = [], int(cols[0]), int(cols[0])
+    for x in cols[1:]:
+        if x > prev + 6:
+            groups.append((start, prev))
+            start = int(x)
+        prev = int(x)
+    groups.append((start, int(prev)))
+    centers = [(a + c) // 2 for a, c in groups]
+    scale = (config.STAR_ICONS_X[1] - config.STAR_ICONS_X[0]) / (centers[1] - centers[0])
+    resized = cv2.resize(card, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    canvas = np.zeros((2560, 1440, 3), np.uint8)
+    header_y = 700
+    star_y = int(np.where(band.any(1))[0].mean() * scale)
+    y0 = header_y - star_y
+    x0 = config.STAR_ICONS_X[0] - int(centers[0] * scale)
+    canvas[y0:y0 + resized.shape[0], x0:x0 + resized.shape[1]] = resized
+    return canvas, header_y
+
+
+def _check_rows(img, top, bottom):
+    from roguebot.screens import _green_check
+    found, y = [], top
+    while y < bottom:
+        if _green_check(img, y):
+            found.append(y)
+            y += 36
+        else:
+            y += 3
+    return found
+
+
+def test_purple_title_stars_and_green_checks_tell_3_of_3_from_2_of_3():
+    """Levels 68-70 are 3/3. Level 47 is 2/3: two purple stars, one pale, and no check on the last row."""
+    from roguebot.screens import _with_objectives, header_stars
+    from roguebot.vision import Text
+    full, y = _mount_star_crop("stars_elite_68_70.png", 0, 290)
+    header = Text("68. Shifting Sands", 80, y - 20, 700, y + 20)
+    stars, known = header_stars(full, header)
+    assert known and stars == 3
+    checks = _check_rows(full, y + 20, y + 520)
+    assert len(checks) == 3  # one green check on every objective
+    rows = [Text("objective", 360, cy - 16, 900, cy + 16) for cy in checks]
+    stars, known = _with_objectives(full, rows, header, checks[-1] + 80, 0, True)
+    assert known and stars == 3  # three checks override a false 0/3
+    miss, y = _mount_star_crop("stars_elite_47.png", 0, 287)
+    header = Text("47. Shifting Sands", 80, y - 20, 700, y + 20)
+    stars, known = header_stars(miss, header)
+    assert known and stars == 2  # two purple stars and one pale star in the title bar
+    checks = _check_rows(miss, y + 20, y + 500)
+    assert len(checks) == 2  # the last objective has a pale star and no green check
 
 
 @pytest.mark.parametrize("name, number", [

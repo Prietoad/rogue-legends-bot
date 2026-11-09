@@ -117,6 +117,16 @@ def _preferred(skills: list[Skill], build: Build, state: BuildState) -> list[int
     return [i for i in ranked(skills, build, state) if skills[i].role == SUPPORT or skills[i].damage_type]
 
 
+def offer_is_unfavorable(skills: list[Skill], build: Build, state: BuildState, picks: int = 1) -> bool:
+    """True when the offer has fewer preferred skills than this step must take.
+
+    Preferred means a named damage type the build wants, or a support skill when one is due.
+    Untyped and off-build cards do not count, so a Dojo / raid / dive pick rerolls instead of
+    filling the rest of the offer with them. `picks` is how many cards this step still has to take.
+    """
+    return len(_preferred(skills, build, state)) < max(1, picks)
+
+
 def choose(skills: list[Skill], build: Build, state: BuildState, can_reroll: bool) -> int | None:
     """Index of the card to take, or None to use the reroll."""
     preferred = _preferred(skills, build, state)
