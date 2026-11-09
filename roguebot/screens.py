@@ -443,11 +443,23 @@ def _is_upgrade_option(label: Text, blob: str) -> bool:
     return matches(label, L.CAMPFIRE_TRAIN, exact=True) or _UPGRADE_BODY.search(blob) is not None
 
 
-def _campfire_label(labels: list[Text], texts: list[Text]) -> Text | None:
+class _CampfireWait:
+    """This frame is the campfire, but the upgrade label is not readable and HP is not under 40%.
+
+    The caller waits and reads again. It must not fall through to the heal button.
+    """
+
+
+_CAMPFIRE_WAIT = _CampfireWait()
+
+
+def _campfire_label(labels: list[Text], texts: list[Text]) -> Text | _CampfireWait | None:
     """Which campfire option to tap, or None if this event is not the rest/campfire.
 
     Default is the skill upgrade. Restore HP only when the top-bar heart line is under 40%.
     If that line cannot be read, upgrade: do not invent an HP from the heal amount.
+    If the upgrade label is missing on this frame and HP is not under 40%, wait. Healing at
+    full HP because the book had not rendered yet (the frame right after a skill pick) is the bug.
     """
     heal = upgrade = None
     for label in labels:
@@ -468,8 +480,37 @@ def _campfire_label(labels: list[Text], texts: list[Text]) -> Text | None:
         else:
             log.info("Campfire: HP %.1f%%, upgrading skill", ratio * 100)
         return upgrade
-    log.info("Campfire: skill upgrade not readable, restoring HP")
-    return heal
+    if ratio is None:
+        log.info("Campfire: HP unreadable and the skill upgrade is not readable; waiting")
+    else:
+        log.info("Campfire: HP %.1f%%, skill upgrade not readable; not healing", ratio * 100)
+    return _CAMPFIRE_WAIT
+
+
+def campfire_non_heal_tap(img: np.ndarray, texts: list[Text]) -> tuple[int, int] | None:
+    """A campfire tap that is not the heal, after the upgrade label never showed.
+
+    Prefers a label that reads as the upgrade, else the right-hand option (the book sits on
+    the right). If the only label is the heal, mirror it across the screen: the two icons
+    are opposite each other, and that point is the upgrade icon, not the heart.
+    """
+    labels = [t for t in texts if _in_range(t.center[1], config.EVENT_LABEL_Y)]
+    if not labels:
+        return None
+    heal = None
+    for label in labels:
+        blob = _column_blob(label, texts)
+        if _is_upgrade_option(label, blob):
+            return label.center[0], label.center[1] + config.EVENT_ICON_BELOW_LABEL
+        if heal is None and _is_heal_option(label, blob):
+            heal = label
+    others = [t for t in labels if t is not heal]
+    if others:
+        label = max(others, key=lambda t: t.center[0])
+        return label.center[0], label.center[1] + config.EVENT_ICON_BELOW_LABEL
+    if heal is None:
+        return None
+    return config.SCREEN_SIZE[0] - heal.center[0], heal.center[1] + config.EVENT_ICON_BELOW_LABEL
 
 
 def _event_option(img: np.ndarray, texts: list[Text]) -> tuple[int, int] | None:
@@ -486,6 +527,8 @@ def _event_option(img: np.ndarray, texts: list[Text]) -> tuple[int, int] | None:
         return None
     labels = [t for t in labels if _option_enabled(img, t)] or labels
     label = _campfire_label(labels, texts)
+    if label is _CAMPFIRE_WAIT:
+        return _CAMPFIRE_WAIT
     if label is None:
         label = next((t for t in labels if matches(t, L.LEAVE, exact=True)), min(labels, key=lambda t: t.center[0]))
     return label.center[0], label.center[1] + config.EVENT_ICON_BELOW_LABEL
@@ -544,6 +587,8 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
     if leave and find(texts, L.SHOP_REROLL):  # shop: "Salir" is the button itself
         return LevelState(LevelScreen.SHOP, leave.center)
     event_option = _event_option(img, texts)
+    if event_option is _CAMPFIRE_WAIT:
+        return LevelState(LevelScreen.EVENT, None)  # reread; do not tap the heart
     if event_option:
         return LevelState(LevelScreen.EVENT, event_option)
     if leave:  # e.g. "Meditación completa" -> "Salir"
@@ -574,37 +619,144 @@ def card_stars(img: np.ndarray, header: Text) -> int:
     return count
 
 
-def header_stars(img: np.ndarray, header: Text) -> tuple[int, bool]:
-    """(gold stars, known). Known only when all three icons are gold or grey.
+def _star_samples(img: np.ndarray, y: int) -> list[str | None]:
+    kinds = []
+    for x in config.STAR_ICONS_X:
+        if y < 12 or x < 12 or y + 12 >= img.shape[0] or x + 12 >= img.shape[1]:
+            kinds.append(None)
+            continue
+        b, g, r = img[y - 10:y + 10, x - 10:x + 10].reshape(-1, 3).mean(0)
+        kinds.append(_star_kind(float(b), float(g), float(r)))
+    return kinds
 
+
+def _star_gaps_dark(img: np.ndarray, y: int) -> bool:
+    """True when the gaps between the three star slots are the dark title bar.
+
+    A real row of stars (filled or empty) has dark bar between the icons (~80).
+    The cream card body is pale in the gaps too (~230), and so is a pale border,
+    so those rows are not three empty stars.
+    """
+    xs = config.STAR_ICONS_X
+    if y < 6 or y + 6 >= img.shape[0]:
+        return False
+    for x in ((xs[0] + xs[1]) // 2, (xs[1] + xs[2]) // 2):
+        if x < 6 or x + 6 >= img.shape[1]:
+            return False
+        if float(img[y - 4:y + 4, x - 4:x + 4].mean()) >= config.STAR_GAP_MAX_MEAN:
+            return False
+    return True
+
+
+def header_stars(img: np.ndarray, header: Text) -> tuple[int, bool]:
+    """(filled stars, known). Known only when all three icons were read.
+
+    Filled stars are gold (older art) or purple (current art). An empty star is pale.
     The header text box is not always on the icon row, so a few rows around it are tried.
+    A row of filled stars wins over a later all-pale row: the cream card body sits just
+    below the title bar and used to be accepted as 0/3 before the icons were looked at.
+    An all-pale row counts only when it is actually on the dark title bar.
     Unknown (the second value False) must not be treated as "fewer than 3".
     """
     y0 = int(header.center[1])
-    for dy in range(0, 49, 8):
+    filled = None
+    empty = None
+    for dy in range(0, config.STAR_HEADER_SEARCH + 1, 8):
         for sign in (1, -1) if dy else (1,):
             yy = y0 + sign * dy
-            if yy < 12 or yy + 12 >= img.shape[0]:
+            kinds = _star_samples(img, yy)
+            if not all(k in ("gold", "grey") for k in kinds):
                 continue
-            kinds = []
-            for x in config.STAR_ICONS_X:
-                if x < 12 or x + 12 >= img.shape[1]:
-                    kinds.append(None)
-                    continue
-                b, g, r = img[yy - 10:yy + 10, x - 10:x + 10].reshape(-1, 3).mean(0)
-                kinds.append(_star_kind(float(b), float(g), float(r)))
-            if all(k in ("gold", "grey") for k in kinds):
-                return sum(k == "gold" for k in kinds), True
+            earned = sum(k == "gold" for k in kinds)
+            if earned:
+                filled = earned if filled is None else max(filled, earned)
+            elif empty is None and _star_gaps_dark(img, yy):
+                empty = 0
+    if filled is not None:
+        return filled, True
+    if empty is not None:
+        return 0, True
     return 3, False
 
 
 def _star_kind(b: float, g: float, r: float) -> str | None:
-    """'gold' earned star, 'grey' missing star, or None (card background and text)."""
+    """'gold' earned star (gold or purple), 'grey' missing star, or None (background and text).
+
+    A 20 px window mixes the icon with the dark title bar, so a purple star's average is
+    dimmer than the icon itself and a pale star is not pure white. Those diluted samples
+    still have to be told apart: purple keeps a low green, the empty star does not.
+    """
     if r > 180 and b < 160 and r - b > 80:
         return "gold"
     if b > 180 and g > 160 and abs(r - b) < 50:
         return "grey"
+    # Purple filled star, including one averaged with the navy bar.
+    if b > 100 and g < 90 and b > g + 45 and b > r * 0.9 and r > 50:
+        return "gold"
+    # Pale empty star averaged with the same bar: the channels stay close and green stays up.
+    if b > 110 and g > 90 and r > 80 and abs(r - b) < 50 and abs(g - b) < 45:
+        return "grey"
     return None
+
+
+def _green_check(img: np.ndarray, y: int) -> bool:
+    """A green check at the right of an objective row. The green condition text is further left."""
+    x0, x1 = config.OBJECTIVE_CHECK_X
+    y = int(y)
+    if y < 10 or y + 10 >= img.shape[0] or x0 < 0 or x1 > img.shape[1]:
+        return False
+    roi = img[y - 10:y + 10, x0:x1].astype(int)
+    b, g, r = roi[..., 0], roi[..., 1], roi[..., 2]
+    green = (g > 160) & (r < 190) & (b < 140) & (g > r + 25) & (g > b + 40)
+    return float(green.mean()) >= config.OBJECTIVE_CHECK_MIN_FRACTION
+
+
+def objective_tally(img: np.ndarray, texts: list[Text], y0: float, y1: float) -> tuple[int, int, int]:
+    """(completed, missed, rows) for objective lines between two y positions.
+
+    A row is complete when it has a green check or a filled (gold/purple) star. A pale star
+    with no check is a miss. Rows within 40 px are the same line read twice.
+    """
+    x0, x1 = config.OBJECTIVE_TEXT_X
+    lines: list[Text] = []
+    for t in texts:
+        if not (y0 < t.center[1] < y1 and x0 <= t.x1 <= x1):
+            continue
+        if any(abs(t.center[1] - kept.center[1]) < 40 for kept in lines):
+            continue
+        lines.append(t)
+    done = missed = 0
+    for t in lines:
+        sx, sy = int(t.x1 - config.OBJECTIVE_STAR_DX), int(t.center[1])
+        star = None
+        if 8 <= sy < img.shape[0] - 8 and 8 <= sx < img.shape[1] - 8:
+            b, g, r = img[sy - 8:sy + 8, sx - 8:sx + 8].reshape(-1, 3).mean(0)
+            star = _star_kind(float(b), float(g), float(r))
+        if _green_check(img, t.center[1]) or star == "gold":
+            done += 1
+        elif star == "grey":
+            missed += 1
+    return done, missed, len(lines)
+
+
+def _with_objectives(img: np.ndarray, texts: list[Text], header: Text, button_y: float,
+                     stars: int, known: bool) -> tuple[int, bool]:
+    """Header icons, corrected by the objective rows when those were actually read.
+
+    Three green checks (or three filled row stars) is 3/3 even if the title-bar icons were
+    clipped or sampled on the cream body. A pale row star with no check is a real miss.
+    A header that already shows three filled stars is not downgraded by a stray sample.
+    """
+    done, missed, seen = objective_tally(img, texts, header.center[1] + 30, button_y - 30)
+    if seen == 0:
+        return stars, known
+    if done >= 3 and missed == 0:
+        return 3, True
+    if missed and not (known and stars == 3):
+        return min(done, 3 - min(missed, 3)), True
+    if not known and done >= 3:
+        return 3, True
+    return stars, known
 
 
 def _objective_stars(img: np.ndarray, texts: list[Text], y0: float, y1: float) -> tuple[int, int]:
@@ -651,13 +803,19 @@ def clipped_star_card(img: np.ndarray | None, texts: list[Text], cards: list[Car
         return None
     if first.number < 2:
         return None
-    gold, grey = _objective_stars(img, texts, config.LIST_TOP, button.center[1] - 40)
-    if grey:
-        stars, known = min(gold, 2), True
-    elif gold >= 3:
-        stars, known = 3, True
+    done, missed, seen = objective_tally(img, texts, config.LIST_TOP, button.center[1] - 40)
+    if seen and done >= 3 and missed == 0:
+        stars, known = 3, True  # every visible objective is checked: the clipped header is not 0/3
+    elif seen and missed:
+        stars, known = min(done, 3 - min(missed, 3)), True
     else:
-        return None  # the missing row may still be off screen: the hunt scrolls the header into view
+        gold, grey = _objective_stars(img, texts, config.LIST_TOP, button.center[1] - 40)
+        if grey:
+            stars, known = min(gold, 2), True
+        elif gold >= 3:
+            stars, known = 3, True
+        else:
+            return None  # the missing row may still be off screen: the hunt scrolls the header into view
     return Card(first.number - 1, first.header, button, stars, known)
 
 
@@ -681,12 +839,11 @@ def parse_star_list(img: np.ndarray, texts: list[Text], ocr: Ocr) -> list[Card]:
             n = parse_level_number(h.text)
             if n is not None:
                 stars, known = header_stars(img, h)
-                # A grey condition star confirms a miss when the header icons were not read.
-                # A header that already shows three gold stars is left alone (a stray sample
-                # must not turn the last beaten level into a "missing stars" tap).
-                _, grey = _objective_stars(img, texts, h.center[1] + 30, b.center[1] - 30)
-                if grey and not (known and stars == 3):
-                    stars, known = min(stars if known else 2, 3 - min(grey, 3)), True
+                # Objective checks correct a title-bar read. Three checks is 3/3 even when the
+                # icons were sampled on the cream body (that used to come back as 0/3). A pale
+                # objective star with no check is a real miss. Three filled header stars are
+                # not downgraded by a stray sample.
+                stars, known = _with_objectives(img, texts, h, b.center[1], stars, known)
                 cards[n] = Card(n, h, b, stars, known)
                 break
     for t in texts:
@@ -744,16 +901,29 @@ def _below(button: Text, texts: list[Text]) -> list[Text]:
             and abs(t.center[0] - button.center[0]) < 120]
 
 
-_USES_RE = re.compile(r"^\((\d+)\)$")
+_USES_RE = re.compile(r"\((\d+)\)")
+
+
+def _reroll_uses(text: str) -> int:
+    """Free uses written as "(1)". A bare number is a gem or coin price and is not a use."""
+    m = _USES_RE.search(text)
+    return int(m.group(1)) if m else 0
 
 
 def skill_reroll(texts: list[Text]) -> Text | None:
-    """The skill pick's reroll button, if it has uses left ("Reroll" with "(1)" below)."""
+    """The skill pick's free reroll, while it still has uses.
+
+    The count is "(1)" under the button or on the same line ("Reroll (1)", "Volver a tirar (1)").
+    A price with no parentheses is premium currency and is never returned.
+    """
     button = find(texts, L.SKILL_REROLL)
     if not button:
         return None
-    uses = next((int(m.group(1)) for t in _below(button, texts) if (m := _USES_RE.match(t.norm))), 0)
-    return button if uses > 0 else None
+    if _reroll_uses(button.norm) > 0:
+        return button
+    if any(_reroll_uses(t.norm) > 0 for t in _below(button, texts)):
+        return button
+    return None
 
 
 def parse_money(texts: list[Text]) -> int | None:

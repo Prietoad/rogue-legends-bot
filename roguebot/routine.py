@@ -9,13 +9,14 @@ import time
 from typing import Callable
 
 from roguebot import config, labels as L
-from roguebot.build import Build, BuildState, choose, shop_order
+from roguebot.build import Build, BuildState, offer_is_unfavorable, shop_order
 from roguebot.device import Device
 from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, fight_skip, free_donation, parse_patrol, parse_quick_patrol, guild_hall, guild_hall_donate, guild_vault, in_guild, is_guild_map, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
                                    parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
                                    parse_skill_choice, parse_tower, personal_vault_claim, pick_opponent,
                                    quick_patrol_close, quick_patrol_open, vip_cards_icon, vip_claim_all,
-                                   web_daily_claim, web_free_spin)
+                                   web_back_to_shop, web_collected, web_daily_claim, web_free_spin,
+                                   web_page_ready, web_wheel_spin, web_you_won)
 from roguebot.navigation import NavigationError, Navigator, _still_there
 from roguebot.play import PlayError
 from roguebot.screens import (LevelScreen, classify_level_screen, close_button, close_button_any_size, is_loading,
@@ -267,16 +268,52 @@ class Routine:
             self._close_named_popup(L.DAILY_TITLE)
         return DONE
 
+    def _until(self, pred: Callable[[list[Text]], object], timeout: float):
+        """Poll until pred(texts) is truthy, or the deadline. One read, then waits. Never a bare sleep."""
+        deadline = time.monotonic() + timeout
+        while True:
+            _, texts = self._capture()
+            found = pred(texts)
+            if found:
+                return found
+            if time.monotonic() >= deadline:
+                return None
+            time.sleep(config.POLL_INTERVAL)
+
+    def _dismiss_web_popup(self, title: Callable[[list[Text]], object], what: str) -> None:
+        """Tap "Back to the shop" while `title` is on screen, then wait until the popup is gone."""
+        back = self._until(lambda t: web_back_to_shop(t) if title(t) else None, config.WEB_POPUP_TIMEOUT)
+        if back is None:
+            log.info("Daily rewards: %s popup had no Back to the shop", what)
+            return
+        log.info("Daily rewards: %s, back to the shop", what)
+        self._tap(back)
+        self._until(lambda t: True if title(t) is None else None, config.WEB_POPUP_TIMEOUT)
+
     def _claim_web_daily(self) -> None:
-        """On roguelegend.io: wait for the page, claim the daily reward, scroll to the free spin."""
-        self._wait_for(lambda img, texts: (web_daily_claim(texts) or find(texts, L.WEB_STORE)) and texts,
-                       "daily reward web page", timeout=config.WEB_PAGE_TIMEOUT)
-        # The first paint can show the button before it can take a tap. See it twice.
-        page = self._wait_for(lambda img, texts: web_daily_claim(texts), "daily reward claim",
-                              timeout=config.WEB_PAGE_TIMEOUT)
-        log.info("Daily rewards: claiming the daily reward")
-        self._tap(page)
-        self._wait_change(lambda t: web_daily_claim(t) is None)
+        """On roguelegend.io: Collect the day, confirm it, spin the free wheel, then leave.
+
+        Each step polls until the screen shows it or a deadline passes. Already collected, or no
+        free spin, is skipped. This always returns; the caller leaves the browser either way.
+        """
+        log.info("Daily rewards: waiting for the shop page to render")
+        self._wait_for(lambda img, texts: web_page_ready(texts), "daily reward web page",
+                       timeout=config.WEB_PAGE_TIMEOUT)
+        collect = self._until(web_daily_claim, config.WEB_CONTENT_TIMEOUT)
+        if collect is None:
+            log.info("Daily rewards: no Collect button; already collected or not offered")
+        else:
+            log.info("Daily rewards: collecting the daily reward")
+            self._tap(collect)
+            outcome = self._until(
+                lambda t: "popup" if web_collected(t) else ("gone" if web_daily_claim(t) is None else None),
+                config.WEB_POPUP_TIMEOUT)
+            if outcome == "popup":
+                self._dismiss_web_popup(web_collected, "collected")
+            elif outcome == "gone":
+                log.info("Daily rewards: collect button left the page")
+            else:
+                log.info("Daily rewards: collect was not confirmed; continuing")
         spun = False
         for i in range(config.WEB_SCROLLS + 1):
             _, texts = self._capture()
@@ -284,21 +321,31 @@ class Routine:
             if spin:
                 log.info("Daily rewards: free spin")
                 self._tap(spin)
-                time.sleep(config.UI_SETTLE)
-                _, again_texts = self._capture()
-                again = web_free_spin(again_texts)
-                if again and abs(again.center[1] - spin.center[1]) > 40:
-                    log.info("Daily rewards: spinning")
-                    self._tap(again)
                 spun = True
                 break
             if i == config.WEB_SCROLLS:
                 break
             log.info("Daily rewards: scrolling for the free spin")
             self.device.swipe(*config.WEB_SCROLL_DOWN, duration=config.SCROLL_DURATION)
-            time.sleep(config.SCROLL_SETTLE)
+            arrived = self._until(web_free_spin, config.SCROLL_SETTLE)
+            if arrived:
+                log.info("Daily rewards: free spin")
+                self._tap(arrived)
+                spun = True
+                break
         if not spun:
-            log.info("Daily rewards: no free spin found")
+            log.info("Daily rewards: no free spin")
+            return
+        wheel = self._until(web_wheel_spin, config.WHEEL_SPIN_TIMEOUT)
+        if wheel is None:
+            log.info("Daily rewards: wheel did not open")
+            return
+        log.info("Daily rewards: spinning the wheel")
+        self._tap(wheel)
+        if self._until(web_you_won, config.WHEEL_SPIN_TIMEOUT) is None:
+            log.info("Daily rewards: spin finished without a prize popup")
+            return
+        self._dismiss_web_popup(web_you_won, "you won")
 
     def mail(self) -> str:
         """Lobby ≡ menu → "Correo" → "Reclamar todo" (never "Eliminar todo"); claim popups; ✕."""
@@ -539,12 +586,13 @@ class Routine:
         Skip on every frame races the result. With `next_floor`, a tower win taps Next when it
         is on screen (floors 1-9) and Okay otherwise (floor 10). A Loading screen is a
         transition, not a loss: the fight keeps waiting through it and reads the result again.
-        An offer with nothing the build wants is rerolled once, the same as a level skill pick.
+        An offer that does not have enough preferred skills to fill the pick is rerolled, the same
+        ranking a level uses, while the button still shows free uses ("(1)"). A gem price is never tapped.
         """
         deadline = time.monotonic() + config.MODE_FIGHT_TIMEOUT
         state, learned = BuildState(), None  # skills taken in this fight; the last offer learned
         skipped = False
-        rerolled = False
+        rerolled_offer = None  # this offer was already rerolled (a missed tap must not spin forever)
         loading_since = None
         img = None
         while True:
@@ -584,10 +632,12 @@ class Routine:
                 continue
             skills = self._choice_skills(texts, choice)
             reroll = skill_reroll(texts)
-            if (choice.chosen == 0 and not rerolled and reroll is not None
-                    and choose(skills, self.build, state, can_reroll=True) is None):
+            offer = tuple(s.name for s in skills)
+            picks = choice.needed - choice.chosen
+            if (choice.chosen == 0 and reroll is not None and offer != rerolled_offer
+                    and offer_is_unfavorable(skills, self.build, state, picks)):
                 log.info("No wanted skill in %s: rerolling", [s.name for s in skills])
-                rerolled = True
+                rerolled_offer = offer
                 self._tap(reroll)
                 continue
             order = shop_order(skills, self.build, state, can_reroll=False)  # wanted first, then rarest
@@ -603,7 +653,7 @@ class Routine:
                     for i in order[:choice.needed]:
                         state.take(skills[i])
                 learned = offer
-                rerolled = False  # the next skill step can reroll once too
+                rerolled_offer = None  # the next skill step gets its own free reroll
                 self._tap(choice.learn)
         self._fail("Fight did not finish", img)
 

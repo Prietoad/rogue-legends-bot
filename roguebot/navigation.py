@@ -129,7 +129,7 @@ class Navigator:
         None means the scan reached level 1 and every beaten level has 3 stars.
         """
         self._open_star_list(mode)
-        prev, stuck, choice = None, 0, None
+        prev, stuck, choice, agrees = None, 0, None, 0
         saw_level_one = False
         img = None
         for _ in range(MAX_SCROLLS * 2):  # one card per drag, so a level between pages is not skipped
@@ -142,17 +142,27 @@ class Navigator:
                 pending.append(clip)
             if pending:
                 card = max(pending, key=lambda c: c.number)  # nearest the end
-                if (choice and choice.number == card.number and choice.button and card.button
-                        and _same_place(choice.button, card.button)):
+                same = (choice and choice.number == card.number and choice.stars == card.stars
+                        and choice.button and card.button and _same_place(choice.button, card.button))
+                agrees = agrees + 1 if same else 1
+                # 0/3 is how a 3/3 card reads while the list is moving or the icons are clipped.
+                # One such read never starts the level; it has to survive extra settled screenshots.
+                need = config.ZERO_STAR_READS if card.stars == 0 else config.MISS_STAR_READS
+                if same and agrees >= need:
                     log.info("Starting %s star challenge for missing stars: level %d (%d/3)", mode.value,
                              card.number, card.stars)
                     self._press_start(card.button, mode)
                     return card.number
-                log.info("Missing stars: level %d shows %d/3, waiting for the list to settle", card.number, card.stars)
+                if choice and choice.number == card.number and choice.stars != card.stars:
+                    log.info("Missing stars: level %d read changed %d/3 -> %d/3, rereading",
+                             card.number, choice.stars, card.stars)
+                else:
+                    log.info("Missing stars: level %d shows %d/3, waiting for the list to settle",
+                             card.number, card.stars)
                 choice = card
                 time.sleep(config.SCROLL_SETTLE)
                 continue
-            choice = None
+            choice, agrees = None, 0
             numbers = [c.number for c in cards]
             if not numbers:
                 time.sleep(config.SCROLL_SETTLE)  # mid-scroll: not the top of the list

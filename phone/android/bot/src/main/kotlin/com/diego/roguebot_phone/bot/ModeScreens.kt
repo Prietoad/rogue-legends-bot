@@ -290,4 +290,58 @@ object ModeScreens {
         if (find(texts, L.DEFEAT) != null) return FightResult(false, button)
         return null
     }
+
+    private fun cash(t: Text) = "$" in t.text || "usd" in t.norm
+    private fun onStore(texts: List<Text>) = find(texts, L.WEB_STORE) != null
+    private fun near(a: Text, b: Text, dy: Int = 140, dx: Int = 240) =
+        abs(a.center.y - b.center.y) < dy && abs(a.center.x - b.center.x) < dx
+
+    fun webPageReady(texts: List<Text>): List<Text>? {
+        if (!onStore(texts)) return null
+        if (webDailyClaim(texts) != null || find(texts, L.DAILY_TITLE) != null || find(texts, L.DAILY_WHEEL) != null
+            || webFreeSpin(texts) != null || webCollected(texts) != null || webYouWon(texts) != null) return texts
+        return null
+    }
+
+    fun webDailyClaim(texts: List<Text>): Text? {
+        if (!onStore(texts)) return null
+        texts.firstOrNull { matches(it, L.DAILY_WEB_COLLECT, exact = true) && !cash(it) }?.let { return it }
+        val button = find(texts, L.DAILY_WEB_CLAIM) ?: return null
+        if (cash(button)) return null
+        val priced = texts.any {
+            abs(it.center.x - button.center.x) <= 180 && abs(it.center.y - button.center.y) <= 90
+                && (it.norm.all { c -> c.isDigit() } || "$" in it.text || "usd" in it.norm)
+        }
+        return if (priced) null else button
+    }
+
+    fun webCollected(texts: List<Text>): Text? = if (onStore(texts)) find(texts, L.WEB_COLLECTED) else null
+    fun webYouWon(texts: List<Text>): Text? = if (onStore(texts)) find(texts, L.WEB_YOU_WON) else null
+    fun webBackToShop(texts: List<Text>): Text? {
+        if (!onStore(texts)) return null
+        val button = find(texts, L.WEB_BACK_TO_SHOP) ?: return null
+        return if (cash(button)) null else button
+    }
+
+    fun webFreeSpin(texts: List<Text>): Text? {
+        if (!onStore(texts)) return null
+        val buttons = texts.filter { matches(it, L.WEB_FREE_SPIN, exact = true) && !cash(it) }
+        if (buttons.isNotEmpty()) {
+            val above = buttons.filter { it.center.y < Config.WEB_NAV_MIN_Y }
+            return (above.ifEmpty { buttons }).minBy { it.center.y }
+        }
+        val spin = find(texts, L.WEB_SPIN, exact = true)
+        if (spin != null && !cash(spin) && texts.any { matches(it, L.FREE, exact = true) && near(it, spin) }) return spin
+        val tab = texts.firstOrNull { matches(it, L.DAILY_WHEEL) && it.norm.length <= 18 && !cash(it) }
+        if (tab != null && texts.any { matches(it, L.FREE, exact = true) && near(it, tab, 160, 280) }) return tab
+        return null
+    }
+
+    fun webWheelSpin(texts: List<Text>): Text? {
+        if (!onStore(texts) || find(texts, L.DAILY_WHEEL) == null) return null
+        return texts.firstOrNull {
+            matches(it, L.WEB_SPIN, exact = true) && !cash(it)
+                && texts.none { f -> matches(f, L.FREE, exact = true) && near(f, it, 80, 220) }
+        }
+    }
 }

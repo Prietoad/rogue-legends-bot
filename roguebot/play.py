@@ -13,8 +13,8 @@ import cv2
 from roguebot import config, labels
 from roguebot.build import Build, BuildState, choose, shop_order
 from roguebot.device import Device
-from roguebot.screens import (LevelScreen, LevelState, SkillCard, classify_level_screen, game_speed,
-                              parse_fortune_teller, parse_shop, parse_skill_cards, skill_reroll)
+from roguebot.screens import (LevelScreen, LevelState, SkillCard, campfire_non_heal_tap, classify_level_screen,
+                              game_speed, parse_fortune_teller, parse_shop, parse_skill_cards, skill_reroll)
 from roguebot.skills import Catalog, Skill, infer_tags
 from roguebot.vision import Ocr, find
 
@@ -77,6 +77,7 @@ class Player:
         self._monk_spins = 0        # Wise Monk spins finished this visit
         self._monk_armed: float | None = None  # when the current spin was tapped
         self._monk_leave_since: float | None = None  # Salir showed while a spin was still owed
+        self._campfire_waits = 0  # frames the upgrade label was missing at HP that must not heal
 
     def play_level(self) -> LevelScreen:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
@@ -85,6 +86,7 @@ class Player:
         self._state, self._rerolled, self._doubles, self._last_offer = BuildState(), False, 0, None
         self._fortune_bought, self._fortune_tap = [], None
         self._monk_spins, self._monk_armed, self._monk_leave_since = 0, None, None
+        self._campfire_waits = 0
         while True:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
@@ -126,6 +128,26 @@ class Player:
                 else:
                     log.info("Holding the dice did not start auto-play; rolling by taps")
                     self._auto_missing = True
+
+            if state.kind is LevelScreen.EVENT and state.tap is None:
+                # The upgrade label was not on this frame. Reading the campfire in the same
+                # breath as the previous screen (a skill pick dismissing) used to see only
+                # "Descansar" and heal at 100% HP. Wait, then take the non-heal side.
+                self._campfire_waits += 1
+                if self._campfire_waits <= config.CAMPFIRE_REREADS:
+                    log.info("Campfire: skill upgrade not readable, rereading (%d)", self._campfire_waits)
+                    time.sleep(config.POLL_INTERVAL)
+                    continue
+                fallback = campfire_non_heal_tap(img, texts)
+                self._campfire_waits = 0
+                if fallback is None:
+                    log.info("Campfire: no non-heal option; not restoring HP")
+                    time.sleep(config.POLL_INTERVAL)
+                    continue
+                log.info("Campfire: upgrade still unreadable; choosing the non-heal option")
+                state = LevelState(LevelScreen.EVENT, fallback)
+            else:
+                self._campfire_waits = 0
 
             if state.kind in (LevelScreen.VICTORY, LevelScreen.DEFEAT):
                 log.info("Level finished: %s", state.kind.value)

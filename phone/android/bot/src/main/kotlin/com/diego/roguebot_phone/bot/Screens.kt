@@ -301,8 +301,10 @@ object Screens {
     private fun isUpgradeOption(label: Text, blob: String) =
         matches(label, L.CAMPFIRE_TRAIN, exact = true) || UPGRADE_BODY.containsMatchIn(blob)
 
-    /** Campfire option to tap, or null if this event is not the rest/campfire. Upgrade unless HP < 40%. */
-    private fun campfireLabel(labels: List<Text>, texts: List<Text>): Text? {
+    private class EventHit(val tap: P?, val campfireWait: Boolean = false)
+
+    /** Campfire option. Wait (do not heal) when HP is not under 40% and the upgrade label is missing. */
+    private fun campfireLabel(labels: List<Text>, texts: List<Text>): EventHit? {
         var heal: Text? = null
         var upgrade: Text? = null
         for (label in labels) {
@@ -312,30 +314,51 @@ object Screens {
         }
         if (heal == null && upgrade == null) return null
         val ratio = parseHpRatio(texts)
-        if (ratio != null && ratio < Config.CAMPFIRE_HEAL_BELOW && heal != null) {
+        val heart = heal
+        val book = upgrade
+        if (ratio != null && ratio < Config.CAMPFIRE_HEAL_BELOW && heart != null) {
             Log.info("Campfire: HP %.1f%% < 40%%, restoring HP".format(ratio * 100))
-            return heal
+            return EventHit(P(heart.center.x, heart.center.y + Config.EVENT_ICON_BELOW_LABEL))
         }
-        if (upgrade != null) {
+        if (book != null) {
             if (ratio == null) Log.info("Campfire: HP unreadable, upgrading skill")
             else Log.info("Campfire: HP %.1f%%, upgrading skill".format(ratio * 100))
-            return upgrade
+            return EventHit(P(book.center.x, book.center.y + Config.EVENT_ICON_BELOW_LABEL))
         }
-        Log.info("Campfire: skill upgrade not readable, restoring HP")
-        return heal
+        if (ratio == null) Log.info("Campfire: HP unreadable and the skill upgrade is not readable; waiting")
+        else Log.info("Campfire: HP %.1f%%, skill upgrade not readable; not healing".format(ratio * 100))
+        return EventHit(null, campfireWait = true)
     }
 
-    private fun eventOption(img: Frame, texts: List<Text>): P? {
+    /** A non-heal tap after the upgrade label never appeared. The heart is mirrored to the book. */
+    fun campfireNonHealTap(texts: List<Text>): P? {
+        val labels = texts.filter { it.center.y in Config.EVENT_LABEL_Y }
+        if (labels.isEmpty()) return null
+        var heal: Text? = null
+        for (label in labels) {
+            val blob = columnBlob(label, texts)
+            if (isUpgradeOption(label, blob)) return P(label.center.x, label.center.y + Config.EVENT_ICON_BELOW_LABEL)
+            if (heal == null && isHealOption(label, blob)) heal = label
+        }
+        val others = labels.filter { it !== heal }
+        if (others.isNotEmpty()) {
+            val label = others.maxBy { it.center.x }
+            return P(label.center.x, label.center.y + Config.EVENT_ICON_BELOW_LABEL)
+        }
+        val heart = heal ?: return null
+        return P(Config.SCREEN_W - heart.center.x, heart.center.y + Config.EVENT_ICON_BELOW_LABEL)
+    }
+
+    private fun eventOption(img: Frame, texts: List<Text>): EventHit? {
         val hasTitle = texts.any {
             it.center.y in Config.EVENT_TITLE_Y && kotlin.math.abs(it.center.x - Config.SCREEN_W / 2) < Config.EVENT_TITLE_CENTER_TOLERANCE
         }
         var labels = texts.filter { it.center.y in Config.EVENT_LABEL_Y }
         if (!hasTitle || labels.isEmpty()) return null
         labels = labels.filter { optionEnabled(img, it) }.ifEmpty { labels }
-        val label = campfireLabel(labels, texts)
-            ?: labels.firstOrNull { matches(it, L.LEAVE, exact = true) }
-            ?: labels.minBy { it.center.x }
-        return P(label.center.x, label.center.y + Config.EVENT_ICON_BELOW_LABEL)
+        campfireLabel(labels, texts)?.let { return it }
+        val label = labels.firstOrNull { matches(it, L.LEAVE, exact = true) } ?: labels.minBy { it.center.x }
+        return EventHit(P(label.center.x, label.center.y + Config.EVENT_ICON_BELOW_LABEL))
     }
 
     fun classifyLevelScreen(img: Frame, texts: List<Text>): LevelState {
@@ -371,7 +394,10 @@ object Screens {
         val leave = find(texts, L.LEAVE, exact = true)
         if (leave != null && find(texts, L.BLACK_MARKET) != null) return LevelState(LevelScreen.LEAVE, leave.center)
         if (leave != null && find(texts, L.SHOP_REROLL) != null) return LevelState(LevelScreen.SHOP, leave.center)
-        eventOption(img, texts)?.let { return LevelState(LevelScreen.EVENT, it) }
+        eventOption(img, texts)?.let {
+            if (it.campfireWait) return LevelState(LevelScreen.EVENT, null)
+            return LevelState(LevelScreen.EVENT, it.tap)
+        }
         if (leave != null) return LevelState(LevelScreen.LEAVE, leave.center)
         if (find(texts, L.REVIVE_PROMPT) != null) {
             val free = find(texts, L.REVIVE_FREE, exact = true)
@@ -444,12 +470,15 @@ object Screens {
         it.center.y - button.center.y in 1..Config.REROLL_COUNT_BELOW && kotlin.math.abs(it.center.x - button.center.x) < 120
     }
 
-    private val USES_RE = Regex("^\\((\\d+)\\)$")
+    private val USES_RE = Regex("\\((\\d+)\\)")
 
+    private fun rerollUses(text: String): Int = USES_RE.find(text)?.groupValues?.get(1)?.toInt() ?: 0
+
+    /** Free reroll while "(1)" is on the button or under it. A bare number is a gem price. */
     fun skillReroll(texts: List<Text>): Text? {
         val button = find(texts, L.SKILL_REROLL) ?: return null
-        val uses = below(button, texts).firstNotNullOfOrNull { USES_RE.find(it.norm)?.groupValues?.get(1)?.toInt() } ?: 0
-        return if (uses > 0) button else null
+        if (rerollUses(button.norm) > 0) return button
+        return if (below(button, texts).any { rerollUses(it.norm) > 0 }) button else null
     }
 
     fun parseMoney(texts: List<Text>): Int? {

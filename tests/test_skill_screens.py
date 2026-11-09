@@ -114,6 +114,13 @@ def test_player_picks_the_build_skill_and_records_it(tmp_path):
     assert set(p.catalog.skills) == {"sneakypoison", "fireweapon"}  # both new skills saved
 
 
+def test_reroll_count_on_the_same_line_is_free_and_a_bare_price_is_not():
+    assert skill_reroll([Text("Reroll (1)", 280, 2100, 520, 2160)]).center == (400, 2130)
+    assert skill_reroll([Text("Volver a tirar (1)", 280, 2100, 560, 2160)]) is not None
+    assert skill_reroll([Text("Reroll", 280, 2100, 520, 2160), Text("(1)", 360, 2168, 440, 2210)]) is not None
+    assert skill_reroll([Text("Reroll", 280, 2100, 520, 2160), Text("60", 360, 2168, 440, 2210)]) is None
+
+
 def test_player_rerolls_once_when_nothing_fits(tmp_path):
     p = player(tmp_path, Build("magic"))
     shield_only = [PROMPT, *card("Common", "Iron Shield", "Gain a Shield.", 928), *REROLL]

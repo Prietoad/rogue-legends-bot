@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.10.3 (2026-11-09)
+- Daily rewards: after the shop page has actually rendered, tap Collect under the current day, then Back to the shop on the Collected popup. Scroll to the Daily Wheel section, tap FREE SPIN, tap SPIN, wait for the wheel to stop, then Back to the shop on You won. Already collected, or no free spin, is skipped. Each step polls until it shows or a deadline passes, and the bot always leaves the browser and goes back to the game.
+- Campfire: heal only when the top-bar HP is under 40%. If the upgrade label is missing on the frame (it is read too soon after the previous screen) the bot waits and reads again, then taps the upgrade side. It no longer restores HP at 100% because "Entrenar" was not on that frame.
+- Dojo, guild raid, and Dungeon Dive reroll an offer that does not have enough preferred skills to fill the pick, using the same ranking as a level (presets and damage order). The free "(1)" use counts when it is written on the Reroll button or under it. A price with no parentheses is not tapped. Dungeon Dive goes through the level player; its reroll button was not on a separate screenshot.
+- Missing stars: a title-bar sample on the cream card body is no longer 0/3. Filled stars are gold or purple, and the green checks on the objective rows confirm a 3/3 card when the title-bar icons are clipped. A 0/3 has to agree on three settled reads before that level is started. A real 2/3 (pale star, no check on the last objective) is still played.
+
 ## 1.10.2 (2026-11-04)
 - Missing stars scrolls the Star Challenge list the way a scroll-to-level does: up from the card the list opens on, one card at a time, until a level whose stars were actually read is under 3, or the list has been read through level 1. The last beaten card that is already on screen is not started just because the list opened there. A header whose star icons were not read is not treated as 0/3.
 

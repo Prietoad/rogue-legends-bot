@@ -54,9 +54,15 @@ ENERGY_WAIT_POLL = 300      # loop mode: seconds between energy checks while wai
 MIN_RUN_ENERGY = 5           # cheapest run (normal, or elite at x5)
 
 # Elite start dialog ("Modo Élite")
-STAR_ICONS_X = (1245, 1312, 1379)  # the 3 star icons right of a star list card header (gold = earned)
+STAR_ICONS_X = (1245, 1312, 1379)  # the 3 star icons right of a star list card header (filled = earned)
 OBJECTIVE_STAR_DX = 66               # objective-row star sits this far left of the condition text
 OBJECTIVE_TEXT_X = (250, 500)        # condition lines ("Clear with more than 65% HP"); not the header
+OBJECTIVE_CHECK_X = (1080, 1240)     # green check at the right of a completed objective row
+OBJECTIVE_CHECK_MIN_FRACTION = 0.08  # share of that window that is the green check (the green words are ~0.02)
+STAR_GAP_MAX_MEAN = 100              # dark bar between star icons (~80); cream gaps are ~230
+STAR_HEADER_SEARCH = 48              # header text box is not always on the icon row: look this far above and below
+MISS_STAR_READS = 2                  # agreeing settled reads before a 1/3 or 2/3 card is started
+ZERO_STAR_READS = 3                  # a 0/3 is the misread (cream body, clipped stars): one more agreeing read
 ELITE_COSTS = (5, 10, 15)    # energy per run; the window picks one (default the cheapest: more runs)
 ELITE_COST_DEFAULT = ELITE_COSTS[0]
 ELITE_COST_MINUS = (480, 1747)
@@ -101,6 +107,7 @@ EVENT_ICON_BELOW_LABEL = 238             # option icon center, below its label
 EVENT_COLUMN_X = 160                     # option body text sits in the same column as its label
 EVENT_DISABLED_MAX_SATURATION = 70       # mean HSV saturation of a greyed (disabled) option icon: ~34; enabled >=117
 CAMPFIRE_HEAL_BELOW = 0.40               # "Un Momento de Descanso": restore HP only under this fraction of max HP
+CAMPFIRE_REREADS = 4                     # frames to wait for the upgrade label before tapping the non-heal side
 FLIP_CARDS = [(x, y) for y in (1280, 1560, 1840) for x in (299, 579, 859, 1139)]  # 4x3 grid centers
 FLIP_FACE_DOWN_MIN_FRACTION = 0.25       # measured: 0.39 face down, 0.08 face up
 MONK_SPINS = 2               # Wise Monk / Monje Sabio: always spin twice, then leave
@@ -171,8 +178,12 @@ MODES_MAX_SCROLLS = 3
 MODE_FIGHT_TIMEOUT = 240                 # one mode/raid fight, seconds
 FIGHT_LOADING_WAIT = 90                  # extra seconds a Loading screen may last before a fight is a fail
 WEB_PAGE_TIMEOUT = 25                    # daily-reward store page (it keeps loading after the first paint)
+WEB_CONTENT_TIMEOUT = 12                 # Collect / Collected / Back, after the page shell is up
+WEB_POPUP_TIMEOUT = 8                    # Collected or You won dialog
+WHEEL_SPIN_TIMEOUT = 12                  # wheel popup and its spin animation
 WEB_SCROLLS = 4                          # scrolls down the store page looking for the free spin
 WEB_SCROLL_DOWN = ((720, 1700), (720, 700))  # finger moves up: the page scrolls down
+WEB_NAV_MIN_Y = 2280                     # bottom shop tabs (Daily Rewards, Daily Wheel); the section buttons sit above
 MAX_MODE_ACTIONS = 40                    # taps within one mode before giving up
 DOJO_TICKETS_REGION = (1270, 45, 1420, 130)  # dojo ticket count (top-right); full-frame OCR misses it
 DOJO_CHEST_Y = (2000, 2250)              # dojo progress chest "RECLAMAR" ("Intenta el Dojo N veces")
