@@ -361,6 +361,11 @@ object Screens {
         return EventHit(P(label.center.x, label.center.y + Config.EVENT_ICON_BELOW_LABEL))
     }
 
+    /** The GIRAR/SPIN button. A higher exact hit near y=2080 is the gap above the button, not it. */
+    fun monkSpinButton(texts: List<Text>): Text? =
+        texts.filter { matches(it, L.MONK_SPIN, exact = true) && it.center.y > Config.MONK_SPIN_MIN_Y }
+            .maxByOrNull { it.center.y }
+
     fun classifyLevelScreen(img: Frame, texts: List<Text>): LevelState {
         if (footerVisible(img)) return LevelState(LevelScreen.UNKNOWN)
         val proceed = find(texts, L.CONTINUE, exact = true)
@@ -379,8 +384,8 @@ object Screens {
         }
         if (proceed != null && find(texts, L.LEVEL_MODIFIERS, exact = true) != null) return LevelState(LevelScreen.CONTINUE, proceed.center)
         if (find(texts, L.MONK) != null) {  // before GIRAR/SPIN is a generic continue: the player spins twice
-            val spin = find(texts, L.MONK_SPIN, exact = true)
-            if (spin != null && spin.center.y > Config.MONK_SPIN_MIN_Y) return LevelState(LevelScreen.MONK, spin.center)
+            val spin = monkSpinButton(texts)
+            if (spin != null) return LevelState(LevelScreen.MONK, spin.center)
             val leave = find(texts, L.LEAVE, exact = true)
             return LevelState(LevelScreen.MONK, leave?.center)
         }

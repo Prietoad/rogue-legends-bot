@@ -45,9 +45,12 @@ class Player(
     private var autoMisses = 0    // such missed holds in a row
     private var fortuneBought = ArrayList<Int>()  // Fortune Teller balls bought this visit (chances)
     private var fortuneTap: Triple<Int, Int, Double>? = null  // (chance, orbs before, time) of the last ball tap
-    private var monkSpins = 0
-    private var monkArmed: Double? = null
-    private var monkLeaveSince: Double? = null
+    private var monkSpins = 0  // spins whose reward was claimed this visit
+    private var monkArmed: Double? = null  // when the current spin was tapped; cleared when its reward is claimed
+    private var monkLeaveSince: Double? = null  // Salir showed while a spin was still owed
+    private var monkSince: Double? = null  // start of the current unresolved Monk wait
+    private var monkRetapped = false  // the in-flight spin was tapped a second time
+    private var monkYielded = false  // timed out: the generic level loop owns this screen
     private var campfireWaits = 0
 
     /** Play until the level ends; returns VICTORY or DEFEAT. */
@@ -58,25 +61,36 @@ class Player(
         var firstRepeat = clock.now()
         state = BuildState(); rerolled = false; doubles = 0; lastOffer = null
         fortuneBought = ArrayList(); fortuneTap = null
-        monkSpins = 0; monkArmed = null; monkLeaveSince = null
+        resetMonk()
         campfireWaits = 0
         while (true) {
             val img = device.screenshot()
             val texts = ocr.read(img)
             var s = classify(img, texts)
+            val rawKind = s.kind
 
-            if (s.kind == LevelScreen.SKILL_PICK) {
+            if (rawKind == LevelScreen.SKILL_PICK) {
                 s = LevelState(s.kind, pickSkill(texts) ?: s.tap)
-            } else if (s.kind == LevelScreen.SHOP) {
+            } else if (rawKind == LevelScreen.SHOP) {
                 shop(texts)
-            } else if (s.kind == LevelScreen.FORTUNE_TELLER) {
+            } else if (rawKind == LevelScreen.FORTUNE_TELLER) {
                 s = LevelState(s.kind, fortune(texts))
-            } else if (s.kind == LevelScreen.MONK) {
-                s = LevelState(s.kind, monkTap(texts))
-            } else if (s.kind == LevelScreen.BOARD_READY || s.kind == LevelScreen.AUTO_PLAY) {
+            } else if (rawKind == LevelScreen.MONK && !monkYielded) {
+                val tap = monkTap(texts, img)
+                s = if (monkYielded && tap == null && s.tap == null) {
+                    LevelState(LevelScreen.UNKNOWN)  // nothing to tap: the unknown-screen guard applies
+                } else if (!(monkYielded && tap == null)) {
+                    LevelState(LevelScreen.MONK, tap)
+                } else {
+                    s  // classifier found SPIN/Leave: that tap is the recovery
+                }
+            } else if (rawKind == LevelScreen.MONK && s.tap == null) {
+                s = LevelState(LevelScreen.UNKNOWN)
+            } else if (rawKind == LevelScreen.BOARD_READY || rawKind == LevelScreen.AUTO_PLAY) {
                 fortuneBought.clear()  // back on the board: a later Fortune Teller is a new visit
-                monkSpins = 0; monkArmed = null; monkLeaveSince = null
+                resetMonk()
             }
+            if (rawKind != LevelScreen.MONK) monkYielded = false
 
             if (s.kind == LevelScreen.DOUBLE_REWARD) {
                 doubles++
@@ -212,6 +226,15 @@ class Player(
         return Config.FORTUNE_TELLER_BACK
     }
 
+    private fun resetMonk() {
+        monkSpins = 0
+        monkArmed = null
+        monkLeaveSince = null
+        monkSince = null
+        monkRetapped = false
+        monkYielded = false
+    }
+
     /** The reward overlay after a spin ("Tap anywhere to claim" / "You Received"). */
     private fun monkClaim(texts: List<Text>): P? {
         find(texts, L.TAP_TO_CLAIM)?.let { return it.center }
@@ -219,8 +242,46 @@ class Player(
         return null
     }
 
-    /** Wise Monk: spin twice, claim each reward, then leave. HP is never a reason to stop early. */
-    private fun monkTap(texts: List<Text>): P? {
+    /** One frame of a Monk wait. Past MONK_WAIT_TIMEOUT, recover instead of returning null forever. */
+    private fun monkWait(img: Frame, texts: List<Text>, message: String): P? {
+        val now = clock.now()
+        if (monkSince == null) monkSince = now
+        if (now - monkSince!! >= Config.MONK_WAIT_TIMEOUT) return monkGiveUp(img, texts)
+        Log.info(message)
+        return null
+    }
+
+    /** The wait never ended. Warn, keep a screenshot, tap a reward or Leave if one is readable. */
+    private fun monkGiveUp(img: Frame, texts: List<Text>): P? {
+        val waited = monkSince?.let { clock.now() - it } ?: 0.0
+        Log.warn("Wise Monk: timed out after ${waited.toInt()}s with $monkSpins/${Config.MONK_SPINS} spins claimed; recovering")
+        Log.warn("Wise Monk: saved ${debug.save(img, "monk")}")
+        monkYielded = true
+        monkArmed = null
+        monkSince = null
+        monkLeaveSince = null
+        monkRetapped = false
+        monkClaim(texts)?.let {
+            Log.info("Wise Monk: recovery tap on the reward")
+            return it
+        }
+        val cont = find(texts, L.TAP_TO_CONTINUE) ?: find(texts, L.CONTINUE, exact = true)
+        if (cont != null) {
+            Log.info("Wise Monk: recovery tap to continue")
+            return cont.center
+        }
+        find(texts, L.LEAVE, exact = true)?.let {
+            Log.info("Wise Monk: recovery tap on Leave")
+            return it.center
+        }
+        Log.info("Wise Monk: no reward or Leave to tap; back to screen detection")
+        return null
+    }
+
+    /** Wise Monk: spin twice, claim each reward, then leave. HP is never a reason to stop early.
+     *  A spin counts only when its reward overlay is tapped. The button still showing after
+     *  MONK_SPIN_SETTLE is a missed tap: tried once more, still not counted. */
+    private fun monkTap(texts: List<Text>, img: Frame): P? {
         monkClaim(texts)?.let { claim ->
             if (monkArmed != null) {
                 monkSpins += 1
@@ -228,48 +289,51 @@ class Player(
                 Log.info("Wise Monk: spin $monkSpins/${Config.MONK_SPINS} done")
             }
             monkLeaveSince = null
+            monkSince = null
+            monkRetapped = false
             Log.info("Wise Monk: claiming the reward")
             return claim
         }
-        var spin = find(texts, L.MONK_SPIN, exact = true)
-        if (spin != null && spin.center.y <= Config.MONK_SPIN_MIN_Y) spin = null
+        val spin = Screens.monkSpinButton(texts)
         val leave = find(texts, L.LEAVE, exact = true)
         if (spin != null && monkSpins < Config.MONK_SPINS) {
             monkLeaveSince = null
-            val armed = monkArmed
-            if (armed == null) {
-                monkArmed = clock.now()
+            val now = clock.now()
+            if (monkArmed == null) {
+                monkArmed = now
+                monkSince = now
+                monkRetapped = false
                 Log.info("Wise Monk: spin ${monkSpins + 1}/${Config.MONK_SPINS}")
                 return spin.center
             }
-            if (clock.now() - armed >= Config.MONK_SPIN_SETTLE) {
-                monkSpins += 1
-                monkArmed = null
-                Log.info("Wise Monk: spin $monkSpins/${Config.MONK_SPINS} done")
-                if (monkSpins < Config.MONK_SPINS) {
-                    monkArmed = clock.now()
-                    Log.info("Wise Monk: spin ${monkSpins + 1}/${Config.MONK_SPINS}")
-                    return spin.center
-                }
+            if (!monkRetapped && now - monkArmed!! >= Config.MONK_SPIN_SETTLE) {
+                monkRetapped = true
+                monkArmed = now
+                Log.info("Wise Monk: spin ${monkSpins + 1}/${Config.MONK_SPINS} was not claimed; tapping SPIN again")
+                return spin.center
             }
-            return null
+            return monkWait(img, texts, "Wise Monk: waiting for the reward of spin ${monkSpins + 1}/${Config.MONK_SPINS}")
         }
-        if (monkArmed != null && spin == null) {
-            monkSpins += 1
-            monkArmed = null
-            Log.info("Wise Monk: spin $monkSpins/${Config.MONK_SPINS} done")
+        if (leave != null && monkArmed == null && monkSpins >= Config.MONK_SPINS) {
+            monkSince = null
+            return leave.center
         }
-        if (leave != null && monkSpins >= Config.MONK_SPINS) return leave.center
-        if (leave != null && monkSpins < Config.MONK_SPINS) {
+        if (leave != null && spin == null) {
             if (monkLeaveSince == null) monkLeaveSince = clock.now()
             if (clock.now() - monkLeaveSince!! >= Config.MONK_LEAVE_WAIT) {
-                Log.info("Wise Monk: spin button did not return ($monkSpins/${Config.MONK_SPINS}); leaving")
+                Log.info("Wise Monk: spin button did not return ($monkSpins/${Config.MONK_SPINS} claimed); leaving")
+                monkArmed = null
+                monkSince = null
+                monkRetapped = false
                 return leave.center
             }
-            Log.info("Wise Monk: waiting to spin again ($monkSpins/${Config.MONK_SPINS})")
-            return null
+            return monkWait(img, texts, "Wise Monk: waiting to spin again ($monkSpins/${Config.MONK_SPINS})")
         }
-        return null
+        if (monkArmed != null) {
+            return monkWait(img, texts, "Wise Monk: waiting for the reward of spin ${monkSpins + 1}/${Config.MONK_SPINS}")
+        }
+        if (monkSpins >= Config.MONK_SPINS) return monkWait(img, texts, "Wise Monk: waiting to leave")
+        return monkWait(img, texts, "Wise Monk: waiting to spin again ($monkSpins/${Config.MONK_SPINS})")
     }
 
     /** Buy wanted skills the coins can pay, refreshing while a refresh still leaves a wanted buy. */

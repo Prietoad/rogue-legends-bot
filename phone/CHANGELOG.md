@@ -1,6 +1,7 @@
 # Changelog (phone app)
 
 ## Unreleased
+- Same Wise Monk hang fix as the desktop bot: each spin's reward is claimed before the next spin, a "SPIN" read above the button is ignored, and a wait on that screen gives up (warning, screenshot, then normal screen detection) instead of sitting on the wheel.
 - Same 1.10.3 farm fixes as the desktop bot: daily rewards collects the day and takes the free wheel before leaving the browser, a campfire does not heal at full HP when the upgrade label is missing, and Dojo / raid skill offers reroll while the free "(1)" use is showing. The desktop star-list reader (purple stars, green checks, no single 0/3 start) is the one that plays on MuMu; this engine's star count is still the older sample and needs a parity export before it matches.
 
 - Same 1.11.0 farm fixes as the desktop bot: Wise Monk claims each spin's reward, Last unlocked advances on a win and falls back one level on a loss, shops can pay to refresh more than once without spending the coins a wanted skill needs, and the English Daily Rewards popup's "Claim Rewards" is tapped (or the popup is closed). World 2 is unchanged.

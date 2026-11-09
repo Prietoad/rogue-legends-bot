@@ -534,6 +534,18 @@ def _event_option(img: np.ndarray, texts: list[Text]) -> tuple[int, int] | None:
     return label.center[0], label.center[1] + config.EVENT_ICON_BELOW_LABEL
 
 
+def monk_spin_button(texts: list[Text]) -> Text | None:
+    """The GIRAR/SPIN button, not a higher misread of the same word.
+
+    The button center sits near y=2280. OCR sometimes also returns an exact "SPIN"/"GIRAR"
+    near y=2080, in the gap under the subtitle; tapping that misses and the button stays.
+    Speech and the subtitle are higher still (~1850) and already excluded by MONK_SPIN_MIN_Y.
+    Several hits: the lowest one is the button.
+    """
+    hits = [t for t in texts if matches(t, L.MONK_SPIN, exact=True) and t.center[1] > config.MONK_SPIN_MIN_Y]
+    return max(hits, key=lambda t: t.center[1]) if hits else None
+
+
 def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
     if footer_visible(img):  # a main screen (lobby...), never a level: its texts can look like an event
         return LevelState(LevelScreen.UNKNOWN)
@@ -561,8 +573,8 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
     if proceed and find(texts, L.LEVEL_MODIFIERS, exact=True):  # elite level intro: modifiers + Continue
         return LevelState(LevelScreen.CONTINUE, proceed.center)
     if find(texts, L.MONK):  # before GIRAR/SPIN is taken as a generic continue: the player spins twice
-        spin = find(texts, L.MONK_SPIN, exact=True)
-        if spin and spin.center[1] > config.MONK_SPIN_MIN_Y:
+        spin = monk_spin_button(texts)
+        if spin:
             return LevelState(LevelScreen.MONK, spin.center)
         leave = find(texts, L.LEAVE, exact=True)
         return LevelState(LevelScreen.MONK, leave.center if leave else None)

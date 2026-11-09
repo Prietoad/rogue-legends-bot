@@ -96,9 +96,10 @@ object Config {
     val FLIP_CARDS = listOf(1280, 1560, 1840).flatMap { y -> listOf(299, 579, 859, 1139).map { x -> P(x, y) } }
     const val FLIP_FACE_DOWN_MIN_FRACTION = 0.25
     const val MONK_SPINS = 2
-    const val MONK_SPIN_MIN_Y = 2000
+    const val MONK_SPIN_MIN_Y = 2140  // button center ~2280; y≈2080 is the gap above it
     const val MONK_SPIN_SETTLE = 1.2
     const val MONK_LEAVE_WAIT = 4.0
+    const val MONK_WAIT_TIMEOUT = 20.0
     const val FIGHT_SKIP_MIN_Y = 2200
     const val SKIP_LIME_MIN_FRACTION = 0.35
     val FORTUNE_TELLER_BACK = P(293, 2280)

@@ -9,7 +9,7 @@ from roguebot import config, labels
 from roguebot.device import Device, DeviceError, Frozen, device_scale, focused_package
 from roguebot.navigation import NavigationError, Navigator
 from roguebot.play import Player
-from roguebot.screens import Card, Mode
+from roguebot.screens import Card, LevelScreen, Mode
 from roguebot.request import RunRequest, build_request
 from roguebot.vision import Text
 
@@ -967,31 +967,42 @@ def test_wise_monk_spins_twice_and_does_not_leave_for_hp(monkeypatch):
     leave = [banner, Text("Salir", 600, 2240, 840, 2320), Text("39% de HP", 200, 80, 400, 120)]
     assert player._monk_tap(spin) == (720, 2280)
     clock[0] = 0.4
-    assert player._monk_tap(gone) is None  # the button left: that spin counts, HP is irrelevant
-    assert player._monk_spins == 1
-    assert player._monk_tap(leave) is None  # not two spins yet
+    assert player._monk_tap(gone) is None  # the wheel is spinning; the claim has not been seen
+    assert player._monk_spins == 0  # the button leaving does not count the spin, and HP does not end it
+    assert player._monk_tap(leave) is None  # not two claims yet
     clock[0] = 0.4 + config.MONK_LEAVE_WAIT
     assert player._monk_tap(leave) == (720, 2280)  # the button never came back
     labels.set_language(None)
 
 
-def test_wise_monk_second_spin_is_taken_when_the_button_returns(monkeypatch):
+def test_wise_monk_does_not_count_a_spin_until_its_reward_is_claimed(monkeypatch):
+    """The button still being there is a missed tap, not a finished spin.
+
+    The hang logged 'spin 1/2 done' and 'spin 2/2' in the same breath, with no claim
+    between them, then sat on the wheel: both spins were already counted, so the
+    handler returned no tap while Leave was not up.
+    """
     from roguebot import play
     clock = [0.0]
     monkeypatch.setattr(play.time, "monotonic", lambda: clock[0])
     player = play.Player(None, None)
     banner = Text("Wise Monk", 400, 180, 900, 240)
     spin = [banner, Text("SPIN", 600, 2240, 840, 2320)]
+    claim = [banner, Text("You Received", 400, 900, 1040, 980),
+             Text("Tap anywhere to claim", 360, 2400, 1080, 2460)]
+    leave = [banner, Text("Leave", 600, 2240, 840, 2320)]
     labels.set_language("en")
     try:
         assert player._monk_tap(spin) == (720, 2280)
         clock[0] = config.MONK_SPIN_SETTLE
-        assert player._monk_tap(spin) == (720, 2280)  # second spin, the button stayed
-        assert player._monk_spins == 1
+        assert player._monk_tap(spin) == (720, 2280)  # same spin again; it was not claimed
+        assert player._monk_spins == 0
         clock[0] = config.MONK_SPIN_SETTLE * 2
-        assert player._monk_tap(spin) is None  # both spins counted; nothing else to tap
-        assert player._monk_spins == 2
-        leave = [banner, Text("Leave", 600, 2240, 840, 2320)]
+        assert player._monk_tap(spin) is None  # already retried once; still waiting for the reward
+        assert player._monk_spins == 0
+        assert player._monk_tap(claim) == (720, 2430) and player._monk_spins == 1
+        assert player._monk_tap(spin) == (720, 2280)  # spin 2 starts only after that claim
+        assert player._monk_tap(claim) == (720, 2430) and player._monk_spins == 2
         assert player._monk_tap(leave) == (720, 2280)
     finally:
         labels.set_language(None)
@@ -1031,6 +1042,122 @@ def test_wise_monk_claim_without_the_footer_text_taps_the_center(monkeypatch):
         assert player._monk_spins == 1
     finally:
         labels.set_language(None)
+
+
+def test_wise_monk_ignores_a_spin_label_in_the_gap_above_the_button(monkeypatch):
+    """Live hangs tapped (720, 2081) — 200px above the SPIN button at (720, 2281) — then
+    counted that miss as spin 1. The gap reading is not the button; the lower one is."""
+    from roguebot import play
+    from roguebot.screens import classify_level_screen, monk_spin_button
+    import numpy as np
+    player = play.Player(None, None)
+    banner = Text("Wise Monk", 513, 158, 933, 250)
+    high = Text("SPIN", 640, 2041, 800, 2121)  # center (720, 2081), the logged miss
+    low = Text("SPIN", 592, 2223, 848, 2339)  # center (720, 2281), the real button
+    labels.set_language("en")
+    try:
+        assert high.center == (720, 2081) and low.center == (720, 2281)
+        assert monk_spin_button([banner, high]) is None
+        assert monk_spin_button([banner, high, low]) is low
+        assert player._monk_tap([banner, high]) is None
+        assert player._monk_spins == 0
+        assert player._monk_tap([banner, high, low]) == (720, 2281)
+        img = np.zeros((config.SCREEN_SIZE[1], config.SCREEN_SIZE[0], 3), np.uint8)
+        assert classify_level_screen(img, [banner, high]).tap is None
+        assert classify_level_screen(img, [banner, high, low]).tap == (720, 2281)
+    finally:
+        labels.set_language(None)
+
+
+def _monk_level(monkeypatch, frames, clock_step=0.0):
+    """Play a level whose OCR frames are `frames`. The clock jumps `clock_step` seconds per screenshot."""
+    import numpy as np
+    from roguebot import play
+    clock = [0.0]
+    monkeypatch.setattr(play.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(play.time, "sleep", lambda s: None)
+    pending = iter(frames)
+
+    class Dev:
+        taps = []
+
+        def screenshot(self):
+            clock[0] += clock_step
+            return np.zeros((config.SCREEN_SIZE[1], config.SCREEN_SIZE[0], 3), np.uint8)
+
+        def tap(self, x, y, settle=0):
+            self.taps.append((x, y))
+
+        def hold(self, x, y, seconds, settle=0):
+            self.taps.append(("hold", x, y))
+
+    class Read:
+        def read(self, img):
+            return next(pending)
+
+    device = Dev()
+    labels.set_language("en")
+    try:
+        result = play.Player(device, Read()).play_level()
+    finally:
+        labels.set_language(None)
+    return result, device.taps
+
+
+def test_wise_monk_level_claims_both_spins_before_leaving(monkeypatch):
+    banner = Text("Wise Monk", 400, 180, 900, 240)
+    spin = [banner, Text("SPIN", 600, 2240, 840, 2320)]
+    claim = [banner, Text("Tap anywhere to claim", 360, 2400, 1080, 2460)]
+    leave = [banner, Text("Leave", 600, 2240, 840, 2320)]
+    victory = [Text("VICTORY!", 560, 900, 880, 980), Text("Continue", 600, 2180, 840, 2260)]
+    result, taps = _monk_level(monkeypatch, [spin, claim, spin, claim, leave, victory], clock_step=2.0)
+    assert result is LevelScreen.VICTORY
+    assert taps == [(720, 2280), (720, 2430), (720, 2280), (720, 2430), (720, 2280), (720, 2220)]
+
+
+def test_wise_monk_level_does_not_treat_a_high_spin_read_as_the_first_spin(monkeypatch):
+    """The logged hang: spin 1 at (720, 2081), immediately 'done' with no claim, spin 2 at
+    (720, 2281), one claim, then silence. The gap tap must not happen, and spin 2 waits
+    for the first reward."""
+    banner = Text("Wise Monk", 400, 180, 900, 240)
+    high = Text("SPIN", 640, 2041, 800, 2121)
+    low = Text("SPIN", 592, 2223, 848, 2339)
+    claim = [banner, Text("Tap anywhere to claim", 360, 2400, 1080, 2460)]
+    leave = [banner, Text("Leave", 600, 2240, 840, 2320)]
+    victory = [Text("VICTORY!", 560, 900, 880, 980), Text("Continue", 600, 2180, 840, 2260)]
+    frames = [[banner, high], [banner, low], [banner, low], claim, [banner, low], claim, leave, victory]
+    result, taps = _monk_level(monkeypatch, frames, clock_step=2.0)
+    assert result is LevelScreen.VICTORY
+    assert (720, 2081) not in taps
+    assert taps == [(720, 2281), (720, 2281), (720, 2430), (720, 2281), (720, 2430), (720, 2280), (720, 2220)]
+
+
+def test_wise_monk_wait_times_out_and_the_level_loop_stops(monkeypatch, tmp_path, caplog):
+    """Banner only, forever: the handler used to return no tap on a known Monk screen, so the
+    unknown-screen guard never ran and the freeze watchdog stayed quiet while the pond animated.
+    """
+    import logging
+    from roguebot import play
+    caplog.set_level(logging.WARNING, logger="roguebot.play")
+    monkeypatch.setattr(play, "DEBUG_DIR", tmp_path)
+    banner = [Text("Wise Monk", 400, 180, 900, 240)]
+    with pytest.raises(play.PlayError, match="unknown screen"):
+        _monk_level(monkeypatch, [banner] * 30, clock_step=2.0)
+    saved = list(tmp_path.glob("monk_*.png"))
+    assert saved, "a timed-out Monk wait must save a debug screenshot"
+    assert "timed out" in caplog.text
+
+
+def test_wise_monk_timeout_returns_to_the_level_loop(monkeypatch, tmp_path):
+    """After the give-up, a later screen (the level moved on) is still played."""
+    from roguebot import play
+    monkeypatch.setattr(play, "DEBUG_DIR", tmp_path)
+    banner = [Text("Wise Monk", 400, 180, 900, 240)]
+    victory = [Text("VICTORY!", 560, 900, 880, 980), Text("Continue", 600, 2180, 840, 2260)]
+    result, taps = _monk_level(monkeypatch, [banner] * 12 + [victory], clock_step=2.0)
+    assert result is LevelScreen.VICTORY
+    assert taps == [(720, 2220)]
+    assert list(tmp_path.glob("monk_*.png"))
 
 
 def test_wise_monk_spanish_claim_is_tapped(monkeypatch):
