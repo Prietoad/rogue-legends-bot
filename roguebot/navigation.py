@@ -199,7 +199,13 @@ class Navigator:
         self._tap_text(lobby.stars_button)
         img, texts = self._capture_change(is_star_list)
         if not is_star_list(texts):
-            self._fail("Desafio de Estrellas list did not open", img)
+            name = labels.star_challenge_name()
+            log.info("%s list did not open; tapping again", name)
+            self._tap_text(lobby.stars_button)
+            time.sleep(2)
+            img, texts = self._capture()
+            if not is_star_list(texts):
+                self._fail(f"{name} list did not open", img)
 
     def level_in_progress(self) -> bool:
         """A level is on screen: the bot was stopped or restarted mid-level while the game kept running
@@ -310,6 +316,8 @@ class Navigator:
                 continue
             lobby = parse_lobby(texts)
             if lobby:
+                from roguebot.play import clear_level_abandoned
+                clear_level_abandoned()
                 return lobby
             # Never tap blindly: popups can hold purchase buttons.
             close_text, close_x = popup_close(texts), close_button(img)
@@ -348,8 +356,15 @@ class Navigator:
                 log.info("Leaving the guild")
                 self.device.tap(*(back_arrow(img) or config.LIST_BACK))
             elif self.resume_level and self._on_board(img, texts):  # a level is still running (go_to_lobby can't leave it)
-                log.info("A level is on screen: playing it out")
-                self.resume_level()
+                from roguebot.play import level_abandoned
+                if level_abandoned():
+                    # The watchdog already ended this level. Playing it again restarts the hang.
+                    log.warning("Leaving a level the watchdog ended")
+                    point = back_arrow(img)
+                    self.device.tap(*point) if point else self.device.back()
+                else:
+                    log.info("A level is on screen: playing it out")
+                    self.resume_level()
             elif is_star_list(texts):
                 log.info("In star challenge list, going back")
                 self.device.tap(*config.LIST_BACK)

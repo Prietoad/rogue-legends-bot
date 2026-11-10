@@ -23,7 +23,7 @@ DAMAGE_TYPES = ("ice", "lightning", "fire", "shuriken", "venom", "bleed")
 MAGIC_TYPES = ("ice", "lightning", "fire")
 PHYSICAL, MAGIC = "physical", "magic"
 DAMAGE, SUPPORT = "damage", "support"
-RARITY_NAMES = ("mythic", "legendary", "epic", "rare", "common")  # same order as labels.RARITIES
+RARITY_NAMES = ("mythic", "legendary", "epic", "rare", "common", "useless")  # same order as labels.RARITIES
 
 # Keyword stems on normalized text (lowercase, no accents), Spanish and English. A stem matches at
 # the start of a word, so "ice" does not match "twice" or "price".
@@ -64,6 +64,49 @@ def name_is_support(name: str) -> bool:
 def skill_key(name: str) -> str:
     """Letters only, so OCR variants ("Ultimate-Bolt", "Ultimate Bolt", "CounterMastery") share a key."""
     return re.sub(r"[^a-z]", "", normalize(name))
+
+
+# OCR fragments from half-faded cards. Dropped on load and never auto-added.
+# Endless Fury, Last Stand and Feral Lethality are not here: a clean read should still be saved.
+JUNK_KEYS = {
+    "endlescfury", "weap", "thality", "lastst", "erallethality", "iltimat", "iltimnte",
+    "fuma", "riken", "exp", "expexd", "expexp", "expxext", "exf", "exo", "ha", "hh",
+    "rit", "ritic", "ritie", "mitie", "wear", "wemr", "woun", "outbre", "outbro",
+    "uthreak", "vampi", "xp", "shop", "ken",
+}
+
+
+def _desc_words(description: str) -> list[str]:
+    return re.findall(r"[a-z]{2,}", normalize(description or ""))
+
+
+def skill_name_rejected(name: str, description: str = "") -> str | None:
+    """Why this must not be written into the catalog, or None when it may be saved.
+
+    Short names, all-caps fragments, and "Lv"/"SALE" glued onto a name are OCR leftovers.
+    A description under four words is the same kind of partial read. A faded card is
+    rejected so a later clean frame can still be captured.
+    """
+    raw = (name or "").strip()
+    letters = re.sub(r"[^A-Za-z]", "", raw)
+    if len(letters) < 4:
+        return "short"
+    key = skill_key(raw)
+    if key in JUNK_KEYS:
+        return "junk"
+    if re.search(r"lv\.?\s*\d|\bsale\b", raw, re.I):
+        return "level-or-sale"
+    if raw.isupper() and " " not in raw and len(letters) <= 8:
+        return "caps"
+    if description and len(_desc_words(description)) < 4:
+        return "short-description"
+    return None
+
+
+def junk_on_load(name: str) -> bool:
+    """A saved entry to drop. Description length is not used: reviewed skills can be short."""
+    reason = skill_name_rejected(name, "")
+    return reason in ("short", "junk", "level-or-sale", "caps")
 
 
 def infer_tags(name: str, description: str) -> tuple[str | None, str, str]:
@@ -110,7 +153,7 @@ class Catalog:
         self.skills: dict[str, Skill] = {}
         if path.exists():
             data = json.loads(path.read_text(encoding="utf-8"))
-            self.skills = {k: Skill(**v) for k, v in data.items()}
+            self.skills = {k: Skill(**v) for k, v in data.items() if not junk_on_load(v.get("name", k))}
 
     def contains(self, name: str) -> bool:
         """True when this name is already in the database, allowing for a small OCR slip."""
@@ -119,17 +162,27 @@ class Catalog:
             return False
         if key in self.skills:
             return True
-        return bool(difflib.get_close_matches(key, list(self.skills), n=1, cutoff=0.85))
+        return bool(difflib.get_close_matches(key, list(self.skills), n=1, cutoff=0.8))
 
     def lookup(self, name: str, description: str, rarity: str, lang: str | None) -> Skill:
-        """The known skill with this name (tolerating small OCR differences), or a new one, saved."""
+        """The known skill with this name (tolerating small OCR differences), or a new one, saved.
+
+        A close name (>= 0.8) is the same skill. A fragment is returned for this decision
+        and not written, so a faded card does not pollute the file or block a later capture.
+        """
         key = skill_key(name)
+        if not key:
+            damage_type, nature, role = infer_tags(name, description)
+            return Skill(name, lang, rarity, damage_type, nature, role, description)
         if key not in self.skills:
-            close = difflib.get_close_matches(key, list(self.skills), n=1, cutoff=0.85)
+            close = difflib.get_close_matches(key, list(self.skills), n=1, cutoff=0.8)
             if close:
                 return self.skills[close[0]]
             damage_type, nature, role = infer_tags(name, description)
-            self.skills[key] = Skill(name, lang, rarity, damage_type, nature, role, description)
+            skill = Skill(name, lang, rarity, damage_type, nature, role, description)
+            if skill_name_rejected(name, description):
+                return skill
+            self.skills[key] = skill
             log.info("New skill: %s (%s, %s, %s, %s)", name, rarity, damage_type or "-", nature, role)
             self.save()
         return self.skills[key]

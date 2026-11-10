@@ -160,9 +160,11 @@ def test_devil_signs_only_for_two_commons_that_are_not_both_core():
 
 def test_springs_vista_and_book():
     assert decide_springs(["Enter Hot Spring"], 0.9, None).choice == "enter"
-    assert decide_springs(["Stay", "Get Out"], 0.7, 0.1).choice == "stay"
+    assert decide_springs(["Stay", "Get Out"], 0.7, 0.1).choice == "stay"  # 60% left after the hit
     assert decide_springs(["Stay", "Get Out"], 0.6, 0.6).choice == "get_out"  # the next stay would empty hp
-    assert decide_springs(["Stay", "Get Out"], 0.59, 0.05).choice == "get_out"
+    assert decide_springs(["Stay", "Get Out"], 0.55, 0.10).choice == "stay"  # 45% left, still at least 40%
+    assert decide_springs(["Stay", "Get Out"], 0.50, 0.20).choice == "get_out"  # 30% left
+    assert decide_springs(["Stay", "Get Out"], 0.39, 0.05).choice == "get_out"
     assert decide_springs(["Stay", "Get Out"], None, 0.1).choice == "get_out"
     assert decide_springs(["Stay", "Get Out"], 0.8, None).choice == "get_out"
     assert decide_vista(5, 2).choice == "gaze"

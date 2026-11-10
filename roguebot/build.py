@@ -140,19 +140,72 @@ def choose(skills: list[Skill], build: Build, state: BuildState, can_reroll: boo
     return fallback(skills, build)[0]
 
 
+# A common whose type sits next to the build, and is the same nature, does not fight the build.
+_ADJACENT = {
+    "venom": frozenset({"bleed", "shuriken"}),
+    "bleed": frozenset({"venom", "shuriken"}),
+    "shuriken": frozenset({"venom", "bleed"}),
+    "fire": frozenset({"lightning"}),
+    "lightning": frozenset({"fire", "ice"}),
+    "ice": frozenset({"lightning"}),
+}
+
+
+def _conflicts(skill: Skill, build: Build) -> bool:
+    return bool(skill.damage_type) and skill.nature != build.nature
+
+
+def _adjacent_common(skill: Skill, build: Build) -> bool:
+    """An off-build common the shop may still buy: next to the build, and not the other nature."""
+    if skill.rarity != "common" or not skill.damage_type or skill.damage_type in build.order:
+        return False
+    if _conflicts(skill, build) or _avoided(skill, build):
+        return False
+    near: set[str] = set()
+    for damage_type in build.order:
+        near |= _ADJACENT.get(damage_type, frozenset())
+    return skill.damage_type in near
+
+
+def _shop_keeps(skill: Skill, build: Build, state: BuildState) -> bool:
+    """On-build skills, a due support, and non-common untyped cards. Off-build commons are out."""
+    if _avoided(skill, build):
+        return False
+    if skill.role == SUPPORT and state.wants_support(build):
+        return True
+    if skill.damage_type in build.order and _damage_ok(skill, build):
+        return True
+    if skill.rarity == "common":
+        return False
+    return _damage_ok(skill, build) and skill.damage_type is None
+
+
 def shop_order(skills: list[Skill], build: Build, state: BuildState, can_reroll: bool,
                fill: bool = True) -> list[int] | None:
     """Buying order for the shop's skills, or None to use the (free) reroll first.
 
     `fill` (dojo and raid, which must pick several) keeps the other cards after the wanted ones.
-    The level shop leaves them out, so leftover coins are not spent off-build.
+    The level shop does not buy off-build commons. An adjacent common that does not conflict
+    with the build is the exception. Anything else off-build keeps the coins.
     """
     wanted = ranked(skills, build, state)
-    if not wanted and can_reroll:
-        return None
     if fill:
+        if not wanted and can_reroll:
+            return None
         return wanted + [i for i in fallback(skills, build) if i not in wanted]
-    preferred = _preferred(skills, build, state)
-    if not preferred and can_reroll:
+    preferred = [i for i in _preferred(skills, build, state) if _shop_keeps(skills[i], build, state)]
+    adjacent = [i for i, skill in enumerate(skills) if _adjacent_common(skill, build) and i not in preferred]
+    buyable = preferred + adjacent
+    if buyable:
+        return buyable
+    if can_reroll:
         return None
-    return preferred or wanted
+    return [i for i in wanted if _shop_keeps(skills[i], build, state)]
+
+
+def core_index(skills: list[Skill], build: Build) -> int | None:
+    """A damage skill of the active preset's types. Reroll must not throw one of these away."""
+    for i, skill in enumerate(skills):
+        if skill.role == DAMAGE and skill.damage_type in build.order and not _avoided(skill, build):
+            return i
+    return None

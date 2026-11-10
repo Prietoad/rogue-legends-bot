@@ -182,7 +182,10 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
             while True:
                 if not request.repeat and results:  # a retry after an error must not replay the one level
                     return Report(results)
-                _claim_patrol(Routine(device, ocr, nav, request.ads), state)  # first: its quick patrols spend energy
+                # Quick Patrol spends energy. Only when the routine (that task) is on,
+                # not on every start of a runs-only session.
+                if request.full:
+                    _claim_patrol(Routine(device, ocr, nav, request.ads), state)
                 if request.repeat and _energy(nav) < config.MIN_RUN_ENERGY:
                     if nav.claim_free_energy() < config.MIN_RUN_ENERGY:
                         break

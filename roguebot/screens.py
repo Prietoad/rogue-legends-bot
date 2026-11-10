@@ -13,7 +13,7 @@ from roguebot import config, labels as L
 from roguebot.mode_screens import guild_screen
 from roguebot.skills import RARITY_NAMES
 from roguebot.vision import Ocr, Text, find, match_template, matches, parse_level_number
-from roguebot.world2 import is_battle, is_shop_screen, level_tap
+from roguebot.world2 import is_battle, is_exp_toast, is_shop_screen, level_tap
 
 log = logging.getLogger(__name__)
 
@@ -434,6 +434,9 @@ def parse_hp_ratio(texts: list[Text]) -> float | None:
             continue
         current, maximum = _scaled_hp(m.group(1), m.group(2)), _scaled_hp(m.group(3), m.group(4))
         if current is None or maximum is None or maximum <= 0:
+            continue
+        # "18.6m/1" and a max below the current HP are misreads, not a full bar.
+        if maximum < current or maximum < config.HP_MIN_MAX:
             continue
         return current / maximum
     return None
@@ -940,10 +943,13 @@ def parse_skill_cards(texts: list[Text], rarity_x: tuple[int, int] | None = None
                         and re.search(r"[a-z]{2}", t.norm)),  # skip OCR junk glyphs
                        key=lambda t: (t.center[1], t.center[0]))
         lo, hi = config.SKILL_NAME_BELOW_TAG
-        if not words or not lo <= words[0].center[1] - tag.center[1] <= hi:
-            continue  # name not read: skip the card rather than store a description line as its name
+        names = [t for t in words if lo <= t.center[1] - tag.center[1] <= hi and not is_exp_toast(t.text)]
+        if not names:
+            continue  # name not read: skip the card rather than store a description line or the +EXP toast
+        name = names[0]
+        rest = [t for t in words if t is not name and t.center[1] >= name.center[1]]
         prices = [t for t in band if t.center[0] >= config.SHOP_PRICE_MIN_X and t.norm.isdigit()]
-        cards.append(SkillCard(rarity_name(tag), words[0].text, " ".join(t.text for t in words[1:]), tag,
+        cards.append(SkillCard(rarity_name(tag), name.text, " ".join(t.text for t in rest), tag,
                                max(prices, key=lambda t: t.center[1]) if prices else None,
                                any(matches(t, L.SOLD_OUT) for t in band)))
     return cards

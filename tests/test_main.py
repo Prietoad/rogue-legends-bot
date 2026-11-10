@@ -213,9 +213,11 @@ def test_full_routine_without_energy_is_not_an_error(monkeypatch):
 
 def test_routine_not_run_without_full(monkeypatch):
     FakeRoutine.calls = 0
+    FakeRoutine.patrols = 0
     monkeypatch.setattr(main, "Routine", FakeRoutine)
     run_with(monkeypatch, FakeNav(energy=20), [V], RunRequest(Mode.NORMAL, 4))
     assert FakeRoutine.calls == 0
+    assert FakeRoutine.patrols == 0  # Quick Patrol is not opened when only runs are selected
 
 
 def test_stop_event_reaches_the_device_and_is_cleared_on_start(monkeypatch):
@@ -360,7 +362,8 @@ def test_waiting_for_energy_logs_each_check(caplog):
     assert "Waiting for energy (2/5)" in caplog.text
 
 
-def test_patrol_is_checked_before_every_level(monkeypatch):
+def test_patrol_is_not_opened_when_only_runs_are_selected(monkeypatch):
+    """Quick Patrol spends energy. A runs-only start does not open it on every level."""
     nav = FakeNav(energy=10)
 
     class R(FakeRoutine):
@@ -369,8 +372,8 @@ def test_patrol_is_checked_before_every_level(monkeypatch):
             return super().patrol()
     monkeypatch.setattr(main, "Routine", R)
     run_with(monkeypatch, nav, [V, D], RunRequest(Mode.NORMAL, 4, repeat=True))
-    # before each level (its quick patrols spend energy, so before the energy check too)
-    assert nav.started == ["detect", "patrol", ("stars", 4), "patrol", ("stars", 4), "patrol"]
+    assert nav.started == ["detect", ("stars", 4), ("stars", 4)]
+    assert "patrol" not in nav.started
 
 
 def test_patrol_opened_by_the_routine_is_not_opened_again_before_the_first_level(monkeypatch):

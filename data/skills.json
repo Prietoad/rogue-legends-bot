@@ -49,16 +49,6 @@
   "description": "Cuando HP <50%, ATQ ↑↑↑+↑",
   "auto": true
  },
- "anergizantelv": {
-  "name": "anergizante Lv.2",
-  "lang": "es",
-  "rarity": "legendary",
-  "damage_type": null,
-  "nature": "physical",
-  "role": "damage",
-  "description": " te otorga 4 de Carga Cada",
-  "auto": true
- },
  "armadefuego": {
   "name": "Arma de Fuego",
   "lang": "es",
@@ -369,6 +359,16 @@
   "description": "Cada Descarga te otorga 2 de Carga Definitiva",
   "auto": true
  },
+ "corrosion": {
+  "name": "Corrosion",
+  "lang": "en",
+  "rarity": "common",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Deal +1% increased damage to enemies for each stack of Poison on them.",
+  "auto": false
+ },
  "cortesprofundos": {
   "name": "Cortes Profundos",
   "lang": "es",
@@ -648,6 +648,26 @@
   "role": "support",
   "description": "Enemy heals and shields are 50% less effective",
   "auto": true
+ },
+ "divineintervention": {
+  "name": "Divine Intervention",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "At the end of the round, if you are below 35% HP, gain a massive HP Shield and fully charge your Ultimate Gauge. Cooldown: 2 turns",
+  "auto": false
+ },
+ "divinejudgement": {
+  "name": "Divine Judgement",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "When you deal damage that leaves an enemy below 35% HP, cast 7 Bolts at them. Cooldown: 1 turn",
+  "auto": false
  },
  "dodgerateup": {
   "name": "Dodge Rate Up",
@@ -979,16 +999,6 @@
   "description": "At the start of combat, gain a Shield equal to 70% of your Max HP, but Max HP ",
   "auto": true
  },
- "exp": {
-  "name": "EXP",
-  "lang": "en",
-  "rarity": "common",
-  "damage_type": null,
-  "nature": "physical",
-  "role": "support",
-  "description": "Recovery Chance to restore 5% HP every turn.",
-  "auto": true
- },
  "experimentoespecial": {
   "name": "Experimento Especial",
   "lang": "es",
@@ -998,6 +1008,26 @@
   "role": "damage",
   "description": "Cuando tus Mascotas atacan, aplican 1 acumulaciôn de Veneno.",
   "auto": true
+ },
+ "eyeforaneye": {
+  "name": "Eye for an Eye",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Whenever you are hit, deflect 500% of the damage back at all enemies.",
+  "auto": false
+ },
+ "feraladaptibility": {
+  "name": "Feral Adaptibility",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "support",
+  "description": "When you defeat an enemy, gain +2% Damage Reduction permanently for the rest of the run.",
+  "auto": false
  },
  "fester": {
   "name": "Fester",
@@ -1369,16 +1399,6 @@
   "description": "Definitiva, lanza Después de usar tu a enem igos aleatorios.",
   "auto": true
  },
- "ken": {
-  "name": "ken+",
-  "lang": "es",
-  "rarity": "legendary",
-  "damage_type": null,
-  "nature": "physical",
-  "role": "damage",
-  "description": "",
-  "auto": true
- },
  "lado": {
   "name": "Lado",
   "lang": "es",
@@ -1457,16 +1477,6 @@
   "nature": "physical",
   "role": "damage",
   "description": "Daño de Efectos de Estado",
-  "auto": true
- },
- "lentoysegurolv": {
-  "name": "Lento y Seguro Lv. 2",
-  "lang": null,
-  "rarity": "common",
-  "damage_type": null,
-  "nature": "physical",
-  "role": "damage",
-  "description": "Daño de Efectos de Estado +40%",
   "auto": true
  },
  "lifesteal": {
@@ -1949,6 +1959,16 @@
   "description": "Cada turno lanza Descarga.",
   "auto": true
  },
+ "relentlessflurry": {
+  "name": "Relentless Flurry",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Everytime you use a Weapon Attack, gain +5% Combo Rate and +5% Counter Rate, stacking infinitely until the end of combat.",
+  "auto": false
+ },
  "repeatedbolt": {
   "name": "Repeated Bolt",
   "lang": "en",
@@ -2027,16 +2047,6 @@
   "nature": "physical",
   "role": "support",
   "description": "DMG Reduction , when attacked there is a 50% chance to gain +20% DMG Reduction against the attack.",
-  "auto": true
- },
- "shop": {
-  "name": "SHOP",
-  "lang": "en",
-  "rarity": "common",
-  "damage_type": null,
-  "nature": "physical",
-  "role": "damage",
-  "description": "Energetic Start combat with +50 Ultimate Charge",
   "auto": true
  },
  "shurikencurativo": {
@@ -2289,6 +2299,16 @@
   "description": "Cada Descarga causa una Tormenta Eléctrica, infligiendo daño a todos los enemigos.",
   "auto": true
  },
+ "trash": {
+  "name": "Trash",
+  "lang": "en",
+  "rarity": "useless",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "What was once an impressive ability has now been reduced to sludge.",
+  "auto": false
+ },
  "ultimatebolt": {
   "name": "Ultimate Bolt",
   "lang": "en",
@@ -2439,6 +2459,16 @@
   "description": "Physical DMG O, Magical DMG",
   "auto": true
  },
+ "weaponmastery": {
+  "name": "Weapon Mastery",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Your Basic Attacks, Combo Attacks and Counter Attacks deal +80% more DMG.",
+  "auto": false
+ },
  "wizard": {
   "name": "Wizard",
   "lang": "en",
@@ -2477,16 +2507,6 @@
   "nature": "physical",
   "role": "damage",
   "description": "Weapon Attacks will apply 1 stack of Wound.",
-  "auto": true
- },
- "xp": {
-  "name": "XP",
-  "lang": "en",
-  "rarity": "common",
-  "damage_type": null,
-  "nature": "physical",
-  "role": "damage",
-  "description": "Cleave Weapon Attacks have a chance to trigger Cleave, dealing damage to all enemies.",
   "auto": true
  }
 }

@@ -14,7 +14,7 @@ object Skills {
     const val MAGIC = "magic"
     const val DAMAGE = "damage"
     const val SUPPORT = "support"
-    val RARITY_NAMES = listOf("mythic", "legendary", "epic", "rare", "common")
+    val RARITY_NAMES = listOf("mythic", "legendary", "epic", "rare", "common", "useless")
 
     private val TYPE_WORDS = linkedMapOf(
         "ice" to listOf("ice", "icicle", "chill", "frost", "freez", "frozen", "snow", "hielo", "carambano", "escalofrio",

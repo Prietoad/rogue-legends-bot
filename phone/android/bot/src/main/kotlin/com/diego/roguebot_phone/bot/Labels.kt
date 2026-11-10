@@ -154,6 +154,7 @@ object L {
         l(listOf("epico", "epica"), "epic"),
         l(listOf("raro", "rara"), "rare"),
         l("comun", "common"),
+        l("inutil", "useless"),
     )
 
     /** Language of a lobby screen, from its "Patrulla"/"Patrol" button. */

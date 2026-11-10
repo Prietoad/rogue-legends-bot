@@ -24,7 +24,7 @@ LATE_ROLLS = 5          # Elysium "shop if almost out of rolls", and when removi
 LAST_SHOP_ROLLS = 5     # Atlantis: this few rolls left and the shop will not come around again
 HAUNT_EMBRACE_UNTIL = 10  # rolls used
 VISTA_GAZE_UNTIL = 5
-SPRINGS_STAY_HP = 0.60
+SPRINGS_STAY_HP = 0.40  # Stay only while HP% minus the red damage cost is still at least this
 GOBLIN_RAID_HP = 0.50
 MINER_SIZE = 7
 MINER_PICKAXES = 9
@@ -47,15 +47,17 @@ VENDOR_LINES = (
     {"id": "elites", "kind": "blessing", "score": 75,
      "phrases": ("elites/bosses -25% hp", "elites -25% hp", "bosses -25% hp")},
     {"id": "first_shop", "kind": "blessing", "score": 35,
-     "phrases": ("first shop free", "first shop is free")},
+     "phrases": ("your first shop purchase is free", "first shop purchase is free",
+                 "first shop free", "first shop is free")},
     {"id": "enemies_first", "kind": "curse", "score": 15,
      "phrases": ("enemies will always act first", "always act first")},
     {"id": "campfires", "kind": "curse", "score": 100, "late_score": 10,
      "phrases": ("all campfires are removed", "campfires are removed", "campfires removed")},
     {"id": "exp_halved", "kind": "curse", "score": 30,
-     "phrases": ("exp halved", "experience halved", "exp is halved")},
+     "phrases": ("exp gain is halved", "exp halved", "experience halved", "exp is halved")},
     {"id": "skills_disabled", "kind": "curse", "score": 90,
-     "phrases": ("half of skills disabled", "skills disabled for")},
+     "phrases": ("half of your skills are disabled", "for the next 5 battle encounters",
+                 "half of skills disabled", "skills disabled for")},
     {"id": "debuff_to_buff", "kind": "blessing", "score": 80,
      "phrases": ("all debuff tiles are replaced with buff tiles", "debuff tiles are replaced with buff")},
     {"id": "elites_start", "kind": "blessing", "score": 75,
@@ -73,6 +75,16 @@ VENDOR_LINES = (
      "phrases": ("create a golden road of mega buff tiles", "golden road of mega buff", "mega buff tiles")},
     {"id": "shop_prices", "kind": "curse", "score": 5,
      "phrases": ("shop prices are doubled", "prices are doubled")},
+    # Read on the 2.0.3 night. Weights are not set yet (Brian, 2.0.4): a match is logged
+    # and still counts as unknown, so the temporary coin flip stays until Game scores them.
+    {"id": "inn", "kind": "blessing", "score": None,
+     "phrases": ("every campfire becomes an inn", "becomes an inn")},
+    {"id": "pets_disabled", "kind": "curse", "score": None,
+     "phrases": ("pets are disabled for the first 3 rounds", "your pets are disabled")},
+    {"id": "mythic_trash", "kind": "curse", "score": None,
+     "phrases": ("next mythic skill you learn becomes trash", "becomes trash")},
+    {"id": "revives_disabled", "kind": "curse", "score": None,
+     "phrases": ("revives are disabled",)},
 )
 
 # TODO: remove coin flip after full data. Unknown curses, boons, and events are not
@@ -264,6 +276,13 @@ def _scaled(num: str, suffix: str | None) -> float | None:
         return None
 
 
+def hp_plausible(current: float | None, maximum: float | None) -> bool:
+    """A max of 1, or a max below the current HP, is a misread. Treat it as missing."""
+    if current is None or maximum is None:
+        return False
+    return maximum >= current and maximum >= config.HP_MIN_MAX
+
+
 def read_hud(texts: list[Text]) -> Hud:
     """HP, shop tokens and the roll counter. Missing pieces stay None (the unreadable fallback)."""
     hp = max_hp = None
@@ -274,7 +293,7 @@ def read_hud(texts: list[Text]) -> Hud:
         if not m or not (m.group(2) or m.group(4)):
             continue
         cur, mx = _scaled(m.group(1), m.group(2)), _scaled(m.group(3), m.group(4))
-        if cur is None or not mx:
+        if not hp_plausible(cur, mx):
             continue
         hp, max_hp = cur, mx
         break
@@ -357,8 +376,8 @@ def clean_vendor_text(text: str) -> str:
 def _best_rule(blob: str, kind: str) -> dict | None:
     found = []
     for rule in VENDOR_LINES:
-        if rule["kind"] != kind:
-            continue
+        if rule["kind"] != kind or rule.get("score") is None:
+            continue  # unweighted lines stay unknown so the coin flip is unchanged
         hit = max((len(p) for p in rule["phrases"] if _line_has(blob, p)), default=0)
         if hit:
             found.append((hit, rule))
@@ -633,17 +652,22 @@ def decide_goblin(hp_ratio: float | None) -> Decision:
 
 
 def decide_springs(buttons: list[str], hp_ratio: float | None, cost_ratio: float | None) -> Decision:
+    """Stay only when the HP left after the red damage cost is still at least 40%.
+
+    Get Out when HP cannot be read, the red "-N% HP Damage" line cannot be read, or
+    hp% - cost would fall under 40%. The green "+N% Max HP" line is the gain, not the cost.
+    """
     names = [normalize(b) for b in buttons]
     if not any("stay" in n for n in names):
         return Decision("boiling_springs", "enter", "enter the hot spring", {})
     inputs = {"hp": hp_ratio, "cost": cost_ratio}
-    if hp_ratio is None or hp_ratio < SPRINGS_STAY_HP:
-        why = "hp unreadable" if hp_ratio is None else "hp < 60%"
-        return Decision("boiling_springs", "get_out", why, inputs)
-    if cost_ratio is None or hp_ratio <= cost_ratio:
-        why = "stay cost unreadable" if cost_ratio is None else "next stay would drop hp to 0"
-        return Decision("boiling_springs", "get_out", why, inputs)
-    return Decision("boiling_springs", "stay", "hp >= 60% and the next stay will not kill", inputs)
+    if hp_ratio is None:
+        return Decision("boiling_springs", "get_out", "hp unreadable", inputs)
+    if cost_ratio is None:
+        return Decision("boiling_springs", "get_out", "stay cost unreadable", inputs)
+    if hp_ratio - cost_ratio < SPRINGS_STAY_HP:
+        return Decision("boiling_springs", "get_out", "hp% - cost < 40%", inputs)
+    return Decision("boiling_springs", "stay", "hp% - cost >= 40%", inputs)
 
 
 def decide_vista(rolls_used: int | None, skills_known: int | None) -> Decision:
@@ -912,12 +936,25 @@ def _title_anchor(label: Text, texts: list[Text]) -> Text:
     return anchor
 
 
+def _button_caption(t: Text) -> bool:
+    """A short label under an icon. Description lines ('Take -20% HP Damage') are not buttons."""
+    words = t.norm.split()
+    if not words or len(words) > 4:
+        return False
+    if "%" in t.norm or any(w in t.norm for w in ("damage", "hp", "attempt")):
+        return False
+    if any(ch.isdigit() for ch in t.norm):
+        return False
+    return True
+
+
 def _caption_below(anchor: Text, texts: list[Text]) -> Text | None:
     """The line under the icon ("Walk Away", "Learn a Common Skill"), not the wrapped title."""
     floor = config.EVENT_LABEL_Y[1] + 40
     hits = [t for t in texts if t is not anchor and t.center[1] >= floor
             and 40 < t.center[1] - anchor.center[1] < 800
-            and abs(t.center[0] - anchor.center[0]) <= config.EVENT_COLUMN_X]
+            and abs(t.center[0] - anchor.center[0]) <= config.EVENT_COLUMN_X
+            and _button_caption(t)]
     if not hits:
         return None
     return min(hits, key=lambda t: t.center[1])
@@ -1009,7 +1046,11 @@ def _offering_skill(blob: str) -> str | None:
 
 
 def _stay_cost(blob: str) -> float | None:
-    m = re.search(r"(\d+(?:[.,]\d+)?)\s*%", normalize(blob))
+    """The red 'Take -N% HP Damage' cost. The first percent on the card is the green Max HP gain."""
+    n = normalize(blob)
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*%\s*hp\s*damage", n)
+    if not m:
+        m = re.search(r"take\s*-?\s*(\d+(?:[.,]\d+)?)\s*%", n)
     if not m:
         return None
     return float(m.group(1).replace(",", ".")) / 100.0
@@ -1131,9 +1172,28 @@ def _log(decision: Decision, hud: Hud) -> None:
 _BATTLE_RE = re.compile(r"(?:round|ronda)\s*:?\s*\d+\s*/\s*\d+")
 
 
+_ENEMY_HP = re.compile(r"\d+(?:[.,]\d+)?\s*[kmb]")
+
+
 def is_battle(texts: list[Text]) -> bool:
-    """A fight HUD ("Round 1/30"). Not a skill named Round Bolt."""
-    return any(_BATTLE_RE.search(t.norm) for t in texts)
+    """A fight HUD ("Round 1/30"), the Combo popup, or the enemy HP bars.
+
+    Not a skill named Round Bolt. "Rourdombo!" is the Combo banner OCR, and the bars
+    under it ("25.1m(2.5m)(5.4m)") are not an event title.
+    """
+    if any(_BATTLE_RE.search(t.norm) or re.search(r"\bwave\s*\d+\s*/\s*\d+", t.norm) for t in texts):
+        return True
+    if any(("combo" in t.norm or "dombo" in t.norm) and len(t.norm) <= 16 for t in texts):
+        return True
+    blob = " ".join(t.norm for t in texts)
+    # Reward and victory screens mention gold like "1.2m". Those are not enemy bars.
+    if any(p in blob for p in ("you received", "you forgot", "tap anywhere", "lucky treasure", "ucky treasure",
+                               "victory", "victoria", "you survived", "longest journey")):
+        return False
+    # Enemy bars stack down the fight. Two numbers on one row (tower powers) are not a fight.
+    bars = [t for t in texts if 250 < t.center[1] < 1500 and _ENEMY_HP.search(t.norm) and len(t.norm) <= 24]
+    rows = {t.center[1] // 80 for t in bars}
+    return len(bars) >= 2 and len(rows) >= 2
 
 
 def is_skill_offer(texts: list[Text]) -> bool:
@@ -1204,8 +1264,7 @@ def known_screen(texts: list[Text]) -> str | None:
     def short(phrases: tuple[str, ...], limit: int = 48) -> bool:
         return any(any(p in n for p in phrases) for n in lines if len(n) <= limit)
 
-    if any(re.search(r"(?:round|ronda)\s*:?\s*\d+\s*/\s*\d+", n) or re.search(r"\bwave\s*\d+\s*/\s*\d+", n)
-           for n in lines if len(n) <= 40):
+    if is_battle(texts):
         return "battle"
     # A dice win popup also says "You Received" / "Tap anywhere to claim": that tap wins.
     if short(("you received", "you forgot", "lucky treasure", "ucky treasure", "tap anywhere to claim")):
@@ -1294,9 +1353,14 @@ def safe_option(options: list[tuple[str, str]]) -> int:
 
 
 def tap_forbidden(point: tuple[int, int]) -> bool:
-    """The bottom-left speed / VIP badge. A fallback tap here turns x4 off."""
+    """Speed / VIP badge, the HUD Skills book, and the top bar. None of those are choices."""
     x, y = point
-    return x < 420 and y > 2050
+    if y < config.TOP_BAR_MAX_Y:
+        return True
+    if x < 420 and y > 2050:
+        return True
+    sx, sy = config.SKILLS_BUTTON
+    return abs(x - sx) <= 90 and abs(y - sy) <= 90
 
 
 _COIN_BLOCK = (
@@ -1338,6 +1402,8 @@ def coin_flip_applies(texts: list[Text]) -> bool:
     """An unknown choice screen. Never a fight, a shop, the miner, or a known popup."""
     if is_miner(texts) or is_shop_screen(texts) or ordinary_level_screen(texts):
         return False
+    if is_skills_overlay(texts) or is_bandits(texts) or powerup_next(texts):
+        return False
     if known_screen(texts) or transient_kind(texts):
         return False
     title = event_title(texts)
@@ -1346,10 +1412,31 @@ def coin_flip_applies(texts: list[Text]) -> bool:
     return looks_like_event(texts)
 
 
+def _coin_button(t: Text) -> bool:
+    """A short control, not a description line and not the HUD.
+
+    'NEXT' and 'Get Out' are buttons. 'Deal +1% increased damage...' and '2 attempts left'
+    and the Skills book are not.
+    """
+    if t.center[1] <= config.TOP_BAR_MAX_Y:
+        return False
+    name = t.norm.strip("!¡ ")
+    if name in ("skills", "skill", "vip", "settings") or "attempt" in name:
+        return False
+    words = name.split()
+    if not words or len(words) > 3:
+        return False
+    if any(w in name for w in ("next", "leave", "stay", "sign")) or any(w in name for w in SAFE_WORDS):
+        return 1680 <= t.center[1] <= 2360
+    return 1750 <= t.center[1] <= 2320
+
+
 def coin_flip_labels(texts: list[Text]) -> list[tuple[str, tuple[int, int]]]:
     """Safe buttons on an unknown choice screen, in reading order. Blocklisted ones are gone."""
     found = []
     for t in choice_labels(texts):
+        if not _coin_button(t):
+            continue
         point = choice_tap(t, texts)
         blob = t.text + " " + _column_blob(t, texts)
         if blocked_choice(blob, point) or blocked_choice(blob, t.center):
@@ -1383,8 +1470,10 @@ def _body_above(label: Text, other: Text | None, texts: list[Text]) -> str:
     for t in texts:
         if t is label or t is other:
             continue
+        if t.center[1] < config.VENDOR_BODY_MIN_Y:
+            continue  # speech bubble and the CURSES banner sit above the cards
         dy = label.center[1] - t.center[1]
-        if dy < 24 or dy > 760:
+        if dy < 24 or dy > config.VENDOR_BODY_ABOVE:
             continue
         if other is not None and abs(t.center[0] - other.center[0]) + 40 < abs(t.center[0] - label.center[0]):
             continue
@@ -1612,23 +1701,21 @@ def _patch_mean(img: np.ndarray, point: tuple[int, int]) -> tuple[float, float, 
 
 def _classify_against_median(sample: tuple[float, float, float],
                              median: tuple[float, float, float]) -> int:
-    """Undug dirt matches the median tile. A dark hole is dug. Anything else vivid is a gem.
+    """Undug dirt matches the median tile. A dark hole is dug. Anything else is a gem.
 
-    The old cutoff called every brown tile a gem, because the dirt is saturated. That
-    made the bot refuse to tap the real grid.
+    Orange gems are red > green > blue, the same order as dirt, so a hue check called
+    them unopened tiles. Distance from the median brown separates them. Purple, blue
+    and orange all sit far from that brown.
     """
     b, g, r = sample
     mb, mg, mr = median
     mx = max(b, g, r)
     dist = abs(b - mb) + abs(g - mg) + abs(r - mr)
-    dirt = r > g > b and (r - b) > 40
     if mx < 75:
         return DUG
-    if dirt and dist < 180:
+    if dist < 100:
         return UNK
-    if dist > 90 and not dirt:
-        return GEM
-    return UNK
+    return GEM
 
 
 def cell_signature(img: np.ndarray, point: tuple[int, int]) -> tuple[int, int, int]:
@@ -1639,6 +1726,48 @@ def cell_signature(img: np.ndarray, point: tuple[int, int]) -> tuple[int, int, i
 def tile_changed(before: tuple[int, int, int], after: tuple[int, int, int], tol: int = 45) -> bool:
     """A real dig shifts the patch. Sparkle and the idle character do not."""
     return sum(abs(a - b) for a, b in zip(before, after)) > tol
+
+
+def miner_step_ok(coords: list[float], expected: float, width_or_height: int, axis: int) -> bool:
+    """True when the detected column or row step is within 15% of the measured 1440x2560 step.
+
+    `axis` is 0 for width (columns) and 1 for height (rows). A bad step is how the live
+    grid tapped x=151 and x=1303, off the board.
+    """
+    if len(coords) < 2 or expected <= 0 or width_or_height <= 0:
+        return False
+    step = (coords[-1] - coords[0]) / (len(coords) - 1)
+    scale = width_or_height / config.SCREEN_SIZE[axis]
+    want = expected * scale
+    if want <= 0:
+        return False
+    return abs(step - want) / want <= config.MINER_STEP_TOLERANCE
+
+
+def scaled_fallback_centers(img: np.ndarray) -> list[list[tuple[int, int]]]:
+    """Measured centers scaled to this frame and clamped to the image."""
+    h, w = img.shape[:2]
+    sx = w / config.SCREEN_SIZE[0]
+    sy = h / config.SCREEN_SIZE[1]
+    centers = []
+    for r in range(MINER_SIZE):
+        row = []
+        for c in range(MINER_SIZE):
+            x = min(w - 1, max(0, int(round(FALLBACK_MINER_COLS[c] * sx))))
+            y = min(h - 1, max(0, int(round(FALLBACK_MINER_ROWS[r] * sy))))
+            row.append((x, y))
+        centers.append(row)
+    return centers
+
+
+def _board_at(img: np.ndarray, centers) -> tuple[list, list]:
+    samples = [_patch_mean(img, point) for row in centers for point in row]
+    median = tuple(float(v) for v in np.median(np.array(samples), axis=0))
+    board = []
+    for r in range(MINER_SIZE):
+        board.append([_classify_against_median(samples[r * MINER_SIZE + c], median)
+                      for c in range(MINER_SIZE)])
+    return board, centers
 
 
 def _remaining_anchor(texts: list[Text] | None) -> int | None:
@@ -1693,22 +1822,23 @@ def read_miner_grid(img: np.ndarray, texts: list[Text] | None = None):
         return None
     if (ys[-1] - ys[0]) < 0.20 * h:
         return None  # a flat cluster is the speech bubble, not the grid
+    abs_x = [left + x for x in xs]
+    abs_y = [top + y for y in ys]
+    # A full or half game frame whose step is off the measured board. A small drawn
+    # test grid (well under 700px wide) keeps the squares it actually found.
+    if w >= 700 and (not miner_step_ok(abs_x, config.MINER_COL_STEP, w, 0)
+                     or not miner_step_ok(abs_y, config.MINER_ROW_STEP, h, 1)):
+        log.info("Treasure Miner: grid step off the measured board; using fallback centers")
+        return _board_at(img, scaled_fallback_centers(img))
     centers = []
-    samples = []
     for row in range(MINER_SIZE):
         crow = []
         for col in range(MINER_SIZE):
             px = min(w - 1, max(0, int(left + xs[col])))
             py = min(h - 1, max(0, int(top + ys[row])))
             crow.append((px, py))
-            samples.append(_patch_mean(img, (px, py)))
         centers.append(crow)
-    median = tuple(float(v) for v in np.median(np.array(samples), axis=0))
-    board = []
-    for row in range(MINER_SIZE):
-        board.append([_classify_against_median(samples[row * MINER_SIZE + col], median)
-                      for col in range(MINER_SIZE)])
-    return board, centers
+    return _board_at(img, centers)
 
 
 def count_pickaxes(img: np.ndarray, centers) -> int | None:
@@ -1739,11 +1869,41 @@ def count_pickaxes(img: np.ndarray, centers) -> int | None:
         _x, _y, bw, bh, area = stats[i]
         if min_w <= bw <= max_w and bh >= 0.005 * h and area >= min_area:
             heads += 1
+    slots = _pickaxe_slots(img, centers)
+    if 1 <= heads <= MINER_PICKAXES and heads >= (slots or 0):
+        return heads
+    # Unused pickaxes dim to dark silhouettes. The light-head mask then reports 0 or 1
+    # while the icons are still on the bar. Count a slot that still has a dark core.
+    if slots is not None and 1 <= slots <= MINER_PICKAXES:
+        return slots
     if 1 <= heads <= MINER_PICKAXES:
         return heads
-    if heads == 0 and float(roi.mean()) < 110:
+    if heads == 0 and slots == 0 and float(roi.mean()) < 110:
         return 0
     return None
+
+
+def _pickaxe_slots(img: np.ndarray, centers) -> int | None:
+    """How many of the 9 header slots still hold a pickaxe, including dimmed ones."""
+    if img is None or not centers or img.ndim != 3:
+        return None
+    h, w = img.shape[:2]
+    y = int(centers[0][0][1] - 0.065 * h)
+    if y < 16 or y >= h - 16:
+        return None
+    x0, x1 = centers[0][0][0], centers[0][-1][0]
+    if x1 - x0 < 40:
+        return None
+    count = 0
+    for i in range(MINER_PICKAXES):
+        cx = int(x0 + (x1 - x0) * i / (MINER_PICKAXES - 1))
+        patch = img[max(0, y - 12):min(h, y + 12), max(0, cx - 14):min(w, cx + 14)]
+        if patch.size == 0:
+            continue
+        value = cv2.cvtColor(patch, cv2.COLOR_BGR2HSV)[:, :, 2]
+        if int(value.min()) < 40 and float(value.mean()) < 130:
+            count += 1
+    return count
 
 
 def next_unopened(board, skips: set[tuple[int, int]] | None = None) -> tuple[int, int] | None:
@@ -1800,6 +1960,141 @@ def find_blue_chest(img: np.ndarray) -> tuple[int, int] | None:
         return None
     ys, xs = np.nonzero(mask)
     return int(xs.mean()) + x0, int(ys.mean()) + y0
+
+
+def _banner_power(t: Text) -> bool:
+    n = re.sub(r"[^a-z]", "", t.norm)
+    return n in ("powerup", "levelup", "subistedenivel", "subidadepoder") and len(t.norm) <= 28
+
+
+def is_skills_overlay(texts: list[Text]) -> bool:
+    """The owned-skills book: a "Skills" title up top, not the HUD button at the bottom."""
+    return any(t.norm.strip("!¡ ") in ("skills", "habilidades") and t.center[1] < 700
+               and abs(t.center[0] - config.SCREEN_SIZE[0] // 2) < 420 for t in texts)
+
+
+def powerup_next(texts: list[Text]) -> Text | None:
+    """Campfire upgrade result: POWER UP, one card, NEXT, and no "Select a Skill"."""
+    if find(texts, L.SKILL_PROMPT):
+        return None
+    if not any(_banner_power(t) for t in texts):
+        return None
+    hits = [t for t in texts if t.norm.strip("!¡ ") == "next" and t.center[1] > 1600]
+    return max(hits, key=lambda t: t.center[1]) if hits else None
+
+
+def is_bandits(texts: list[Text]) -> bool:
+    blob = " ".join(t.norm for t in texts)
+    return "captured by bandit" in blob or "roll higher than" in blob
+
+
+def bandits_done(texts: list[Text]) -> bool:
+    blob = " ".join(t.norm for t in texts)
+    if "escaped" in blob:
+        return True
+    return re.search(r"\b0\s+attempts?\s+left", blob) is not None
+
+
+def is_quiet_map(texts: list[Text]) -> bool:
+    """The level map (HUD and the speed button) with no event on it. Not worth saving."""
+    if match_event(texts) or is_skill_offer(texts) or is_battle(texts) or looks_like_event(texts):
+        return False
+    hud = read_hud(texts)
+    if not hp_plausible(hud.hp, hud.max_hp):
+        return False
+    return any(re.search(r"x\s*[124]\b", t.norm) and t.center[1] > 2200 for t in texts)
+
+
+def skip_unknown_save(texts: list[Text]) -> bool:
+    """Battles, the board, the chest popup and other known screens are not unknown events."""
+    if is_miner(texts) or known_screen(texts) or transient_kind(texts) or is_battle(texts):
+        return True
+    if is_quiet_map(texts) or is_skills_overlay(texts) or powerup_next(texts) or is_bandits(texts):
+        return True
+    return _rolls(texts) is not None and match_event(texts) is None
+
+
+def safe_exit_point(texts: list[Text]) -> tuple[int, int] | None:
+    """Get Out, Walk Away, Leave, or NEXT. Never the description under the icon."""
+    leave = safe_leave_label(texts)
+    if leave is not None:
+        point = choice_tap(leave, texts)
+        if not tap_forbidden(point):
+            return point
+    for t in texts:
+        if t.norm.strip("!¡ ") == "next" and t.center[1] > 1600 and not tap_forbidden(t.center):
+            return t.center
+    return None
+
+
+def card_screen(texts: list[Text]) -> bool:
+    """A skill pick, upgrade result, or cursed vendor. Read these only after the frame settles."""
+    if any(_banner_power(t) for t in texts) or find(texts, L.SKILL_PROMPT):
+        return True
+    return any("cursed vendor" in t.norm for t in texts)
+
+
+def name_unreadable(name: str) -> bool:
+    """EXP / Lv toast text and fragments are not card names."""
+    n = normalize(clean_card_name(name or "")).strip("+!¡ ")
+    if n in {"exp", "lv", "lvl", "level", "+exp"}:
+        return True
+    if re.fullmatch(r"\+?\s*exp(\s+level\s+up)?", n):
+        return True
+    letters = re.sub(r"[^a-z]", "", n)
+    if len(letters) < 4:
+        return True
+    if re.fullmatch(r"[0-9.]+", n or "0"):
+        return True
+    return False
+
+
+def is_exp_toast(text: str) -> bool:
+    n = normalize(text).strip("+!¡ ")
+    if n in {"exp", "lv", "lvl", "level"}:
+        return True
+    return re.fullmatch(r"\+?\s*exp(\s+level\s+up)?", n) is not None
+
+
+def event_snapshot(texts: list[Text]) -> tuple:
+    """HP and the lower-screen lines. A Stay that changed either of these did land."""
+    hud = read_hud(texts)
+    lower = tuple(t.norm for t in texts if t.center[1] > 2000)
+    return (hud.hp, hud.max_hp, lower)
+
+
+def progress_signature(texts: list[Text]) -> tuple:
+    """Roll counter, HP, tokens, and the screen text. Unchanged means the run is stuck."""
+    hud = read_hud(texts)
+    lines = tuple(t.norm for t in texts)
+    hp = None if hud.hp is None else int(hud.hp)
+    return (hud.rolls_used, hud.rolls_total, hp, hud.tokens, lines)
+
+
+class StuckWatch:
+    """Escalate a screen that has not changed: back, then a safe exit, then end the level."""
+
+    def __init__(self) -> None:
+        self.sig = None
+        self.since: float | None = None
+        self.stage = 0
+
+    def see(self, sig: tuple, now: float) -> str:
+        """'ok', 'back', 'exit', or 'stop'."""
+        if sig != self.sig or self.since is None:
+            self.sig, self.since, self.stage = sig, now, 0
+            return "ok"
+        idle = now - self.since
+        if idle >= config.WATCHDOG_STOP and self.stage >= 1:
+            self.stage = 3
+            return "stop"
+        if idle >= config.WATCHDOG_IDLE and self.stage == 0:
+            self.stage = 1
+            return "back"
+        if idle >= config.WATCHDOG_IDLE + 8 and self.stage == 1:
+            self.stage = 2
+            return "exit"
+        return "ok"
 
 
 def slug(title: str) -> str:

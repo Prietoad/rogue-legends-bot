@@ -940,7 +940,7 @@ def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "2.0.3"
+    assert roguebot.__version__ == "2.0.4"
 
 
 def test_next_farm_level_advances_on_a_win_and_falls_back_on_a_loss():

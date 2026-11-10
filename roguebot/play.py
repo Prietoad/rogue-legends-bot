@@ -12,18 +12,54 @@ from pathlib import Path
 import cv2
 
 from roguebot import config, labels, settings
-from roguebot.build import Build, BuildState, choose, shop_order
+from roguebot.build import Build, BuildState, choose, core_index, shop_order
 from roguebot.device import Device
+from roguebot.mode_screens import back_arrow
 from roguebot.screens import (LevelScreen, LevelState, SkillCard, campfire_non_heal_tap, classify_level_screen,
-                              game_speed, monk_spin_button, parse_fortune_teller, parse_shop, parse_skill_cards,
-                              skill_reroll)
-from roguebot.skills import Catalog, Skill, infer_tags, skill_key
+                              close_button, game_speed, monk_spin_button, parse_fortune_teller, parse_shop,
+                              parse_skill_cards, rarity_name, skill_reroll)
+from roguebot.skills import Catalog, Skill, infer_tags, skill_key, skill_name_rejected
 from roguebot.vision import Ocr, find
 from roguebot import world2
 
 log = logging.getLogger(__name__)
 
 DEBUG_DIR = Path("debug")
+_level_abandoned = False
+
+
+def level_abandoned() -> bool:
+    """The watchdog ended the level. go_to_lobby must leave it, not play it again."""
+    return _level_abandoned
+
+
+def clear_level_abandoned() -> None:
+    global _level_abandoned
+    _level_abandoned = False
+
+
+def frames_match(a, b, tol: float = 1.2) -> bool:
+    """Two screenshots of a settled UI. Sparkle is under the tolerance; a slide-in is not."""
+    if a is None or b is None or getattr(a, "shape", None) != getattr(b, "shape", None):
+        return False
+    if a.ndim != 3 or a.shape[0] < 400:
+        return False
+    gray_a = cv2.resize(cv2.cvtColor(a, cv2.COLOR_BGR2GRAY), (72, 128))
+    gray_b = cv2.resize(cv2.cvtColor(b, cv2.COLOR_BGR2GRAY), (72, 128))
+    return float(cv2.absdiff(gray_a, gray_b).mean()) < tol
+
+
+def wait_until_settled(grab, first, now=time.monotonic, sleep=time.sleep):
+    """The first frame that matches the one before it, after at least ~0.8s, or the hard cap."""
+    started = now()
+    prev = first
+    while now() - started < config.SETTLE_CAP:
+        sleep(config.SETTLE_GAP)
+        nxt = grab()
+        if frames_match(prev, nxt) and now() - started >= config.SETTLE_MIN:
+            return nxt
+        prev = nxt
+    return prev
 MAX_SHOP_STEPS = 16  # refreshes + purchases in one shop visit
 
 
@@ -148,6 +184,10 @@ class Player:
         self._seen_skills = load_seen(DEBUG_DIR / "new_skills")
         self._seen_curses = load_seen(DEBUG_DIR / "new_cursed_vendor")
         self._seen_boons = load_seen(DEBUG_DIR / "boons")
+        self._watch = world2.StuckWatch()
+        self._event_snap = None
+        self._event_since: float | None = None
+        self._skill_wait: float | None = None
 
     def play_level(self) -> LevelScreen:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
@@ -163,6 +203,10 @@ class Player:
         self._unknown_saved = set()
         self._left_shop_tokens = None
         self._flip_sig, self._flip_rest = None, []
+        self._watch = world2.StuckWatch()
+        self._event_snap = None
+        self._event_since = None
+        self._skill_wait = None
         # A false "speed is locked" must not stick for the session. x4, once seen, does.
         self._speed_locked = False
         self._speed_cycle = []
@@ -175,6 +219,10 @@ class Player:
         while True:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
+            if self._real_frame(img) and world2.card_screen(texts):
+                img = wait_until_settled(self.device.screenshot, img)
+                texts = self.ocr.read(img)
+            texts = self._reread_hp(img, texts)
             self._rolls.observe(texts)
             world2.LAST = None
             state = classify_level_screen(img, texts, self._core_build(), self._board, None,
@@ -189,7 +237,16 @@ class Player:
             raw_kind = state.kind
 
             if raw_kind is LevelScreen.SKILL_PICK:
-                state = LevelState(state.kind, self._pick_skill(texts, img) or state.tap)
+                tap = self._pick_skill(texts, img)
+                if tap is None and state.tap is None:
+                    now = time.monotonic()
+                    if self._skill_wait is None:
+                        self._skill_wait = now
+                    log.info("Skill pick not readable yet; waiting (%.0fs)", now - self._skill_wait)
+                    state = LevelState(state.kind, None)
+                else:
+                    self._skill_wait = None
+                    state = LevelState(state.kind, tap or state.tap)
             elif raw_kind is LevelScreen.SHOP:
                 self._shop(texts, img)  # buys what the build wants and the coins allow; then state.tap exits
             elif raw_kind is LevelScreen.FORTUNE_TELLER:
@@ -259,20 +316,48 @@ class Player:
                 return state.kind
 
             if state.kind is LevelScreen.UNKNOWN:
-                # A fight, a claim, a victory, or the miner is not an unknown follow-up.
-                # Tapping through those used to hit the battle and never found Leave.
-                if world2.is_miner(texts) or world2.known_screen(texts):
+                # A fight, a claim, the board, a chest, or the miner is not an unknown event.
+                quiet = (world2.is_miner(texts) or world2.known_screen(texts)
+                         or world2.is_battle(texts) or world2.is_quiet_map(texts))
+                if quiet:
                     last_known = time.monotonic()
+                    if world2.is_battle(texts) or world2.is_quiet_map(texts):
+                        self._clearing_since = None
                 elif (self._clearing_since is not None
                         and time.monotonic() - self._clearing_since >= config.EVENT_CLEAR_TIMEOUT):
-                    self._save_unknown(img, texts, "after event")
-                    log.warning("Event follow-up still up; tapping through")
-                    state = LevelState(LevelScreen.CONTINUE, config.EVENT_CLEAR_TAP)
-                    self._clearing_since = time.monotonic()
+                    if world2.skip_unknown_save(texts):
+                        log.info("Event follow-up is a battle, the board, or a chest; not saving it")
+                    else:
+                        self._save_unknown(img, texts, "after event")
+                    if world2.transient_kind(texts) == "chest" or not world2.skip_unknown_save(texts):
+                        log.warning("Event follow-up still up; tapping through")
+                        state = LevelState(LevelScreen.CONTINUE, config.EVENT_CLEAR_TAP)
+                        self._clearing_since = time.monotonic()
+                    else:
+                        self._clearing_since = None
                 elif time.monotonic() - last_known > config.UNKNOWN_SCREEN_TIMEOUT and self._clearing_since is None:
                     self._fail("Stuck on an unknown screen", img)
             else:
                 last_known = time.monotonic()
+            watched = self._watch.see(world2.progress_signature(texts), last_known)
+            if watched != "ok" and self._watchdog(img, texts, watched):
+                return LevelScreen.DEFEAT
+
+            snap = world2.event_snapshot(texts) if state.kind is LevelScreen.EVENT else None
+            if (state.kind is LevelScreen.EVENT and self._event_snap is not None and snap != self._event_snap):
+                repeats = 0
+                self._event_bailed = False
+                self._event_stuck_tap = None
+                self._event_alts = []
+                self._event_since = time.monotonic()
+                log.info("W2 event changed (hp or description); keeping the chosen button")
+            if state.kind is LevelScreen.EVENT:
+                self._event_snap = snap
+                if self._event_since is None:
+                    self._event_since = time.monotonic()
+            else:
+                self._event_snap = None
+                self._event_since = None
 
             if state.tap:
                 if _same_tap((state.kind, state.tap), last_tap):
@@ -285,11 +370,10 @@ class Player:
                         and _same_tap((state.kind, state.tap), (state.kind, stuck))):
                     point = self._event_alts.pop(0) if self._event_alts else None
                     if point is None:
-                        log.info("W2 event still on the tap that did nothing; waiting")
-                        last_tap, repeats = None, 0
-                        time.sleep(config.POLL_INTERVAL)
-                        continue
-                    log.info("W2 event still on the tap that did nothing; trying %s", point)
+                        point = self._event_escape(texts, stuck)
+                        log.info("W2 event still on the tap that did nothing; trying %s", point)
+                    else:
+                        log.info("W2 event still on the tap that did nothing; trying %s", point)
                     state = LevelState(LevelScreen.EVENT, point)
                     repeats, first_repeat = 1, time.monotonic()
                     last_tap = (state.kind, state.tap)
@@ -298,17 +382,11 @@ class Player:
                     self._event_stuck_tap = state.tap
                     self._event_alts = world2.recovery_taps(texts, state.tap)
                     self._save_unknown(img, texts, "event stuck")
-                    if self._event_alts:
-                        point = self._event_alts.pop(0)
-                        log.info("W2 event had no effect; trying %s", point)
-                        state = LevelState(LevelScreen.EVENT, point)
-                        repeats, first_repeat = 1, time.monotonic()
-                        last_tap = (state.kind, state.tap)
-                    else:
-                        log.info("W2 event had no effect; waiting")
-                        last_tap, repeats = None, 0
-                        time.sleep(config.POLL_INTERVAL)
-                        continue
+                    point = self._event_alts.pop(0) if self._event_alts else self._event_escape(texts, state.tap)
+                    log.info("W2 event had no effect; trying %s", point)
+                    state = LevelState(LevelScreen.EVENT, point)
+                    repeats, first_repeat = 1, time.monotonic()
+                    last_tap = (state.kind, state.tap)
                 if repeats > config.MAX_REPEATED_TAPS and time.monotonic() - first_repeat > config.STUCK_TAP_SECONDS:
                     self._fail(f"Tapping {state.tap} on {state.kind.value} has no effect", img)
                 if state.kind is LevelScreen.EVENT:
@@ -326,6 +404,65 @@ class Player:
             else:
                 last_tap, repeats = None, 0  # screen changed on its own: the last tap worked
                 time.sleep(config.POLL_INTERVAL)
+
+    def _real_frame(self, img) -> bool:
+        return img is not None and getattr(img, "ndim", 0) == 3 and img.shape[0] >= 400
+
+    def _reread_hp(self, img, texts):
+        """A max HP of 1, or no HP on a screen that shows the heart, is read again from the HUD crop."""
+        if not self._real_frame(img) or self.ocr is None:
+            return texts
+        hud = world2.read_hud(texts)
+        rejected = hud.hp is None and any(
+            t.center[1] <= config.TOP_BAR_MAX_Y and world2._HP_LINE.match(t.norm.replace(" ", ""))
+            for t in texts)
+        wants = world2.match_event(texts) in ("boiling_springs", "goblin") or any(
+            "boiling springs" in t.norm or "short rest" in t.norm or "momento de descanso" in t.norm
+            for t in texts)
+        if not rejected and not (wants and hud.hp is None):
+            return texts
+        return list(texts) + self.ocr.read(img, config.HP_CROP)
+
+    def _watchdog_shot(self, img, action: str) -> None:
+        DEBUG_DIR.mkdir(exist_ok=True)
+        path = DEBUG_DIR / f"watchdog_{action}_{time.strftime('%Y%m%d_%H%M%S')}.png"
+        if self._real_frame(img):
+            cv2.imwrite(str(path), img)
+        log.warning("Watchdog: %s (screenshot: %s)", action, path)
+
+    def _watchdog(self, img, texts, action: str) -> bool:
+        """Back arrow, then a safe exit, then end the level. True when the level is over."""
+        global _level_abandoned
+        self._watchdog_shot(img, action)
+        if action == "stop":
+            log.warning("Watchdog: screen unchanged for %.0fs; ending the level", config.WATCHDOG_STOP)
+            _level_abandoned = True
+            return True
+        if action == "back":
+            point = None
+            if self._real_frame(img):
+                point = back_arrow(img) or close_button(img)
+            if point and not world2.tap_forbidden(point):
+                log.warning("Watchdog: back %s", point)
+                self.device.tap(*point)
+                return False
+            action = "exit"
+        point = world2.safe_exit_point(texts)
+        if point:
+            log.warning("Watchdog: safe exit %s", point)
+            self.device.tap(*point)
+        else:
+            log.warning("Watchdog: no back arrow or safe exit on this screen")
+        return False
+
+    def _event_escape(self, texts, failed):
+        """Re-tap the icon. After the hard cap, the safe exit. Never the description text."""
+        idle = 0.0 if self._event_since is None else time.monotonic() - self._event_since
+        point = world2.safe_exit_point(texts)
+        if idle >= config.EVENT_HARD_CAP and point is not None:
+            log.warning("W2 event idle %.0fs; taking the exit", idle)
+            return point
+        return failed
 
     def _skill(self, card: SkillCard) -> Skill:
         """Catalog entry for this card. A user-locked tag (auto false) wins; otherwise a damage type
@@ -355,11 +492,29 @@ class Player:
     def _note_unknown_card(self, img, texts, card: SkillCard, description: str) -> None:
         name = world2.clean_card_name(card.name)
         key = skill_key(name)
-        if not key or self.catalog.contains(name):
+        # A faded fragment is not recorded, so a later clean frame of the same skill is saved.
+        if not key or skill_name_rejected(name, description) or world2.name_unreadable(name):
+            return
+        if self.catalog.contains(name):
             return
         body = (f"name: {name}\nrarity: {card.rarity}\n"
                 f"description: {description}\n\n" + "\n".join(t.text for t in texts))
         capture_once(DEBUG_DIR / "new_skills", key, img, body, self._seen_skills)
+
+    def _save_reroll(self, img, texts, skills) -> None:
+        """Every reroll keeps a screenshot, so a core skill that was thrown away can be checked."""
+        folder = DEBUG_DIR / "rerolls"
+        folder.mkdir(parents=True, exist_ok=True)
+        stem = folder / time.strftime("%Y%m%d_%H%M%S")
+        n = 2
+        while stem.with_suffix(".txt").exists():
+            stem = folder / f"{time.strftime('%Y%m%d_%H%M%S')}_{n}"
+            n += 1
+        body = "reroll\n" + "\n".join(s.name for s in skills) + "\n\n" + "\n".join(t.text for t in texts)
+        stem.with_suffix(".txt").write_text(body, encoding="utf-8")
+        if self._real_frame(img):
+            cv2.imwrite(str(stem.with_suffix(".png")), img)
+        log.info("Reroll saved: %s", stem)
 
     def _pick_skill(self, texts, img=None) -> tuple[int, int] | None:
         """Tap point of the card the build wants, or of the reroll button. None if no card was read."""
@@ -374,12 +529,30 @@ class Player:
         if world2.is_boon_screen(texts):
             return self._pick_boon(img, texts, cards, blobs)
         skills = [self._skill(c) for c in cards]
+        if len(cards) == 1 and (cards[0].rarity == "useless" or world2.normalize(cards[0].name) == "trash"):
+            log.info("Skill: Trash (only choice)")
+            self._rerolled = False
+            return config.SCREEN_SIZE[0] // 2, cards[0].tag.center[1] + config.SKILL_TAP_BELOW_RARITY
+        tags = [t for t in texts if t.center[1] > 400 and rarity_name(t)]
+        partial = len(cards) < len(tags) or any(world2.name_unreadable(c.name) for c in cards)
+        shown = core_index(skills, self.build)
         reroll = skill_reroll(texts)
-        i = choose(skills, self.build, self._state, can_reroll=reroll is not None and not self._rerolled)
+        if partial and shown is None:
+            log.info("Skill names still unreadable %s; not rerolling", [c.name for c in cards])
+            return None
+        i = shown if partial else choose(
+            skills, self.build, self._state, can_reroll=reroll is not None and not self._rerolled)
         if i is None:
-            log.info("No wanted skill in %s: rerolling", [s.name for s in skills])
-            self._rerolled = True
-            return reroll.center
+            if shown is not None:
+                log.info("Not rerolling: core skill %s is showing", skills[shown].name)
+                i = shown
+            else:
+                log.info("No wanted skill in %s: rerolling", [s.name for s in skills])
+                self._save_reroll(img, texts, skills)
+                self._rerolled = True
+                return reroll.center
+        if partial and shown is not None:
+            log.info("Not rerolling: core skill %s is showing", skills[shown].name)
         self._rerolled = False
         offer = tuple(s.name for s in skills)
         if offer != self._last_offer:  # the same offer again = the last tap did not land: count it once
@@ -462,6 +635,9 @@ class Player:
             self.device.tap(*shop.free_reroll.center)
             return True
         if shop.reroll is None or shop.reroll_cost is None or shop.money is None:
+            return False
+        if shop.reroll_cost > config.SHOP_REFRESH_MAX:
+            log.info("Shop: refresh costs %d (>50); keeping the coins", shop.reroll_cost)
             return False
         if not refresh_leaves_a_buy(shop.money, shop.reroll_cost, wanted_costs):
             log.info("Shop: refresh (%d) would leave too few coins (have %d)", shop.reroll_cost, shop.money)
@@ -663,6 +839,22 @@ class Player:
 
     def _world2(self, img, texts, state: LevelState) -> LevelState:
         """Miner, unknown events, and the goblin chest. Known events are already in `state`."""
+        if world2.is_skills_overlay(texts):
+            point = config.SKILLS_BACK
+            if self._real_frame(img):
+                point = back_arrow(img) or point
+            log.info("Skills overlay: back %s", point)
+            return LevelState(LevelScreen.EVENT, point)
+        nxt = world2.powerup_next(texts)
+        if nxt is not None:
+            log.info("POWER UP result: NEXT")
+            return LevelState(LevelScreen.CONTINUE, nxt.center)
+        if world2.is_bandits(texts):
+            if world2.bandits_done(texts):
+                log.info("Captured by Bandits: escaped")
+                return LevelState(LevelScreen.CONTINUE, (config.SCREEN_SIZE[0] // 2, config.SCREEN_SIZE[1] // 2))
+            log.info("Captured by Bandits: rolling the dice")
+            return LevelState(LevelScreen.EVENT, config.BANDITS_DICE)
         if world2.is_miner(texts):
             return LevelState(LevelScreen.EVENT, self._miner_tap(img, texts))
         if state.kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY):
@@ -778,9 +970,14 @@ class Player:
         self._miner = board
         self._miner_centers = centers
         icons = world2.count_pickaxes(img, centers)
-        left = world2.MINER_PICKAXES - self._miner_used
-        if icons is not None:
+        counted = world2.MINER_PICKAXES - self._miner_used
+        if icons is not None and icons > 0:
+            left = icons
             log.info("Treasure Miner: %d pickaxe icons visible", icons)
+        else:
+            left = counted
+            if icons == 0:
+                log.info("Treasure Miner: 0 pickaxe icons visible; still using the dig count (%d left)", left)
         # Leave is the real end (it appears only after the last pickaxe). A 0 from the
         # icon reader must not stop the digs early. Nine confirmed tile changes is the
         # other stop, and then we wait for Leave instead of flipping a coin.

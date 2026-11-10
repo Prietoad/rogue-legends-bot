@@ -44,6 +44,13 @@ def active_language() -> str | None:
     return _active
 
 
+def star_challenge_name() -> str:
+    """The star-list button in the language the lobby was read in. English until that is known."""
+    if _active == "es":
+        return "Desafío de Estrellas"
+    return "Star Challenge"
+
+
 # Lobby (Aventura / Adventure tab)
 PATROL = _l("patrulla", "patrol")                    # also used to detect the language
 # Full name only. English OCR splits the lobby control into "Star" + "Challenge"
@@ -176,6 +183,7 @@ RARITIES = (                                         # best first; exact match o
     _l(("epico", "epica"), "epic"),                  # (?)
     _l(("raro", "rara"), "rare"),                    # (?)
     _l("comun", "common"),
+    _l("inutil", "useless"),                 # Trash, from the mythic-becomes-Trash curse. Spanish not seen yet.
 )
 
 

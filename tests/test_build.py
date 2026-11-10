@@ -191,4 +191,4 @@ def test_shop_does_not_buy_off_build_cards():
     venom = sk("poison", "venom", rarity="legendary")
     assert shop_order([ATK, venom, shuriken, SHIELD], build, BuildState(), False, fill=False) == [2, 1]
     assert shop_order([ATK, SHIELD], build, BuildState(), True, fill=False) is None  # reroll: no listed type
-    assert shop_order([ATK, SHIELD], build, BuildState(), False, fill=False) == [0]  # then the untyped card
+    assert shop_order([ATK, SHIELD], build, BuildState(), False, fill=False) == []  # off-build common: keep the coins
