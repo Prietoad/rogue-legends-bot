@@ -117,37 +117,58 @@ def _cash(t: Text) -> bool:
 
 
 def _on_store(texts: list[Text]) -> bool:
-    return find(texts, L.WEB_STORE) is not None
+    """The roguelegend.io shop. The address bar leaves the screen once the page is scrolled,
+    so the shop's own headings count too. Those headings are not game UI."""
+    if find(texts, L.WEB_STORE) is not None:
+        return True
+    markers = (
+        (L.WEB_FREE_SPIN, True),
+        (L.DAILY_WHEEL, False),
+        (L.WEB_BACK_TO_SHOP, False),
+        (L.WEB_YOU_WON, False),
+        (L.WEB_COLLECTED, False),
+        (L.DAILY_WEB_COLLECT, True),
+    )
+    return any(find(texts, label, exact=exact) for label, exact in markers)
 
 
 def web_page_ready(texts: list[Text]) -> list[Text] | None:
-    """The shop page has painted real content, not only the address bar.
+    """The browser has painted the claim page or the shop, not only a blank shell.
 
-    The shell shows roguelegend.io before Daily Rewards or the wheel exists. None until one of
-    those sections (or a Collect / free-spin button) is on screen.
+    The shell shows roguelegend.io before any button exists. None until Claim Now, Collect,
+    the Daily Rewards section, or the wheel is on screen.
     """
     if not _on_store(texts):
         return None
-    if (web_daily_claim(texts) or find(texts, L.DAILY_TITLE) or find(texts, L.DAILY_WHEEL)
-            or web_free_spin(texts) or web_collected(texts) or web_you_won(texts)):
+    if (web_claim_now(texts) or web_daily_claim(texts) or find(texts, L.DAILY_TITLE)
+            or find(texts, L.DAILY_WHEEL) or web_free_spin(texts) or web_collected(texts)
+            or web_you_won(texts)):
         return texts
     return None
 
 
-def web_daily_claim(texts: list[Text]) -> Text | None:
-    """The daily reward button: exact "Collect", or "Claim Now" / "Reclamar ahora".
+def web_claim_now(texts: list[Text]) -> Text | None:
+    """The landing page's "Claim Now!" / "Reclamar ahora!". It opens the shop. It does not collect.
 
-    "Collected" is the popup title and is not this button. A cash price is never returned.
+    A cash price is never this button.
     """
     if not _on_store(texts):
         return None
-    collect = next((t for t in texts if matches(t, L.DAILY_WEB_COLLECT, exact=True) and not _cash(t)), None)
-    if collect:
-        return collect
     button = find(texts, L.DAILY_WEB_CLAIM)
     if button and not _cash(button) and not _gem_price(button, texts):
         return button
     return None
+
+
+def web_daily_claim(texts: list[Text]) -> Text | None:
+    """The green "Collect" under today's card. Not "Claim Now", not the "Collected" title.
+
+    The gem count on the card ("x200") is the reward, not a price, so a nearby number does not
+    reject this button. A button whose own text is a cash price is never returned.
+    """
+    if not _on_store(texts):
+        return None
+    return next((t for t in texts if matches(t, L.DAILY_WEB_COLLECT, exact=True) and not _cash(t)), None)
 
 
 def web_collected(texts: list[Text]) -> Text | None:
@@ -181,22 +202,25 @@ def _near(a: Text, b: Text, dy: int = 140, dx: int = 240) -> bool:
 def web_free_spin(texts: list[Text]) -> Text | None:
     """The Daily Wheel section's free spin. Never a cash button, never the bare popup SPIN.
 
-    Prefers the green "FREE SPIN" button above the bottom tabs. Also the older "Ruleta diaria"
-    / "Daily Wheel" label when a Free/Gratis mark sits next to it, and a "SPIN" split from "FREE".
+    The green "FREE SPIN" / "Giro gratis" button. OCR sometimes splits it into FREE and SPIN.
+    The bottom tab labelled Daily Wheel is not this button: it stays on screen the whole time,
+    so tapping it would skip the scroll and can open a wheel that is no longer free.
     """
     if not _on_store(texts):
         return None
-    buttons = [t for t in texts if matches(t, L.WEB_FREE_SPIN, exact=True) and not _cash(t)]
+    buttons = [t for t in texts if matches(t, L.WEB_FREE_SPIN, exact=True) and not _cash(t)
+               and t.center[1] < config.WEB_NAV_MIN_Y]
     if buttons:
-        above = [t for t in buttons if t.center[1] < config.WEB_NAV_MIN_Y]
-        return min(above or buttons, key=lambda t: t.center[1])
+        return min(buttons, key=lambda t: t.center[1])
     spin = find(texts, L.WEB_SPIN, exact=True)
-    if spin and not _cash(spin) and not _gem_price(spin, texts) and any(
-            matches(t, L.FREE, exact=True) and _near(t, spin) for t in texts):
+    if (spin and spin.center[1] < config.WEB_NAV_MIN_Y and not _cash(spin) and not _gem_price(spin, texts)
+            and any(matches(t, L.FREE, exact=True) and _near(t, spin) for t in texts)):
         return spin
+    # An in-page "Daily Wheel" heading with a Free/Gratis mark, above the tab bar.
     tab = next((t for t in texts if matches(t, L.DAILY_WHEEL) and len(t.norm) <= 18 and not _cash(t)
-                and not _gem_price(t, texts)), None)
-    if tab and any(matches(t, L.FREE, exact=True) and _near(t, tab, dy=160, dx=280) for t in texts):
+                and not _gem_price(t, texts) and t.center[1] < config.WEB_NAV_MIN_Y), None)
+    if tab and any(matches(t, L.FREE, exact=True) and t.center[1] < config.WEB_NAV_MIN_Y
+                   and _near(t, tab, dy=160, dx=280) for t in texts):
         return tab
     return None
 

@@ -552,8 +552,7 @@ DAILY_POPUP = [Text("Recompensas Diarias", 420, 880, 1020, 935), Text("Reclamar"
 WEB_PAGE = [Text("roguelegend.io", 220, 130, 390, 170), Text("TIENDA", 780, 310, 890, 350),
             Text("Reclamar ahora!", 824, 1392, 1154, 1438)]
 WEB_CLAIMED = [Text("roguelegend.io", 220, 130, 390, 170), Text("Día 1", 200, 1100, 320, 1150)]
-WEB_WHEEL = [Text("roguelegend.io", 220, 130, 390, 170), Text("Ruleta diaria", 1080, 2380, 1380, 2440),
-             Text("GRATIS", 1180, 2300, 1300, 2340)]
+WEB_WHEEL = [Text("roguelegend.io", 220, 130, 390, 170), Text("Giro gratis", 520, 1680, 920, 1760)]
 
 
 def test_daily_rewards_claims_scrolls_for_the_free_spin_and_goes_back(monkeypatch):
@@ -564,14 +563,14 @@ def test_daily_rewards_claims_scrolls_for_the_free_spin_and_goes_back(monkeypatc
     monkeypatch.setattr(routine.config, "WEB_POPUP_TIMEOUT", 0)
     monkeypatch.setattr(routine.config, "WHEEL_SPIN_TIMEOUT", 0)
     monkeypatch.setattr(routine.config, "WEB_CONTENT_TIMEOUT", 0)
-    r = make([ES_LOBBY, ES_MENU, DAILY_POPUP, WEB_PAGE, WEB_PAGE, WEB_CLAIMED, WEB_CLAIMED, WEB_WHEEL,
-              WEB_WHEEL, ES_LOBBY])
-    r.device.apps = ["com.android.chromium", "com.android.chromium"]  # Back twice: page history, then the game
+    r = make(itertools.chain(
+        [ES_LOBBY, ES_MENU, DAILY_POPUP, WEB_PAGE, WEB_CLAIMED, WEB_CLAIMED, WEB_CLAIMED, WEB_WHEEL],
+        itertools.repeat(ES_LOBBY)))
     assert r.daily() == routine.DONE
     assert r.device.taps[:4] == [routine.config.MENU_BUTTON, (397, 1084), (696, 1178), (989, 1415)]
-    assert (1230, 2410) in r.device.taps  # Ruleta diaria, after the claim
+    assert (720, 1720) in r.device.taps  # Giro gratis, after the claim
     assert r.device.swipes  # scrolled down to find the spin
-    assert r.device.backs == 2
+    assert r.device.backs == 0  # the lobby is on screen, so Back is not required
 
 
 def test_daily_rewards_goes_back_to_the_game_even_without_the_web_claim(monkeypatch):
@@ -583,7 +582,7 @@ def test_daily_rewards_goes_back_to_the_game_even_without_the_web_claim(monkeypa
     r = make(itertools.chain([ES_LOBBY, ES_MENU, DAILY_POPUP], itertools.repeat(login)))
     r.device.apps = ["com.android.chromium"]
     assert r.daily() == routine.DONE
-    assert r.device.backs == 1 and (989, 1415) not in r.device.taps
+    assert r.device.backs >= 1 and (989, 1415) not in r.device.taps
 
 
 def test_daily_rewards_closes_the_popup_when_the_browser_never_opens(monkeypatch):
@@ -620,11 +619,12 @@ def test_english_daily_rewards_taps_claim_rewards_not_enter_code(monkeypatch):
     free = store + [Text("Daily Wheel", 480, 1200, 900, 1260), Text("FREE SPIN", 520, 1680, 920, 1760)]
     popup = store + [Text("Daily Wheel", 500, 280, 940, 360), Text("SPIN", 560, 1980, 880, 2060)]
     won = store + [Text("You won!", 520, 360, 920, 440), Text("Back to the shop", 480, 1760, 960, 1840)]
-    r = make([lobby, EN_MENU, EN_DAILY, page, page, collected, collected, shop, shop, free, popup, won, won,
-              lobby, lobby])
-    r.device.apps = ["com.android.chromium", "com.android.chromium"]
+    landing = store + [Text("Daily Reward", 500, 900, 940, 980), Text("Claim Now!", 700, 1200, 1100, 1280)]
+    r = make([lobby, EN_MENU, EN_DAILY, landing, page, page, collected, collected, shop, shop, free, popup,
+              won, won, lobby, lobby, lobby])
     assert r.daily() == routine.DONE
     assert (720, 1178) in r.device.taps  # Claim Rewards
+    assert (900, 1240) in r.device.taps  # Claim Now, which only opens the shop
     assert (720, 1395) not in r.device.taps  # Enter Code
     assert (720, 1520) in r.device.taps  # Collect
     assert (720, 1800) in r.device.taps  # Back to the shop, twice (collected, then you won)
@@ -632,7 +632,7 @@ def test_english_daily_rewards_taps_claim_rewards_not_enter_code(monkeypatch):
     assert (720, 1720) in r.device.taps  # FREE SPIN
     assert (720, 2020) in r.device.taps  # SPIN
     assert r.device.swipes
-    assert r.device.backs == 2
+    assert r.device.backs == 0  # lobby text is the game; Back is not required
 
 
 def test_daily_rewards_skips_a_missing_collect_and_a_missing_spin(monkeypatch):
@@ -651,7 +651,7 @@ def test_daily_rewards_skips_a_missing_collect_and_a_missing_spin(monkeypatch):
     assert r.daily() == routine.DONE
     assert (720, 1178) in r.device.taps  # the lobby still opens the page
     assert all(y < 1600 or y > 2100 for _, y in r.device.taps)  # no Collect, no SPIN
-    assert r.device.backs == 1
+    assert r.device.backs >= 1  # the shop never leaves, so Back is used to get out
 
 
 def test_daily_rewards_without_a_claim_button_is_closed(monkeypatch):

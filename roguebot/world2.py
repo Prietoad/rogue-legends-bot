@@ -12,10 +12,10 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 
-from roguebot import config
+from roguebot import config, labels as L
 from roguebot.build import PRESETS, Build
 from roguebot.skills import DAMAGE_TYPES, MAGIC, PHYSICAL, infer_tags, name_is_support
-from roguebot.vision import Text, normalize
+from roguebot.vision import Text, find, normalize
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +55,17 @@ VENDOR_LINES = (
      "phrases": ("exp halved", "experience halved", "exp is halved")},
     {"id": "skills_disabled", "kind": "curse", "score": 90,
      "phrases": ("half of skills disabled", "skills disabled for")},
+    {"id": "debuff_to_buff", "kind": "blessing", "score": 80,
+     "phrases": ("all debuff tiles are replaced with buff tiles", "debuff tiles are replaced with buff")},
+    {"id": "elites_start", "kind": "blessing", "score": 75,
+     "phrases": ("elite enemies and bosses start combat with 25% less hp",
+                 "start combat with 25% less hp", "bosses start combat with 25% less hp")},
+    # Same shape as campfires-removed: almost free once few rolls are left, otherwise never taken.
+    {"id": "lose_max_hp", "kind": "curse", "score": 100, "late_score": 10,
+     "phrases": ("lose 5% max hp after each battle", "max hp after each battle", "5% max hp after each")},
+    {"id": "trip", "kind": "curse", "score": 40,
+     "phrases": ("chance to trip and take damage instead of basic attacking",
+                 "trip and take damage instead of basic attacking", "instead of basic attacking")},
 )
 
 # Titles the generic World 1 handler already owns. An unknown title is anything else.
@@ -292,13 +303,28 @@ def score_vendor_card(text: str, rolls_left: int | None) -> tuple[int, list[str]
     return score, unknown
 
 
+def _side_parsed(text: str) -> bool:
+    return _best_rule(text, "blessing") is not None or _best_rule(text, "curse") is not None
+
+
 def decide_vendor(left: str, right: str, rolls_left: int | None) -> Decision:
     ls, lu = score_vendor_card(left, rolls_left)
     rs, ru = score_vendor_card(right, rolls_left)
     choice = "left" if ls >= rs else "right"
     return Decision("cursed_vendor", choice,
                     f"left {ls} vs right {rs}",
-                    {"left": ls, "right": rs, "rolls_left": rolls_left, "unknown": lu + ru})
+                    {"left": ls, "right": rs, "rolls_left": rolls_left, "unknown": lu + ru,
+                     "left_parsed": _side_parsed(left), "right_parsed": _side_parsed(right),
+                     "left_text": left, "right_text": right})
+
+
+def vendor_needs_shot(decision: Decision | None) -> bool:
+    """A side with no recognized line, or a clause that matches no rule, should be saved."""
+    if decision is None or decision.event != "cursed_vendor":
+        return False
+    if decision.inputs.get("unknown"):
+        return True
+    return not decision.inputs.get("left_parsed") or not decision.inputs.get("right_parsed")
 
 
 def decide_statue(skill_name: str | None, build: Build) -> Decision:
@@ -335,7 +361,31 @@ def decide_shop_taxi(tokens: int | None) -> Decision:
     return Decision("shop_taxi", "no_thanks", why, {"tokens": tokens})
 
 
-def decide_locked_box(unlock_enabled: bool | None) -> Decision:
+def unlock_requirement_met(blob: str, hud: Hud) -> bool | None:
+    """True when the unlock text's cost is one the player can pay. None when it states no cost.
+
+    A key, or any gem price, is not met: the bot does not spend gems, and it cannot see a key count.
+    Colour alone is not enough — a bright icon with "needs a key" still does not unlock.
+    """
+    n = normalize(blob)
+    if re.search(r"\bgems?\b|\bdiamonds?\b|\bgold\b", n):
+        return False
+    ratio = re.search(r"(\d+)\s*/\s*(\d+)\s*keys?", n)
+    if ratio:
+        return int(ratio.group(1)) >= int(ratio.group(2))
+    if re.search(r"\bkeys?\b|\bllave", n):
+        return False
+    cost = re.search(r"(\d+)\s*tokens?", n)
+    if cost:
+        if hud.tokens is None:
+            return None
+        return hud.tokens >= int(cost.group(1))
+    return None
+
+
+def decide_locked_box(unlock_enabled: bool | None, requirement_met: bool | None = None) -> Decision:
+    if requirement_met is False:
+        return Decision("locked_box", "look_around", "unlock requirement is not met", {})
     if unlock_enabled:
         return Decision("locked_box", "unlock", "unlock is tappable", {})
     why = "unlock greyed" if unlock_enabled is False else "unlock unreadable"
@@ -439,13 +489,16 @@ def _content_of(blob: str) -> frozenset:
     table = {
         "statue": ("prayer", "statue", "shrine"),
         "shop": ("shop", "tienda"),
-        "chest": ("chest", "locked", "coffer"),
+        "chest": ("chest", "locked", "coffer", "padlock"),
         "anvil": ("anvil", "blacksmith", "hammer", "forge"),
         "campfire": ("campfire", "bonfire", "camp fire"),
     }
     for kind, words in table.items():
         if any(w in n for w in words):
             found.add(kind)
+    # Ancient Waterway's locked chest often has no word, only the "000" on the lock.
+    if "000" in n.replace(" ", ""):
+        found.add("chest")
     return frozenset(found)
 
 
@@ -504,18 +557,34 @@ def decide_path(board: str | None, cards: list[PathCard], tokens: int | None, ro
             resolved = "atlantis"
     inputs = {"board": resolved, "tokens": tokens, "rolls_left": rolls_left,
               "cards": [{"key": c.key, "content": sorted(c.content)} for c in cards]}
-    if resolved == "molten core":
-        return Decision("path", None, "molten core has no path choice", inputs)
-    if resolved is None:
-        return Decision("path", None, "board and path contents unreadable", inputs)
 
     def take(card: PathCard | None, reason: str) -> Decision:
         if card is None:
             return Decision("path", None, reason + "; card not found", inputs)
         return Decision("path", card.key, reason, {**inputs, "content": sorted(card.content)})
 
+    if resolved == "molten core":
+        return Decision("path", None, "molten core has no path choice", inputs)
+    if resolved is None:
+        # The board name was not read. A shop (or anvil) beats a locked chest and an empty card.
+        # Never the leftmost card: on Ancient Waterway that is the locked chest.
+        shops = [c for c in cards if "shop" in c.content or "anvil" in c.content]
+        if shops and "statue" not in kinds and "campfire" not in kinds:
+            return take(shops[0], "board unknown; taking the shop, not a locked chest")
+        return Decision("path", None, "board and path contents unreadable", inputs)
+
     if resolved == "ancient waterway":
-        card = _card(cards, "anvil", "B") or _card(cards, "shop", "B")
+        # The anvil and the shop. Content wins over the letter, so a shop drawn on A is
+        # still the shop. The letter B is only the fallback when the pictures were not read,
+        # and it is never a card we can see is a locked chest.
+        wanted = [c for c in cards if "anvil" in c.content or "shop" in c.content]
+        if len(wanted) == 1:
+            return take(wanted[0], "ancient waterway always takes anvil + shop")
+        card = next((c for c in wanted if c.key == "B"), None)
+        if card is None:
+            card = _card(cards, "anvil", "B") or _card(cards, "shop", "B")
+        if card and "chest" in card.content and "shop" not in card.content and "anvil" not in card.content:
+            card = None
         return take(card, "ancient waterway always takes anvil + shop")
     if resolved == "elysium":
         shop, statue = _card(cards, "shop", "B"), _card(cards, "statue", "A")
@@ -682,10 +751,9 @@ def _decide(event: str, texts: list[Text], buttons: dict[str, Text], hud: Hud, b
     if event == "statue":
         return decide_statue(_offering_skill(blob.get("offering", "")), build)
     if event == "cursed_vendor":
-        signs = sorted((t for t in choice_labels(texts) if t.norm == "sign"), key=lambda t: t.center[0])
-        if len(signs) >= 2:
-            left, right = _column_blob(signs[0], texts), _column_blob(signs[1], texts)
-            return decide_vendor(left, right, hud.rolls_left)
+        bodies = vendor_bodies(texts)
+        if bodies:
+            return decide_vendor(bodies[0], bodies[1], hud.rolls_left)
         return Decision("cursed_vendor", None, "the two sign cards were not both read", {})
     if event == "mysterious_herb":
         return decide_herb()
@@ -696,7 +764,12 @@ def _decide(event: str, texts: list[Text], buttons: dict[str, Text], hud: Hud, b
     if event == "shop_taxi":
         return decide_shop_taxi(hud.tokens)
     if event == "locked_box":
-        return decide_locked_box(enabled.get("unlock") if "unlock" in buttons else None)
+        unlock = buttons.get("unlock")
+        blob = ""
+        if unlock is not None:
+            blob = _column_blob(unlock, texts) + " " + _body_above(unlock, buttons.get("look_around"), texts)
+        met = unlock_requirement_met(blob, hud)
+        return decide_locked_box(enabled.get("unlock") if unlock is not None else None, met)
     if event == "kidnapped":
         return decide_kidnapped(enabled.get("pay") if "pay" in buttons else None)
     if event == "devil":
@@ -767,8 +840,45 @@ def _log(decision: Decision, hud: Hud) -> None:
         log.info("W2 cursed vendor unknown line: %s", line)
 
 
+_BATTLE_RE = re.compile(r"(?:round|ronda)\s*:?\s*\d+\s*/\s*\d+")
+
+
+def is_battle(texts: list[Text]) -> bool:
+    """A fight HUD ("Round 1/30"). Not a skill named Round Bolt."""
+    return any(_BATTLE_RE.search(t.norm) for t in texts)
+
+
+def is_skill_offer(texts: list[Text]) -> bool:
+    """POWER UP! / LEVEL UP! with "Select a Skill to learn!" — the normal skill picker owns this.
+
+    The banner match is the short ribbon only, so a description that mentions a level-up does not count.
+    """
+    if find(texts, L.SKILL_PROMPT):
+        return True
+    banner = False
+    for t in texts:
+        n = t.norm.strip("!¡ ")
+        if len(n) <= 28 and n in ("power up", "level up", "subiste de nivel", "subida de poder"):
+            banner = True
+            break
+    if not banner:
+        return False
+    return any(find(texts, rarity, exact=True) for rarity in L.RARITIES)
+
+
+def is_path_fork(texts: list[Text]) -> bool:
+    return len(path_cards(texts)) >= 2
+
+
+def ordinary_level_screen(texts: list[Text]) -> bool:
+    """A fight, a skill pick, or a path fork. Never an unknown event."""
+    return is_battle(texts) or is_skill_offer(texts) or is_path_fork(texts)
+
+
 def looks_like_event(texts: list[Text]) -> bool:
-    """A title-like line plus two choices in the bottom half. Not a fight, shop or the board."""
+    """A title-like line plus two choices in the bottom half. Not a fight, skill pick, path, shop or the board."""
+    if ordinary_level_screen(texts):
+        return False
     labels = choice_labels(texts)
     if len(labels) < 2:
         return False
@@ -823,13 +933,68 @@ def safe_option(options: list[tuple[str, str]]) -> int:
     return min(range(len(options)), key=lambda i: (amount(i), i)) if options else 0
 
 
-def fallback_path_tap(texts: list[Text]) -> tuple[int, int] | None:
-    """Leftmost Path label, so an unreadable fork does not hang. The letter is not a strategy."""
-    cards = path_cards(texts)
-    if not cards:
+def tap_forbidden(point: tuple[int, int]) -> bool:
+    """The bottom-left speed / VIP badge. A fallback tap here turns x4 off."""
+    x, y = point
+    return x < 420 and y > 2050
+
+
+def safe_leave_label(texts: list[Text]) -> Text | None:
+    """A recognized no-cost leave / walk-away label. Nothing else, and never the speed button."""
+    if ordinary_level_screen(texts):
         return None
-    card = min(cards, key=lambda c: c.tap[0])
-    return card.tap
+    for t in choice_labels(texts):
+        if not any(w in t.norm for w in SAFE_WORDS):
+            continue
+        blob = _column_blob(t, texts)
+        if costly(t.text) or costly(blob):
+            continue
+        point = choice_tap(t, texts)
+        if tap_forbidden(point) or tap_forbidden(t.center):
+            continue
+        return t
+    return None
+
+
+def _body_above(label: Text, other: Text | None, texts: list[Text]) -> str:
+    """Card text above a button. Sign's blessing and curse sit above the button, not under it."""
+    parts = []
+    for t in texts:
+        if t is label or t is other:
+            continue
+        dy = label.center[1] - t.center[1]
+        if dy < 24 or dy > 760:
+            continue
+        if other is not None and abs(t.center[0] - other.center[0]) + 40 < abs(t.center[0] - label.center[0]):
+            continue
+        if abs(t.center[0] - label.center[0]) > 360:
+            continue
+        parts.append(t)
+    parts.sort(key=lambda t: (t.center[1], t.center[0]))
+    return " ".join(t.text for t in parts)
+
+
+def vendor_bodies(texts: list[Text]) -> tuple[str, str] | None:
+    """Blessing and curse text of the left and right Sign cards.
+
+    The lines are above each Sign button. Text under the button is the page footer, not the offer.
+    """
+    signs = sorted((t for t in choice_labels(texts) if t.norm == "sign" or t.norm.startswith("sign ")),
+                   key=lambda t: t.center[0])
+    if len(signs) < 2:
+        return None
+    return _body_above(signs[0], signs[1], texts), _body_above(signs[1], signs[0], texts)
+
+
+def fallback_path_tap(texts: list[Text]) -> tuple[int, int] | None:
+    """A shop card when the fork could not be named. Never the locked chest, never a blind left tap."""
+    cards = path_cards(texts)
+    shops = [c for c in cards if "shop" in c.content or "anvil" in c.content]
+    if len(shops) != 1:
+        return None
+    if tap_forbidden(shops[0].tap):
+        return None
+    return shops[0].tap
 
 
 # --- Treasure Miner -----------------------------------------------------------------

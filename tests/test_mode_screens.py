@@ -486,6 +486,34 @@ def test_daily_rewards_popup_and_web_page(ocr):
     assert find(texts, labels.DAILY_WEB_CLAIM) is None and daily_claim(texts) is None
 
 
+def test_web_shop_buttons_are_read_from_the_page_text(ocr):
+    """Phone captures of the shop, not 1440x2560. The buttons are found by their words."""
+    from roguebot.mode_screens import (web_back_to_shop, web_claim_now, web_collected, web_daily_claim,
+                                       web_free_spin, web_wheel_spin, web_you_won)
+    labels.set_language("en")
+    _, now = load(ocr, "web_claim_now.png")
+    labels.set_language("en")
+    assert web_claim_now(now) is not None and web_daily_claim(now) is None
+    _, day = load(ocr, "web_daily_collect.png")
+    labels.set_language("en")
+    collect = web_daily_claim(day)
+    assert collect is not None and collect.norm == "collect"
+    assert web_claim_now(day) is None
+    _, done = load(ocr, "web_collected.png")
+    labels.set_language("en")
+    assert web_collected(done) is not None and web_back_to_shop(done) is not None
+    assert web_daily_claim(done) is None
+    _, wheel = load(ocr, "web_free_spin.png")
+    labels.set_language("en")
+    assert web_free_spin(wheel) is not None
+    _, spin = load(ocr, "web_wheel_spin.png")
+    labels.set_language("en")
+    assert web_wheel_spin(spin) is not None
+    _, won = load(ocr, "web_you_won.png")
+    labels.set_language("en")
+    assert web_you_won(won) is not None and web_back_to_shop(won) is not None
+
+
 def test_mail_claims_all_never_deletes(ocr):
     _, texts = load(ocr, "mail.png")
     assert mail_claim_all(texts).text == "Reclamar todo"

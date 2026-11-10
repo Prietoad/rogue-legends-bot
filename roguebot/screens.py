@@ -348,11 +348,26 @@ def dice_auto(img: np.ndarray) -> bool:
     return float(((g > 150) & (r > 120) & (b < 90) & (g > r)).mean()) > config.DICE_GREEN_MIN_FRACTION
 
 
-_SPEED_RE = re.compile(r"x\s*([12])$")
+_SPEED_RE = re.compile(r"x\s*([124])$")
+
+
+def _skill_banner(texts: list[Text]) -> bool:
+    """The short "POWER UP!" / "LEVEL UP!" ribbon, not those words inside a card description."""
+    for t in texts:
+        n = t.norm.strip("!¡ ")
+        if len(n) > 28:
+            continue
+        if n in ("power up", "level up", "subiste de nivel", "subida de poder"):
+            return True
+    return False
 
 
 def game_speed(texts: list[Text]) -> int | None:
-    """Speed shown on the bottom-left "» x2" button (it shows the current speed), or None if absent."""
+    """Speed shown on the bottom-left button (x1, x2 or VIP x4), or None if that label is absent.
+
+    The button shows the speed that is selected. "VIP Active" is only drawn while x4 is selected,
+    so it is not how VIP is detected.
+    """
     for t in texts:
         m = _SPEED_RE.search(t.norm)
         if m and _in_range(t.center[0], config.SPEED_LABEL_X) and _in_range(t.center[1], config.SPEED_LABEL_Y):
@@ -566,15 +581,21 @@ def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board:
     if end and find(texts, L.VICTORY):
         return LevelState(LevelScreen.VICTORY, end.center)
     pick = find(texts, L.SKILL_PROMPT)
-    if pick:
-        # First card = topmost rarity tag ("Común", "Legendario"...) in the cards' top-left
-        # corner. Anchoring on it skips the 1-5 pick counter of "SUBIDA DE PODER".
-        tags = [t for t in texts if t.center[1] > pick.center[1]
-                and _in_range(t.center[0], config.SKILL_RARITY_X)]
+    banner = _skill_banner(texts)
+    if pick or banner:
+        # Horizontal rows: rarity tag on the left, name to its right. World 2 cards sit
+        # further left than the original column, so the band is wider than the shop's.
+        # "Select a Skill to learn!" is this screen even when a tag was not read: the
+        # player picks, and it must not fall through to the unknown-event catcher.
+        floor = (pick.center[1] - 30) if pick else 400
+        tags = [t for t in texts if t.center[1] > floor and rarity_name(t)
+                and _in_range(t.center[0], config.SKILL_PICK_RARITY_X)]
         if tags:
             first = min(tags, key=lambda t: t.center[1])
             return LevelState(LevelScreen.SKILL_PICK, (config.SCREEN_SIZE[0] // 2,
                                                        first.center[1] + config.SKILL_TAP_BELOW_RARITY))
+        if pick:
+            return LevelState(LevelScreen.SKILL_PICK, None)
     if proceed and find(texts, L.LEVEL_MODIFIERS, exact=True):  # elite level intro: modifiers + Continue
         return LevelState(LevelScreen.CONTINUE, proceed.center)
     if find(texts, L.MONK):  # before GIRAR/SPIN is taken as a generic continue: the player spins twice
@@ -894,10 +915,14 @@ def rarity_name(t: Text) -> str | None:
     return next((RARITY_NAMES[i] for i, r in enumerate(L.RARITIES) if matches(t, r, exact=True)), None)
 
 
-def parse_skill_cards(texts: list[Text]) -> list[SkillCard]:
+def parse_skill_cards(texts: list[Text], rarity_x: tuple[int, int] | None = None) -> list[SkillCard]:
     """Skill cards top to bottom: rarity tag, name (first line right of the icon), description (the
-    rest), and in the shop the price and SOLD OUT state."""
-    tags = sorted((t for t in texts if _in_range(t.center[0], config.SKILL_RARITY_X) and rarity_name(t)),
+    rest), and in the shop the price and SOLD OUT state.
+
+    `rarity_x` widens the tag column for the horizontal World 2 rows. The shop keeps the narrow one.
+    """
+    band = config.SKILL_RARITY_X if rarity_x is None else rarity_x
+    tags = sorted((t for t in texts if _in_range(t.center[0], band) and rarity_name(t)),
                   key=lambda t: t.center[1])
     cards = []
     for i, tag in enumerate(tags):

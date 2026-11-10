@@ -167,22 +167,49 @@ def speed_texts(speed):
     return [Text(f"» x{speed}", 80, 2410, 230, 2460)]
 
 
-def test_speed_x1_is_switched_once():
+def _reset_speed_cycle(player):
+    """What a new level does. x4, once seen, is kept."""
+    player._speed_locked = False
+    player._speed_cycle = []
+    player._speed_pending = None
+    player._speed_steps = 0
+
+
+def test_speed_cycles_until_it_reads_x4():
     device = FakeDevice()
     player = Player(device, ocr=None)
     assert player._ensure_double_speed(speed_texts(1)) is True
-    assert device.taps == [config.SPEED_BUTTON]
+    assert player._ensure_double_speed(speed_texts(2)) is True
+    assert player._ensure_double_speed(speed_texts(4)) is False
+    assert player._x4_available
+    assert device.taps == [config.SPEED_BUTTON, config.SPEED_BUTTON]
+    _reset_speed_cycle(player)
+    assert player._ensure_double_speed(speed_texts(2)) is True  # x4 was seen; x2 is not the stop
+    assert player._ensure_double_speed(speed_texts(4)) is False
+
+
+def test_speed_settles_on_the_highest_label_when_x4_never_appears():
+    device = FakeDevice()
+    player = Player(device, ocr=None)
+    assert player._ensure_double_speed(speed_texts(1)) is True
+    assert player._ensure_double_speed(speed_texts(2)) is True
+    assert player._ensure_double_speed(speed_texts(1)) is True  # the cycle came back; 1 is not the best
     assert player._ensure_double_speed(speed_texts(2)) is False
-    assert device.taps == [config.SPEED_BUTTON]
+    assert not player._x4_available
+    assert len(device.taps) == 3
 
 
-def test_speed_locked_is_not_retried():
+def test_speed_locked_only_when_the_label_does_not_change():
     device = FakeDevice()
     player = Player(device, ocr=None)
     player._ensure_double_speed(speed_texts(1))
-    assert player._ensure_double_speed(speed_texts(1)) is False  # still x1 after tapping: locked
+    assert player._ensure_double_speed(speed_texts(1)) is False  # the tap did nothing
+    assert player._speed_locked
     assert player._ensure_double_speed(speed_texts(1)) is False
     assert device.taps == [config.SPEED_BUTTON]
+    _reset_speed_cycle(player)  # next level tries again; a missing badge is not "not unlocked"
+    assert player._ensure_double_speed(speed_texts(1)) is True
+    assert len(device.taps) == 2
 
 
 def test_speed_absent_does_nothing():
@@ -913,7 +940,7 @@ def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "2.0.0"
+    assert roguebot.__version__ == "2.0.1"
 
 
 def test_next_farm_level_advances_on_a_win_and_falls_back_on_a_loss():

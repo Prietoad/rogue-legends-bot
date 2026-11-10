@@ -83,6 +83,12 @@ class Player:
         self._monk_retapped = False  # the in-flight spin was tapped a second time (the first one missed)
         self._monk_yielded = False  # timed out: the generic level loop owns this screen
         self._campfire_waits = 0  # frames the upgrade label was missing at HP that must not heal
+        self._x4_available = False  # seen x4 this session; a missing badge does not clear it
+        self._speed_cycle: list[int] = []
+        self._speed_pending: int | None = None  # label we just tapped; unchanged next read = the button did nothing
+        self._speed_steps = 0
+        self._event_bailed = False
+        self._event_stuck_tap = None
         self._board = world2.board_from_title(level_title)
         self._clearing_since: float | None = None  # after an event choice, tap through until the map
         self._miner = None  # 7x7 board, kept for the whole level (later visits refill pickaxes)
@@ -103,11 +109,20 @@ class Player:
         self._miner, self._miner_centers, self._miner_used = None, None, 0
         self._clearing_since, self._open_chest = None, False
         self._unknown_saved = set()
+        # A false "speed is locked" must not stick for the session. x4, once seen, does.
+        self._speed_locked = False
+        self._speed_cycle = []
+        self._speed_pending = None
+        self._speed_steps = 0
+        self._event_bailed = False
+        self._event_stuck_tap = None
         while True:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
             state = classify_level_screen(img, texts, self._core_build(), self._board, None,
                                            self._min_skill_price)
+            if world2.vendor_needs_shot(world2.LAST):
+                self._save_unknown(img, texts, "cursed_vendor")
             state = self._world2(img, texts, state)
             log.debug("screen: %s", state.kind.value)
             raw_kind = state.kind
@@ -202,6 +217,30 @@ class Player:
                 else:
                     repeats, first_repeat = 1, time.monotonic()
                 last_tap = (state.kind, state.tap)
+                stuck = getattr(self, "_event_stuck_tap", None)
+                if (self._event_bailed and state.kind is LevelScreen.EVENT and stuck is not None
+                        and _same_tap((state.kind, state.tap), (state.kind, stuck))):
+                    log.info("W2 event still on the tap that did nothing; waiting")
+                    last_tap, repeats = None, 0
+                    time.sleep(config.POLL_INTERVAL)
+                    continue
+                if state.kind is LevelScreen.EVENT and repeats >= 3 and not self._event_bailed:
+                    self._event_bailed = True
+                    self._event_stuck_tap = state.tap
+                    self._save_unknown(img, texts, "event stuck")
+                    leave = world2.safe_leave_label(texts)
+                    point = world2.choice_tap(leave, texts) if leave else None
+                    same = point is not None and _same_tap((state.kind, point), (state.kind, state.tap))
+                    if point and not world2.tap_forbidden(point) and not same:
+                        log.info("W2 event had no effect; taking %s", leave.text)
+                        state = LevelState(LevelScreen.EVENT, point)
+                        repeats, first_repeat = 1, time.monotonic()
+                        last_tap = (state.kind, state.tap)
+                    else:
+                        log.info("W2 event had no effect; waiting")
+                        last_tap, repeats = None, 0
+                        time.sleep(config.POLL_INTERVAL)
+                        continue
                 if repeats > config.MAX_REPEATED_TAPS and time.monotonic() - first_repeat > config.STUCK_TAP_SECONDS:
                     self._fail(f"Tapping {state.tap} on {state.kind.value} has no effect", img)
                 if state.kind is LevelScreen.EVENT:
@@ -232,7 +271,8 @@ class Player:
 
     def _pick_skill(self, texts) -> tuple[int, int] | None:
         """Tap point of the card the build wants, or of the reroll button. None if no card was read."""
-        cards = parse_skill_cards(texts)
+        wide = (80, 720) if find(texts, labels.SKILL_PROMPT) else None
+        cards = parse_skill_cards(texts, wide)
         if not cards:
             return None
         skills = [self._skill(c) for c in cards]
@@ -444,17 +484,53 @@ class Player:
                                 % (self._monk_spins, config.MONK_SPINS))
 
     def _ensure_double_speed(self, texts) -> bool:
-        """Switch the game to x2 speed when it shows x1. Returns True if it tapped."""
+        """Cycle the speed button to the highest it offers. Returns True if it tapped.
+
+        x4 is VIP and is not shown by a badge while x1 or x2 is selected, so the only way to
+        know is to tap and read the label. Stop when the label reads x4, or when it comes back
+        to one already seen (x4 is not on this account) and the current label is the highest of
+        those. A tap that does not change the label means the button is not usable this level.
+        Seeing x4 once is remembered for the session. A missing badge is not "not unlocked".
+        """
         speed = game_speed(texts)
-        if speed != 1 or self._speed_locked:
-            self._speed_tapped = False
+        if speed is None or self._speed_locked:
             return False
-        if self._speed_tapped:  # tapped last time and still x1
-            log.info("x2 speed is not unlocked on this account; playing at x1")
+        if speed == 4:
+            arrived = not self._x4_available or self._speed_pending is not None or bool(self._speed_cycle)
+            self._x4_available = True
+            self._speed_cycle = []
+            self._speed_pending = None
+            self._speed_steps = 0
+            if arrived:
+                log.info("Speed is x4")
+            return False
+        if self._speed_pending is not None and speed == self._speed_pending:
             self._speed_locked = True
+            self._speed_pending = None
+            log.info("Speed button did not change from x%s", speed)
             return False
-        log.info("Enabling x2 speed")
-        self._speed_tapped = True
+        self._speed_pending = None
+        if speed not in self._speed_cycle:
+            self._speed_cycle.append(speed)
+            return self._tap_speed(speed)
+        best = max(self._speed_cycle)
+        if self._x4_available and self._speed_steps < 4:
+            return self._tap_speed(speed)
+        if speed != best:
+            return self._tap_speed(speed)
+        log.info("Highest speed available is x%s", best)
+        self._speed_cycle = []
+        self._speed_steps = 0
+        return False
+
+    def _tap_speed(self, speed: int) -> bool:
+        self._speed_steps += 1
+        if self._speed_steps > 6:
+            self._speed_locked = True
+            log.info("Leaving speed at x%s", speed)
+            return False
+        self._speed_pending = speed
+        log.info("Cycling speed from x%s", speed)
         self.device.tap(*config.SPEED_BUTTON)
         return True
 
@@ -472,20 +548,28 @@ class Player:
             self._clearing_since = None
             self._miner_used = 0
             self._open_chest = False
+            self._event_bailed = False
+            self._event_stuck_tap = None
         if world2.match_event(texts) == "goblin" and world2.LAST and world2.LAST.choice == "raid":
             self._open_chest = True
-        if world2.path_cards(texts) and world2.LAST and world2.LAST.choice is None and world2.LAST.event == "path":
-            tap = world2.fallback_path_tap(texts)
-            if tap:
-                self._save_unknown(img, texts, "path fork")
-                return LevelState(LevelScreen.EVENT, tap)
+        # Fights, skill picks and path forks are not unknown events. Path choice already
+        # happened in classify (level_tap). A battle is waited out. A skill pick is the
+        # normal picker, which runs after this returns.
+        if world2.ordinary_level_screen(texts):
+            return state
         title = world2.event_title(texts)
         if title and not world2.is_known_title(title) and world2.looks_like_event(texts):
             self._save_unknown(img, texts, title)
-            labels_ = world2.choice_labels(texts)
-            if len(labels_) >= 2:
-                blobs = [(t.text, world2._column_blob(t, texts)) for t in labels_]
-                return LevelState(LevelScreen.EVENT, world2.choice_tap(labels_[world2.safe_option(blobs)], texts))
+            leave = world2.safe_leave_label(texts)
+            if leave is None:
+                log.info("Unknown event %s: no safe option; waiting", title)
+                return state
+            point = world2.choice_tap(leave, texts)
+            if world2.tap_forbidden(point):
+                log.info("Unknown event %s: safe option sits on the speed button; waiting", title)
+                return state
+            log.info("Unknown event %s: %s", title, leave.text)
+            return LevelState(LevelScreen.EVENT, point)
         if self._open_chest and state.kind is LevelScreen.UNKNOWN:
             chest = world2.find_blue_chest(img)
             if chest:

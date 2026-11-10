@@ -6,7 +6,10 @@ routine goes on with the next one."""
 
 import logging
 import time
+from pathlib import Path
 from typing import Callable
+
+import cv2
 
 from roguebot import config, labels as L
 from roguebot.build import Build, BuildState, offer_is_unfavorable, shop_order
@@ -15,7 +18,7 @@ from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, fight_i
                                    parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
                                    parse_skill_choice, parse_tower, personal_vault_claim, pick_opponent,
                                    quick_patrol_close, quick_patrol_open, vip_cards_icon, vip_claim_all,
-                                   web_back_to_shop, web_collected, web_daily_claim, web_free_spin,
+                                   web_back_to_shop, web_claim_now, web_collected, web_daily_claim, web_free_spin,
                                    web_page_ready, web_wheel_spin, web_you_won)
 from roguebot.navigation import NavigationError, Navigator, _still_there
 from roguebot.play import PlayError
@@ -25,6 +28,7 @@ from roguebot.skills import Catalog, Skill
 from roguebot.vision import Ocr, Text, find
 
 log = logging.getLogger(__name__)
+DEBUG_DIR = Path("debug")
 
 PARTS = ("daily", "vip", "mail", "patrol", "arena", "dojo", "tower", "dive", "mines", "pets", "raid", "donate", "vault")
 MODE_PARTS = ("arena", "dojo", "tower", "dive", "mines", "pets")  # run from the modes list without going back to the lobby
@@ -299,61 +303,129 @@ class Routine:
         self._until(lambda t: True if title(t) is None else None, config.WEB_POPUP_TIMEOUT)
 
     def _claim_web_daily(self) -> None:
-        """On roguelegend.io: Collect the day, confirm it, spin the free wheel, then leave.
+        """Claim Now opens the shop, Collect takes the day, then the free wheel is spun.
 
-        Each step polls until the screen shows it or a deadline passes. Already collected, or no
-        free spin, is skipped. This always returns; the caller leaves the browser either way.
+        "Claim Now" only navigates. The day is the green Collect under the Daily Rewards cards,
+        which is below the fold. The wheel is further down; its FREE SPIN is found by text after
+        the page stops moving, not by a fixed coordinate. Already collected, or no free spin, is
+        skipped. This always returns; the caller leaves the browser either way.
         """
-        log.info("Daily rewards: waiting for the shop page to render")
-        self._wait_for(lambda img, texts: web_page_ready(texts), "daily reward web page",
-                       timeout=config.WEB_PAGE_TIMEOUT)
-        collect = self._until(web_daily_claim, config.WEB_CONTENT_TIMEOUT)
-        if collect is None:
+        log.info("Daily rewards: waiting for the browser")
+        ready = self._wait_for(lambda img, texts: web_page_ready(texts), "daily reward web page",
+                               timeout=config.WEB_PAGE_TIMEOUT)
+        self._push(None, ready)
+        self._open_shop_from_claim_now()
+        self._collect_day()
+        self._spin_free_wheel()
+
+    def _open_shop_from_claim_now(self) -> None:
+        """Tap Claim Now when the landing page is up. A shop that is already showing is kept."""
+        deadline = time.monotonic() + config.WEB_PAGE_TIMEOUT
+        while True:
+            img, texts = self._capture()
+            button = web_claim_now(texts)
+            if button:
+                log.info("Daily rewards: Claim Now")
+                self._tap(button)
+                if self._until(lambda t: True if web_claim_now(t) is None else None,
+                               config.WEB_PAGE_TIMEOUT) is None:
+                    log.info("Daily rewards: Claim Now stayed on screen")
+                    shot, _ = self._capture()
+                    self._debug_shot(shot, "daily_claim_now")
+                return
+            if self._shop_visible(texts):
+                log.info("Daily rewards: shop already open (no Claim Now)")
+                self._push(img, texts)
+                return
+            if time.monotonic() >= deadline:
+                log.info("Daily rewards: Claim Now did not appear")
+                self._debug_shot(img, "daily_claim_now")
+                return
+            time.sleep(config.POLL_INTERVAL)
+
+    @staticmethod
+    def _shop_visible(texts: list[Text]) -> bool:
+        """The shop, not the Claim Now landing page and not the in-game popup."""
+        if not find(texts, L.WEB_STORE):
+            return False
+        return bool(web_daily_claim(texts) or web_free_spin(texts) or web_collected(texts)
+                    or web_you_won(texts) or find(texts, L.DAILY_WHEEL)
+                    or find(texts, L.DAILY_TITLE))
+
+    def _collect_day(self) -> None:
+        log.info("Daily rewards: looking for Collect")
+        button = self._scroll_for(web_daily_claim, "Collect")
+        if button is None:
             log.info("Daily rewards: no Collect button; already collected or not offered")
+            return
+        log.info("Daily rewards: collecting the daily reward")
+        self._tap(button)
+        outcome = self._until(
+            lambda t: "popup" if web_collected(t) else ("gone" if web_daily_claim(t) is None else None),
+            config.WEB_POPUP_TIMEOUT)
+        if outcome == "popup":
+            self._dismiss_web_popup(web_collected, "collected")
+        elif outcome == "gone":
+            log.info("Daily rewards: collect button left the page")
         else:
-            log.info("Daily rewards: collecting the daily reward")
-            self._tap(collect)
-            outcome = self._until(
-                lambda t: "popup" if web_collected(t) else ("gone" if web_daily_claim(t) is None else None),
-                config.WEB_POPUP_TIMEOUT)
-            if outcome == "popup":
-                self._dismiss_web_popup(web_collected, "collected")
-            elif outcome == "gone":
-                log.info("Daily rewards: collect button left the page")
-            else:
-                log.info("Daily rewards: collect was not confirmed; continuing")
-        spun = False
-        for i in range(config.WEB_SCROLLS + 1):
-            _, texts = self._capture()
-            spin = web_free_spin(texts)
-            if spin:
-                log.info("Daily rewards: free spin")
-                self._tap(spin)
-                spun = True
-                break
-            if i == config.WEB_SCROLLS:
-                break
-            log.info("Daily rewards: scrolling for the free spin")
-            self.device.swipe(*config.WEB_SCROLL_DOWN, duration=config.SCROLL_DURATION)
-            arrived = self._until(web_free_spin, config.SCROLL_SETTLE)
-            if arrived:
-                log.info("Daily rewards: free spin")
-                self._tap(arrived)
-                spun = True
-                break
-        if not spun:
+            log.info("Daily rewards: collect was not confirmed")
+            shot, _ = self._capture()
+            self._debug_shot(shot, "daily_collect")
+
+    def _spin_free_wheel(self) -> None:
+        log.info("Daily rewards: looking for the free spin")
+        button = self._scroll_for(web_free_spin, "FREE SPIN")
+        if button is None:
             log.info("Daily rewards: no free spin")
             return
+        log.info("Daily rewards: free spin")
+        self._tap(button)
         wheel = self._until(web_wheel_spin, config.WHEEL_SPIN_TIMEOUT)
         if wheel is None:
             log.info("Daily rewards: wheel did not open")
+            shot, _ = self._capture()
+            self._debug_shot(shot, "daily_wheel")
             return
         log.info("Daily rewards: spinning the wheel")
         self._tap(wheel)
         if self._until(web_you_won, config.WHEEL_SPIN_TIMEOUT) is None:
             log.info("Daily rewards: spin finished without a prize popup")
+            shot, _ = self._capture()
+            self._debug_shot(shot, "daily_wheel")
             return
         self._dismiss_web_popup(web_you_won, "you won")
+
+    def _scroll_for(self, pred: Callable[[list[Text]], object], what: str):
+        """Swipe down the shop until `pred` matches, or the page stops changing.
+
+        The Daily Rewards cards and the wheel sit at different heights, so a fixed coordinate
+        misses them. Two identical reads in a row means the page has bottomed out.
+        """
+        previous = None
+        for i in range(config.WEB_SCROLLS + 1):
+            _, texts = self._capture()
+            hit = pred(texts)
+            if hit:
+                return hit
+            signature = tuple((t.norm, t.center[0] // 40, t.center[1] // 40) for t in texts)
+            if previous is not None and signature == previous:
+                log.info("Daily rewards: page settled while looking for %s", what)
+                return None
+            previous = signature
+            if i == config.WEB_SCROLLS:
+                break
+            log.info("Daily rewards: scrolling for %s", what)
+            self.device.swipe(*config.WEB_SCROLL_DOWN, duration=config.SCROLL_DURATION)
+        log.info("Daily rewards: %s not on the page", what)
+        return None
+
+    def _debug_shot(self, img, name: str) -> None:
+        if img is None:
+            return
+        DEBUG_DIR.mkdir(exist_ok=True)
+        path = DEBUG_DIR / f"{name}_{time.strftime('%Y%m%d_%H%M%S')}.png"
+        cv2.imwrite(str(path), img)
+        log.info("Daily rewards: saved %s", path)
 
     def mail(self) -> str:
         """Lobby ≡ menu → "Correo" → "Reclamar todo" (never "Eliminar todo"); claim popups; ✕."""
@@ -552,12 +624,56 @@ class Routine:
         return False
 
     def _back_to_game(self) -> None:
-        """Back key until the game is in front again (it opened a browser)."""
+        """Leave the in-app browser and confirm the game is back.
+
+        The browser's own close (top-left ✕) is tried first, then Android Back. The game is
+        back when the shop address is gone and the lobby (or the game package) is showing.
+        Launching the game is the last step. MuMu is not closed.
+        """
+        tried_close = False
         for _ in range(config.BROWSER_BACK_MAX):
-            if self.device.foreground_package() == config.PACKAGE:
+            img, texts = self._capture()
+            if self._game_screen(texts):
+                log.info("Daily rewards: back in the game")
                 return
+            close = None if tried_close else self._browser_close(img)
+            if close:
+                log.info("Daily rewards: closing the browser")
+                self.device.tap(*close)
+                tried_close = True
+                continue
+            log.info("Daily rewards: Android back")
             self.device.back()
-        self._fail("Could not get back to the game from the browser")
+        img, texts = self._capture()
+        if self._game_screen(texts):
+            log.info("Daily rewards: back in the game")
+            return
+        self._debug_shot(img, "daily_browser")
+        launch = getattr(self.device, "launch", None)
+        if launch:
+            log.info("Daily rewards: bringing the game forward")
+            launch(config.PACKAGE)
+        log.info("Daily rewards: left the browser")
+
+    def _game_screen(self, texts: list[Text]) -> bool:
+        if find(texts, L.WEB_STORE):
+            return False
+        if parse_lobby(texts) or find(texts, L.LOBBY_TAB, exact=True) or find(texts, L.START_NORMAL, exact=True):
+            return True
+        try:
+            package = self.device.foreground_package()
+        except Exception:
+            package = ""
+        return package == config.PACKAGE
+
+    def _browser_close(self, img) -> tuple[int, int] | None:
+        """The in-app browser's ✕, in the top bar. A game popup's ✕ is lower and is not this."""
+        if img is None:
+            return None
+        close = close_button(img) or close_button_any_size(img)
+        if close and close[1] < 320:
+            return close
+        return None
 
     def _back_to_modes(self) -> bool:
         """Back out of a mode (popups, ✕, ← arrows) to the modes list. False if it was not reached.

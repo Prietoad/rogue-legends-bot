@@ -6,4 +6,4 @@ import os
 # matrix math (OCR runs in onnxruntime, images in OpenCV), so one thread: ~50 MB. Must run before numpy loads.
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"

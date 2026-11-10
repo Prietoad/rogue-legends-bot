@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.1 (2026-11-10)
+- Daily rewards collects the day and spins the free wheel. Claim Now only opens the shop. The bot scrolls to the green Collect under the day card, confirms Collected, then keeps scrolling until the page stops and taps FREE SPIN by the words on the button. SPIN waits for You won. Already collected, or no free spin, is skipped. The browser is closed with its ✕, then Android Back, and the game has to be on screen again. A failed step saves `debug/daily_*.png`. Nothing with a price is tapped.
+- Unknown events no longer fire on a fight (`Round N/30`), a skill pick (`POWER UP!` / `LEVEL UP!` and `Select a Skill to learn!`), or a Path A/B fork. Those go through the normal fight wait, the skill picker, and the path rules. A fallback tap is only a recognized leave / walk-away label, never the VIP speed button, and if there is no such label the bot waits.
+- Ancient Waterway is recognized from a locked chest beside a shop when the board name is missing, and that fork takes the shop. An unknown board never takes a locked chest.
+- Locked Box takes Look Around when the unlock needs a key or a gem, or when the same tap does nothing three times. The third tap is replaced by the walk-away option and the screen is saved.
+- Speed cycles x1, x2 and x4 by reading the button after each tap. It stops on x4, or on the highest label once a label repeats. It remembers x4 for the session. It only gives up for the level when a tap leaves the label unchanged.
+- Cursed Vendor reads the blessing and curse above each Sign. New lines: debuff tiles become buffs, elites start at 25% less HP, lose 5% max HP after each battle (heavy unless 5 rolls or fewer are left), and a 50% chance to trip. A side that parses as nothing, or a line that matches no rule, is saved under `debug/unknown_events/cursed_vendor_*`.
+
 ## 2.0.0 (2026-11-09)
 - World 2. Lobby titles like `2-1. Elysium I` use the chapter-local number (`1`), the same id as the Star Challenge row `1. Elysium I`. A locked row still has no Start button (`Unlock by completing the chapter.`).
 - Path forks follow the board. Elysium takes the shop at 300+ tokens, or with 5 rolls left and any tokens, otherwise the prayer statue (unreadable: statue). Ancient Waterway always takes the anvil and shop. Molten Core has no fork. Atlantis takes the campfire unless tokens are 300+ or the shop will not come around again and a skill is affordable. An unknown board is read from the path icons, not from the letter.

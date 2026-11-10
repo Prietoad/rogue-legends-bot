@@ -10,8 +10,10 @@ from roguebot.world2 import (DUG, GEM, UNK, Hud, KnownSkill, PathCard, active_bu
                              decide_anvil, decide_book, decide_cart, decide_chaos, decide_devil, decide_goblin,
                              decide_haunting, decide_herb, decide_kidnapped, decide_locked_box, decide_minigame_taxi,
                              decide_path, decide_shop_taxi, decide_slime, decide_springs, decide_statue, decide_two_fight,
-                             decide_vendor, decide_vista, find_blue_chest, is_core_skill, merge_board, next_miner_tap,
-                             read_hud, read_miner_grid, reward_is_skill, safe_option, score_vendor_card)
+                             decide_vendor, decide_vista, find_blue_chest, is_battle, is_core_skill, is_path_fork,
+                             is_skill_offer, looks_like_event, merge_board, next_miner_tap, ordinary_level_screen,
+                             read_hud, read_miner_grid, reward_is_skill, safe_leave_label, safe_option,
+                             score_vendor_card, tap_forbidden, unlock_requirement_met, vendor_bodies, vendor_needs_shot)
 
 
 MINER = 7
@@ -83,6 +85,19 @@ def test_atlantis_path_and_content_fallback_ignores_the_letter():
     assert decide_path(None, _cards(), None, None).choice is None
 
 
+def test_unknown_board_takes_the_shop_and_never_the_locked_chest():
+    # Ancient Waterway as it was read live: chest text missing, shop on B, tokens 170.
+    empty_and_shop = _cards(ca=frozenset(), cb=frozenset({"shop"}))
+    assert decide_path(None, empty_and_shop, 170, 29).choice == "B"
+    chest_and_shop = _cards(ca=frozenset({"chest"}), cb=frozenset({"shop"}))
+    assert decide_path(None, chest_and_shop, 170, 20).choice == "B"
+    assert decide_path("ancient waterway", chest_and_shop, 0, 20).choice == "B"
+    # Shop on the left, locked chest on the right: still the shop.
+    swapped = _cards(ca=frozenset({"shop"}), cb=frozenset({"chest"}))
+    assert decide_path(None, swapped, 0, 20).choice == "A"
+    assert decide_path(None, swapped, 0, 20).choice != "B"
+
+
 def test_statue_prays_on_a_core_skill_and_offers_a_weak_one():
     poison = PRESETS["poison"]
     assert decide_statue("Poison Strike Lv.2", poison).choice == "pray"
@@ -118,6 +133,7 @@ def test_simple_event_rules_and_their_unreadable_fallbacks():
     assert decide_shop_taxi(None).choice == "no_thanks"
     assert decide_locked_box(False).choice == "look_around" and decide_locked_box(None).choice == "look_around"
     assert decide_locked_box(True).choice == "unlock"
+    assert decide_locked_box(True, False).choice == "look_around"  # icon looks tappable; the cost is not met
     assert decide_kidnapped(True).choice == "pay" and decide_kidnapped(False).choice == "escape"
     assert decide_kidnapped(None).choice == "escape"
     assert decide_chaos().choice == "refuse" and decide_two_fight().choice == "observe"
@@ -245,3 +261,87 @@ def test_classify_makes_tea_and_leaves_the_campfire_alone():
             Text("Mejora 1 habilidad existente", 800, 2140, 1200, 2200)]
     camped = classify_level_screen(img, camp)
     assert camped.tap[0] == train.center[0]
+
+
+def test_cursed_vendor_v4_early_picks_the_right_card():
+    """Early run, the user's pick was the right Sign.
+
+    Left: debuff tiles become buffs, and lose 5% max HP after each battle.
+    Right: elites start at 25% less HP, and a 50% chance to trip.
+    The max-HP curse is heavy while more than 5 rolls remain, and cheap once they do not.
+    """
+    left = ("All debuff tiles are replaced with buff tiles for the rest of the run. "
+            "Lose 5% Max HP after each battle")
+    right = ("Elite enemies and bosses start combat with 25% less HP. "
+             "50% chance to trip and take damage instead of Basic Attacking")
+    early = decide_vendor(left, right, 20)
+    assert early.choice == "right"
+    assert early.inputs["left_parsed"] and early.inputs["right_parsed"]
+    assert not vendor_needs_shot(early)
+    late = decide_vendor(left, right, 5)
+    assert late.choice == "left"  # the max-HP curse is cheap with 5 rolls left
+    assert decide_vendor(left, right, None).choice == "right"  # rolls unreadable: treat the curse as heavy
+    blank = decide_vendor("", "", None)
+    assert not blank.inputs["left_parsed"] and vendor_needs_shot(blank)
+
+
+def test_vendor_reads_the_lines_above_each_sign():
+    texts = [
+        Text("Cursed Vendor", 500, 900, 940, 980),
+        Text("All debuff tiles are replaced with buff tiles for the rest of the run.", 280, 1400, 680, 1520),
+        Text("Lose 5% Max HP after each battle", 280, 1600, 680, 1680),
+        Text("Sign", 360, 1900, 560, 1980),
+        Text("Elite enemies and bosses start combat with 25% less HP.", 860, 1400, 1280, 1520),
+        Text("50% chance to trip and take damage instead of Basic Attacking", 860, 1600, 1280, 1680),
+        Text("Sign", 960, 1900, 1160, 1980),
+    ]
+    left, right = vendor_bodies(texts)
+    assert "debuff" in left.lower() and "max hp" in left.lower()
+    assert "25%" in right and "trip" in right.lower()
+    assert "Sign" not in left and "Sign" not in right
+    assert decide_vendor(left, right, 20).choice == "right"
+
+
+def test_locked_box_looks_around_when_a_key_or_gems_are_required():
+    assert unlock_requirement_met("Needs a key to open", Hud()) is False
+    assert unlock_requirement_met("Costs 50 gems", Hud(tokens=400)) is False
+    assert unlock_requirement_met("Spend 80 tokens", Hud(tokens=80)) is True
+    assert unlock_requirement_met("Spend 80 tokens", Hud(tokens=79)) is False
+    assert unlock_requirement_met("Open the box", Hud()) is None
+    assert decide_locked_box(True, unlock_requirement_met("You found a key", Hud())).choice == "look_around"
+
+
+def test_battles_skill_picks_and_path_forks_are_not_unknown_events():
+    battle = [Text("Round 1/30", 560, 80, 880, 130), Text("VIP", 40, 2240, 160, 2300),
+              Text("x4", 70, 2320, 150, 2380)]
+    assert is_battle(battle) and not looks_like_event(battle)
+    skill = [Text("LEVEL UP!", 520, 700, 920, 780),
+             Text("Select a Skill to learn!", 420, 820, 1020, 880),
+             Text("Common", 140, 980, 280, 1030), Text("Round Bolt", 400, 980, 800, 1040),
+             Text("Common", 140, 1280, 280, 1330), Text("Enraged Recovery", 400, 1280, 900, 1340),
+             Text("Reroll (1)", 560, 1900, 880, 1980)]
+    assert is_skill_offer(skill) and ordinary_level_screen(skill)
+    assert not looks_like_event(skill)
+    power = [Text("POWER UP!", 500, 700, 940, 780), Text("Select a Skill to learn!", 400, 820, 1040, 880),
+             Text("Common", 160, 1000, 300, 1060), Text("Lightning Weapon", 400, 1000, 900, 1060)]
+    assert is_skill_offer(power)
+    fork = [Text("Path A", 360, 2200, 560, 2280), Text("000", 400, 1900, 520, 1960),
+            Text("Path B", 900, 2200, 1100, 2280), Text("SHOP", 940, 1860, 1080, 1920)]
+    assert is_path_fork(fork) and not looks_like_event(fork)
+    # The speed button is not a leave option, and a blind fallback must not land on it.
+    assert tap_forbidden((111, 2307))
+    assert safe_leave_label(battle) is None
+    assert safe_leave_label(skill) is None
+    leave = safe_leave_label([Text("Walk Away", 400, 1800, 700, 1880),
+                              Text("Pay 50 gems", 900, 1800, 1200, 1880)])
+    assert leave is not None and leave.text == "Walk Away"
+    from roguebot.screens import LevelScreen, classify_level_screen
+    img = np.zeros((2560, 1440, 3), np.uint8)
+    fight = classify_level_screen(img, battle)
+    assert fight.kind is LevelScreen.FIGHT and fight.tap is None
+    picked = classify_level_screen(img, skill)
+    assert picked.kind is LevelScreen.SKILL_PICK
+    # Round Bolt's center is not where a blind event tap used to land, and not the speed button.
+    assert picked.tap is not None and picked.tap[0] > 400
+    forked = classify_level_screen(img, fork)
+    assert forked.kind is LevelScreen.EVENT and forked.tap == (1000, 2240)

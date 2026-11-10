@@ -262,6 +262,29 @@ def test_game_speed(ocr, name, speed):
     assert game_speed(texts) == speed
 
 
+def test_world2_fight_skill_and_path_screenshots(ocr):
+    """Live 1440x2560 frames. A fight waits, a skill offer is a skill pick, the fork takes the shop."""
+    from roguebot import world2
+    img, texts = load(ocr, "w2_round_1_30.png")
+    labels.set_language("en")
+    assert world2.is_battle(texts)
+    assert classify_level_screen(img, texts).kind is LevelScreen.FIGHT
+    assert classify_level_screen(img, texts).tap is None
+    assert game_speed(texts) == 4
+    img, texts = load(ocr, "w2_skill_power_up.png")
+    labels.set_language("en")
+    assert world2.is_skill_offer(texts)
+    state = classify_level_screen(img, texts)
+    assert state.kind is LevelScreen.SKILL_PICK
+    assert state.tap is None or state.tap[0] > 400
+    img, texts = load(ocr, "w2_path_fork.png")
+    labels.set_language("en")
+    assert world2.is_path_fork(texts)
+    state = classify_level_screen(img, texts)
+    assert state.kind is LevelScreen.EVENT
+    assert state.tap is not None and state.tap[0] > 700  # Path B, the shop, not the locked chest
+
+
 @pytest.mark.parametrize("name", ["lobby_normal.png", "level_skill_levelup.png", "level_board_ready.png"])
 def test_recognition_from_1080x1920(ocr, name):
     """A 1080x1920 device: Device.screenshot() upscales its frames to the reference size."""
