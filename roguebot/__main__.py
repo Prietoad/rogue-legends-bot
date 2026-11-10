@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import re
 import sys
 import threading
@@ -150,7 +151,8 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
         ocr = ocr or Ocr()
         catalog = catalog or Catalog()
         nav = Navigator(device, ocr, dry_run=dry_run, ads=request.ads, elite_cost=request.elite_cost)
-        play_level = lambda: Player(device, ocr, request.build, catalog, request.ads).play_level()
+        play_level = lambda: Player(device, ocr, request.build, catalog, request.ads,
+                                    getattr(nav, "level_title", None)).play_level()
 
         def resume_level():  # an interrupted run (its energy is spent): play it out; progress for run()
             play_level()
@@ -195,7 +197,8 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
                     state["no_stars"] = True  # remembered: no pinning, no more star list attempts
                     request = state["request"] = replace(request, level=None, last_beaten=False, pending_stars=False)
                     played = nav.start_latest(request.mode)
-                results.append(Player(device, ocr, request.build, catalog, request.ads).play_level())
+                results.append(Player(device, ocr, request.build, catalog, request.ads,
+                                       getattr(nav, "level_title", None)).play_level())
                 lobby = nav.go_to_lobby()
                 if state.get("latest_farm") and not state.get("no_stars"):
                     # Win the frontier → the new last unlocked (lobby start). Lose it → the
@@ -246,25 +249,62 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
                 if errors[key] > config.MAX_SAME_ERROR:
                     log.error("Same error %d times, giving up: %s", errors[key], e)
                     raise
-                log.error("Error: %s. Restarting MuMu Player and trying again (%d/%d)",
-                          e, errors[key], config.MAX_SAME_ERROR)
-                Emulator(request.mumu_folder, stop).shutdown()
+                log.exception("Error (MuMu is left running, try %d/%d): %s",
+                              errors[key], config.MAX_SAME_ERROR, e)
 
     return run
 
 
-def _log_to_file(level: int) -> None:
-    """Also keep the log in debug/bot.log (rotated), to see afterwards why a run stopped or restarted."""
-    from logging.handlers import RotatingFileHandler
+class _FlushFileHandler(logging.Handler):
+    """Append-only log that flushes every line. The GUI logger and this one must be the same logger:
+    a handler on the root only was leaving debug/bot.log at 0 bytes while the window showed lines."""
+
+    def __init__(self, path: Path):
+        super().__init__()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._fh = open(path, "a", encoding="utf-8", buffering=1)
+        self.path = path
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self._fh.write(self.format(record) + "\n")
+            self._fh.flush()
+            if record.levelno >= logging.ERROR:
+                os.fsync(self._fh.fileno())
+        except Exception:
+            self.handleError(record)
+
+    def close(self) -> None:
+        try:
+            self._fh.flush()
+            self._fh.close()
+        except OSError:
+            pass
+        super().close()
+
+
+def log_file_path() -> Path:
+    """debug/bot.log next to the exe when frozen, else next to the repo. Not the process's cwd."""
+    if getattr(sys, "frozen", False):
+        root = Path(sys.executable).resolve().parent
+    else:
+        root = Path(__file__).resolve().parent.parent
+    return root / "debug" / "bot.log"
+
+
+def _log_to_file(level: int, path: Path | None = None) -> None:
+    """Every roguebot log line, including tracebacks, flushed to debug/bot.log."""
+    path = log_file_path() if path is None else path
     try:
-        Path("debug").mkdir(exist_ok=True)
-        handler = RotatingFileHandler(Path("debug") / "bot.log", maxBytes=LOG_FILE_BYTES, backupCount=2, encoding="utf-8")
+        handler = _FlushFileHandler(path)
     except OSError as e:  # a read-only folder: the window still shows the log
         log.warning("No log file: %s", e)
         return
     handler.setLevel(level)
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-5s %(name)s: %(message)s"))
-    logging.getLogger().addHandler(handler)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-5s %(name)s: %(message)s", "%H:%M:%S"))
+    logger = logging.getLogger("roguebot")
+    logger.setLevel(level)
+    logger.addHandler(handler)
 
 
 def main() -> int:

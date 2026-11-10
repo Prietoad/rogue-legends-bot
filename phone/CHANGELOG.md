@@ -1,6 +1,7 @@
 # Changelog (phone app)
 
 ## Unreleased
+- Tower climb no longer stops at a fixed number of floors while Next has already started the next fight. World 2 lobby ids (`2-1` -> chapter level 1) match the desktop bot. Full World 2 event handling is on the desktop bot in 2.0.0.
 - Same Wise Monk hang fix as the desktop bot: each spin's reward is claimed before the next spin, a "SPIN" read above the button is ignored, and a wait on that screen gives up (warning, screenshot, then normal screen detection) instead of sitting on the wheel.
 - Same 1.10.3 farm fixes as the desktop bot: daily rewards collects the day and takes the free wheel before leaving the browser, a campfire does not heal at full HP when the upgrade label is missing, and Dojo / raid skill offers reroll while the free "(1)" use is showing. The desktop star-list reader (purple stars, green checks, no single 0/3 start) is the one that plays on MuMu; this engine's star count is still the older sample and needs a parity export before it matches.
 

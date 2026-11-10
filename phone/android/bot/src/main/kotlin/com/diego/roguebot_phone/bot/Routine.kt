@@ -119,12 +119,14 @@ open class Routine(
         fail("Arena did not run out of tickets")
     }
 
-    /** Climb until the first defeat or no tickets. After a win, "Próximo piso" starts the next floor right
-     * away while another ticket is left; never for the last ticket (it could offer tickets for gems). */
+    /** Climb until the first defeat or no tickets. Next starts the next floor's fight immediately.
+     * A fixed action budget must not give up while that fight is already on screen. The budget only
+     * counts a victory that never leaves the result screen. */
     open fun tower(): String {
         openMode(L.TOWER)
         var tickets = 0
-        repeat(Config.MAX_MODE_ACTIONS) {
+        var stalls = 0
+        while (stalls < Config.MAX_MODE_ACTIONS) {
             if (tickets < 1) {  // read the tower screen (at the start, or after "Confirmar")
                 val screen = waitFor("tower screen") { _, texts -> claimOr(texts, ::towerOrChest) }
                 tickets = screen.tickets
@@ -139,6 +141,7 @@ open class Routine(
             if (!result.victory) return Parts.DONE
             tickets = if (result.nextFloor != null) tickets - 1 else 0  // 0: back on the tower screen
             if (tickets > 0) Log.info("Tower: next floor ($tickets tickets)")
+            stalls = if (result.sawFight) 0 else stalls + 1
         }
         fail("Tower did not finish")
     }
@@ -413,9 +416,19 @@ open class Routine(
     }
 
     internal open fun backToModes(): Boolean {
-        repeat(MAX_BACK_STEPS) {
+        var idle = 0
+        var steps = 0
+        while (steps < MAX_BACK_STEPS * 4 && idle < MAX_BACK_STEPS) {
+            steps++
             val (img, texts) = capture()
             if (ModeScreens.isModesList(texts)) return true
+            if (ModeScreens.fightInProgress(texts) || ModeScreens.parseFightResult(texts) != null) {
+                Log.info("Finishing the fight before leaving the mode")
+                pushed = img to texts
+                fight(nextFloor = false)
+                idle = 0
+                continue
+            }
             val closeText = Screens.popupClose(texts)
             when {
                 closeText != null -> tap(closeText)
@@ -425,7 +438,10 @@ open class Routine(
                     when {
                         closeX != null -> device.tap(closeX)
                         back != null -> device.tap(back)
-                        else -> clock.sleep(Config.UI_SETTLE)
+                        else -> {
+                            idle++
+                            clock.sleep(Config.UI_SETTLE)
+                        }
                     }
                 }
             }
@@ -470,6 +486,7 @@ open class Routine(
         var learned: List<String>? = null  // the last offer learned
         var skipped = false
         var rerolledOffer: List<String>? = null
+        var sawFight = false
         while (clock.now() < deadline) {
             val c = capture()
             img = c.first
@@ -479,9 +496,10 @@ open class Routine(
                 if (!(nextFloor && result.victory)) result = ModeScreens.FightResult(result.victory, result.button)
                 tap(result.nextFloor ?: result.button)
                 // The next fight follows: never read this win again on a stale frame.
-                if (result.nextFloor != null) waitChange { ModeScreens.parseFightResult(it) == null }
-                return result
+                val started = if (result.nextFloor != null) resultCleared() else false
+                return result.copy(sawFight = sawFight || started)
             }
+            sawFight = true
             if (skipFights && !skipped) {
                 val button = ModeScreens.fightSkip(c.first, c.second)
                 if (button != null) {
@@ -669,7 +687,22 @@ open class Routine(
         fail("Expected the $what", img)
     }
 
-    private fun capture(): Pair<Frame, List<Text>> = nav.capture()
+    private var pushed: Pair<Frame, List<Text>>? = null
+
+    private fun capture(): Pair<Frame, List<Text>> {
+        pushed?.let { pushed = null; return it }
+        return nav.capture()
+    }
+
+    /** True once the victory panel is gone. False if it is still up when the wait ends. */
+    private fun resultCleared(): Boolean {
+        val deadline = clock.now() + Config.CHANGE_TIMEOUT
+        while (true) {
+            if (ModeScreens.parseFightResult(capture().second) == null) return true
+            if (clock.now() >= deadline) return false
+            clock.sleep(Config.POLL_INTERVAL)
+        }
+    }
 
     private fun tap(t: Text) = device.tap(t.center)
 

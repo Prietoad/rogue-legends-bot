@@ -10,8 +10,10 @@ import cv2
 import numpy as np
 
 from roguebot import config, labels as L
+from roguebot.mode_screens import guild_screen
 from roguebot.skills import RARITY_NAMES
 from roguebot.vision import Ocr, Text, find, match_template, matches, parse_level_number
+from roguebot.world2 import level_tap
 
 log = logging.getLogger(__name__)
 
@@ -546,7 +548,10 @@ def monk_spin_button(texts: list[Text]) -> Text | None:
     return max(hits, key=lambda t: t.center[1]) if hits else None
 
 
-def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
+def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board: str | None = None,
+                          skills=None, min_skill_price: int | None = None) -> LevelState:
+    if guild_screen(texts):  # guild map / personal vault: labels look like an event, they are not a level
+        return LevelState(LevelScreen.UNKNOWN)
     if footer_visible(img):  # a main screen (lobby...), never a level: its texts can look like an event
         return LevelState(LevelScreen.UNKNOWN)
     proceed = find(texts, L.CONTINUE, exact=True)
@@ -598,6 +603,10 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
         return LevelState(LevelScreen.LEAVE, leave.center)
     if leave and find(texts, L.SHOP_REROLL):  # shop: "Salir" is the button itself
         return LevelState(LevelScreen.SHOP, leave.center)
+    # World 2 path forks and events. None on World 1 screens, so campfire and "leave" stay as they were.
+    w2 = level_tap(img, texts, build=build, board=board, skills=skills, min_skill_price=min_skill_price)
+    if w2:
+        return LevelState(LevelScreen.EVENT, w2)
     event_option = _event_option(img, texts)
     if event_option is _CAMPFIRE_WAIT:
         return LevelState(LevelScreen.EVENT, None)  # reread; do not tap the heart

@@ -39,6 +39,11 @@ def test_parse_level_number():
     assert parse_level_number("12. Arenas Movedizas II") == 12
     assert parse_level_number("4.") == 4
     assert parse_level_number("Temporada 22") is None
+    # World 2 lobby "2-N. Name" and the star list's chapter-local "N. Name" are the same id.
+    assert parse_level_number("2-1. Elysium I") == 1
+    assert parse_level_number("2-3. Molten Core I") == 3
+    assert parse_level_number("1. Elysium I") == 1
+    assert parse_level_number("Unlock by completing the chapter.") is None
 
 
 def test_normalize():
@@ -721,6 +726,25 @@ def test_level_in_progress(ocr, name, in_level):
     nav = Navigator(None, ocr)
     nav._capture = lambda: (img, texts)
     assert nav.level_in_progress() is in_level
+
+
+def test_guild_map_is_not_a_level_even_when_its_labels_sit_in_the_event_bands():
+    """Guild Hall / Coming soon land on the event title and option rows. That is the guild map."""
+    import numpy as np
+    from roguebot.navigation import Navigator
+    img = np.zeros((2560, 1440, 3), np.uint8)
+    texts = [Text("Guild Hall", 560, 980, 880, 1040),
+             Text("Raid Boss", 900, 1360, 1200, 1440),
+             Text("Coming soon", 560, 1750, 940, 1840),
+             Text("Guild Camp", 520, 1900, 900, 1960),
+             Text("Shop", 200, 1400, 360, 1460),
+             Text("Vault", 160, 1500, 320, 1560)]
+    assert classify_level_screen(img, texts).kind is LevelScreen.UNKNOWN
+    assert classify_level_screen(img, texts).tap is None
+    assert Navigator._on_board(img, texts) is False
+    vault = [Text("Personal Vault", 400, 1360, 1040, 1440), Text("Claim", 400, 1750, 700, 1840)]
+    assert classify_level_screen(img, vault).kind is LevelScreen.UNKNOWN
+    assert Navigator._on_board(img, vault) is False
 
 
 @pytest.mark.parametrize("name, on_board", [

@@ -670,7 +670,7 @@ def test_repeated_taps_need_time_too_before_giving_up(monkeypatch):
     monkeypatch.setattr(play.time, "monotonic", lambda: next(clock) * 0.2)  # 0.2 s per tick
     monkeypatch.setattr(play.time, "sleep", lambda s: None)
     states = iter([LevelState(LevelScreen.CONTINUE, (720, 2380))] * 9 + [LevelState(LevelScreen.VICTORY, (720, 2300))])
-    monkeypatch.setattr(play, "classify_level_screen", lambda img, texts: next(states))
+    monkeypatch.setattr(play, "classify_level_screen", lambda img, texts, *args, **kwargs: next(states))
 
     class Dev:
         taps = []
@@ -913,7 +913,7 @@ def test_pause_blocks_until_resume_and_stop_still_ends_the_run():
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.10.3"
+    assert roguebot.__version__ == "2.0.0"
 
 
 def test_next_farm_level_advances_on_a_win_and_falls_back_on_a_loss():
@@ -1204,7 +1204,7 @@ def _play(monkeypatch, kinds, texts=()):
     from roguebot.screens import LevelState
     monkeypatch.setattr(play.time, "sleep", lambda s: None)
     states = iter(LevelState(k, t) for k, t in kinds)
-    monkeypatch.setattr(play, "classify_level_screen", lambda img, texts: next(states))
+    monkeypatch.setattr(play, "classify_level_screen", lambda img, texts, *args, **kwargs: next(states))
 
     class Dev:
         actions = []

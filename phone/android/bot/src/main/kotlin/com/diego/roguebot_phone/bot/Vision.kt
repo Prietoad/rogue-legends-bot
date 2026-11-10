@@ -20,10 +20,10 @@ private val COMBINING = Regex("\\p{M}+")
 fun normalize(s: String): String =
     COMBINING.replace(Normalizer.normalize(s, Normalizer.Form.NFKD), "").lowercase().trim()
 
-private val LEVEL_RE = Regex("^\\s*(\\d+)\\s*\\.")
+private val LEVEL_RE = Regex("^\\s*(?:(\\d+)\\s*-\\s*)?(\\d+)\\s*\\.")
 
-/** "12. Arenas Movedizas II" -> 12. */
-fun parseLevelNumber(s: String): Int? = LEVEL_RE.find(s)?.groupValues?.get(1)?.toInt()
+/** "12. Arenas Movedizas II" -> 12. "2-1. Elysium I" -> 1 (chapter-local, the star-list id). */
+fun parseLevelNumber(s: String): Int? = LEVEL_RE.find(s)?.groupValues?.get(2)?.toIntOrNull()
 
 fun String.isDigits(): Boolean = isNotEmpty() && all { it in '0'..'9' }
 

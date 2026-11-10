@@ -70,6 +70,19 @@ def is_guild_map(texts: list[Text]) -> bool:
     return guild_hall(texts) is not None or find(texts, L.RAID_BOSS) is not None
 
 
+def guild_screen(texts: list[Text]) -> bool:
+    """Guild map or the personal-vault screen. Neither is a level.
+
+    The map's labels (Guild Hall, Shop, Vault, Guild Camp) sit where a level event's
+    title and options sit, so without this the map is played as a level and the bot
+    taps the ship. "personal" alone is not enough: the vault screen also says vault.
+    """
+    if is_guild_map(texts):
+        return True
+    return find(texts, L.PERSONAL_VAULT) is not None and any(
+        "vault" in t.norm or "boveda" in t.norm for t in texts)
+
+
 def guild_vault(texts: list[Text]) -> Text | None:
     """The guild map's Vault / Bóveda building."""
     if not is_guild_map(texts):
@@ -632,6 +645,21 @@ class FightResult:
     victory: bool
     button: Text                 # OK / Tap to Continue
     next_floor: Text | None = None  # tower victory: "Próximo piso" (the next fight right away, one more ticket)
+    saw_fight: bool = False      # a round (or loading) was on screen before this result. A victory
+                                 # that is already up on the first look did not play out here.
+
+
+def fight_in_progress(texts: list[Text]) -> bool:
+    """A mode fight that has not reached victory or defeat yet.
+
+    The tower HUD ("Tower of Heroes", "Floor 10", "Round: 1/30") is this. A result
+    screen and a bare Loading screen are not: those have their own buttons and waits.
+    """
+    if parse_fight_result(texts) or find(texts, L.LOADING):
+        return False
+    if find(texts, L.FIGHT_ROUND):
+        return True
+    return parse_skill_choice(texts) is not None
 
 
 def tower_next_floor(texts: list[Text]) -> Text | None:

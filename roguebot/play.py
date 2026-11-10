@@ -10,7 +10,7 @@ from pathlib import Path
 
 import cv2
 
-from roguebot import config, labels
+from roguebot import config, labels, settings
 from roguebot.build import Build, BuildState, choose, shop_order
 from roguebot.device import Device
 from roguebot.screens import (LevelScreen, LevelState, SkillCard, campfire_non_heal_tap, classify_level_screen,
@@ -18,6 +18,7 @@ from roguebot.screens import (LevelScreen, LevelState, SkillCard, campfire_non_h
                               skill_reroll)
 from roguebot.skills import Catalog, Skill, infer_tags
 from roguebot.vision import Ocr, find
+from roguebot import world2
 
 log = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ def _same_tap(a, b) -> bool:
 
 class Player:
     def __init__(self, device: Device, ocr: Ocr, build: Build = Build(), catalog: Catalog | None = None,
-                 ads: bool = False):
+                 ads: bool = False, level_title: str | None = None):
         self.device = device
         self.ads = ads  # watch ads (x2 rewards, free revive); only with an account that skips them
         self.ocr = ocr
@@ -82,6 +83,14 @@ class Player:
         self._monk_retapped = False  # the in-flight spin was tapped a second time (the first one missed)
         self._monk_yielded = False  # timed out: the generic level loop owns this screen
         self._campfire_waits = 0  # frames the upgrade label was missing at HP that must not heal
+        self._board = world2.board_from_title(level_title)
+        self._clearing_since: float | None = None  # after an event choice, tap through until the map
+        self._miner = None  # 7x7 board, kept for the whole level (later visits refill pickaxes)
+        self._miner_centers = None
+        self._miner_used = 0
+        self._open_chest = False  # goblin raid: the blue chest is still closed
+        self._unknown_saved: set[str] = set()
+        self._min_skill_price = config.SHOP_SKILL_FLOOR
 
     def play_level(self) -> LevelScreen:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
@@ -91,10 +100,15 @@ class Player:
         self._fortune_bought, self._fortune_tap = [], None
         self._reset_monk()
         self._campfire_waits = 0
+        self._miner, self._miner_centers, self._miner_used = None, None, 0
+        self._clearing_since, self._open_chest = None, False
+        self._unknown_saved = set()
         while True:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
-            state = classify_level_screen(img, texts)
+            state = classify_level_screen(img, texts, self._core_build(), self._board, None,
+                                           self._min_skill_price)
+            state = self._world2(img, texts, state)
             log.debug("screen: %s", state.kind.value)
             raw_kind = state.kind
 
@@ -143,7 +157,7 @@ class Player:
                     log.info("Holding the dice did not start auto-play; rolling by taps")
                     self._auto_missing = True
 
-            if state.kind is LevelScreen.EVENT and state.tap is None:
+            if state.kind is LevelScreen.EVENT and state.tap is None and not world2.is_miner(texts):
                 # The upgrade label was not on this frame. Reading the campfire in the same
                 # breath as the previous screen (a skill pick dismissing) used to see only
                 # "Descansar" and heal at 100% HP. Wait, then take the non-heal side.
@@ -169,7 +183,15 @@ class Player:
                 return state.kind
 
             if state.kind is LevelScreen.UNKNOWN:
-                if time.monotonic() - last_known > config.UNKNOWN_SCREEN_TIMEOUT:
+                # After an event choice, keep tapping through dialogue and claim screens.
+                # A guild map or anything else with no event behind it still fails closed.
+                if (self._clearing_since is not None
+                        and time.monotonic() - self._clearing_since >= config.EVENT_CLEAR_TIMEOUT):
+                    self._save_unknown(img, texts, "after event")
+                    log.warning("Event follow-up still up; tapping through")
+                    state = LevelState(LevelScreen.CONTINUE, config.EVENT_CLEAR_TAP)
+                    self._clearing_since = time.monotonic()
+                elif time.monotonic() - last_known > config.UNKNOWN_SCREEN_TIMEOUT and self._clearing_since is None:
                     self._fail("Stuck on an unknown screen", img)
             else:
                 last_known = time.monotonic()
@@ -182,6 +204,8 @@ class Player:
                 last_tap = (state.kind, state.tap)
                 if repeats > config.MAX_REPEATED_TAPS and time.monotonic() - first_repeat > config.STUCK_TAP_SECONDS:
                     self._fail(f"Tapping {state.tap} on {state.kind.value} has no effect", img)
+                if state.kind is LevelScreen.EVENT:
+                    self._clearing_since = time.monotonic()
                 if state.kind is LevelScreen.BOARD_READY and not self._auto_missing:
                     log.info("board_ready -> hold %s for auto-play", state.tap)
                     self.device.hold(*state.tap, config.AUTO_PLAY_HOLD)
@@ -433,6 +457,80 @@ class Player:
         self._speed_tapped = True
         self.device.tap(*config.SPEED_BUTTON)
         return True
+
+    def _core_build(self) -> Build:
+        return world2.active_build(self.build, settings.load())
+
+    def _world2(self, img, texts, state: LevelState) -> LevelState:
+        """Miner, unknown events, and the goblin chest. Known events are already in `state`."""
+        if world2.is_miner(texts):
+            return LevelState(LevelScreen.EVENT, self._miner_tap(img, texts))
+        if state.kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY):
+            if self._clearing_since is not None:
+                hud = world2.read_hud(texts)
+                log.info("W2 back on the map: hp=%s/%s tokens=%s", hud.hp, hud.max_hp, hud.tokens)
+            self._clearing_since = None
+            self._miner_used = 0
+            self._open_chest = False
+        if world2.match_event(texts) == "goblin" and world2.LAST and world2.LAST.choice == "raid":
+            self._open_chest = True
+        if world2.path_cards(texts) and world2.LAST and world2.LAST.choice is None and world2.LAST.event == "path":
+            tap = world2.fallback_path_tap(texts)
+            if tap:
+                self._save_unknown(img, texts, "path fork")
+                return LevelState(LevelScreen.EVENT, tap)
+        title = world2.event_title(texts)
+        if title and not world2.is_known_title(title) and world2.looks_like_event(texts):
+            self._save_unknown(img, texts, title)
+            labels_ = world2.choice_labels(texts)
+            if len(labels_) >= 2:
+                blobs = [(t.text, world2._column_blob(t, texts)) for t in labels_]
+                return LevelState(LevelScreen.EVENT, world2.choice_tap(labels_[world2.safe_option(blobs)], texts))
+        if self._open_chest and state.kind is LevelScreen.UNKNOWN:
+            chest = world2.find_blue_chest(img)
+            if chest:
+                self._open_chest = False
+                log.info("Goblin raid: opening the chest")
+                return LevelState(LevelScreen.EVENT, chest)
+        return state
+
+    def _miner_tap(self, img, texts) -> tuple[int, int] | None:
+        leave = find(texts, labels.LEAVE, exact=True)
+        if world2.miner_out(texts) and leave:
+            log.info("Treasure Miner: out of pickaxes")
+            return leave.center
+        claim = find(texts, labels.TAP_TO_CLAIM)
+        if claim:
+            return claim.center
+        viewed = world2.read_miner_grid(img)
+        if viewed is None:
+            self._save_unknown(img, texts, "treasure miner")
+            return leave.center if leave else None
+        board, centers = viewed
+        self._miner = world2.merge_board(self._miner, board)
+        self._miner_centers = centers
+        nxt = world2.next_miner_tap(self._miner, world2.MINER_PICKAXES - self._miner_used)
+        if nxt is None:
+            return leave.center if leave else None
+        r, c = nxt
+        self._miner[r][c] = world2.DUG
+        self._miner_used += 1
+        log.info("Treasure Miner: dig %s (%d pickaxes left)", nxt, world2.MINER_PICKAXES - self._miner_used)
+        return centers[r][c]
+
+    def _save_unknown(self, img, texts, title: str) -> None:
+        slug = world2.slug(title)
+        if slug in self._unknown_saved:
+            return
+        self._unknown_saved.add(slug)
+        folder = DEBUG_DIR / "unknown_events"
+        folder.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y%m%d_%H%M%S")
+        stem = folder / f"{stamp}_{slug}"
+        if img is not None:
+            cv2.imwrite(str(stem.with_suffix(".png")), img)
+        stem.with_suffix(".txt").write_text("\n".join(t.text for t in texts), encoding="utf-8")
+        log.info("Unknown event saved: %s", stem)
 
     def _fail(self, msg: str, img) -> None:
         DEBUG_DIR.mkdir(exist_ok=True)

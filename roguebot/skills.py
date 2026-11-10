@@ -56,6 +56,11 @@ _DAMAGE_RE = _regex(_DAMAGE_WORDS)
 _SUPPORT_RE = _regex(_SUPPORT_WORDS)
 
 
+def name_is_support(name: str) -> bool:
+    """The skill name itself is a support (Heal, Shield, Dodge). A damage word in the same name does not win."""
+    return _SUPPORT_RE.search(normalize(name)) is not None
+
+
 def skill_key(name: str) -> str:
     """Letters only, so OCR variants ("Ultimate-Bolt", "Ultimate Bolt", "CounterMastery") share a key."""
     return re.sub(r"[^a-z]", "", normalize(name))

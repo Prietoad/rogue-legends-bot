@@ -281,8 +281,15 @@ object ModeScreens {
         return SkillChoice(cards, m.groupValues[1].toInt(), m.groupValues[2].toInt(), learn)
     }
 
-    /** nextFloor: tower victory "Próximo piso" (the next fight right away, one more ticket). */
-    data class FightResult(val victory: Boolean, val button: Text, val nextFloor: Text? = null)
+    /** nextFloor: tower victory "Próximo piso". sawFight: a round or Loading came up before this result. */
+    data class FightResult(val victory: Boolean, val button: Text, val nextFloor: Text? = null, val sawFight: Boolean = false)
+
+    /** A mode fight that has not reached victory or defeat (round counter or a skill step). */
+    fun fightInProgress(texts: List<Text>): Boolean {
+        if (parseFightResult(texts) != null || find(texts, L.LOADING) != null) return false
+        if (find(texts, L.FIGHT_ROUND) != null) return true
+        return parseSkillChoice(texts) != null
+    }
 
     fun parseFightResult(texts: List<Text>): FightResult? {
         val button = find(texts, L.OK, exact = true) ?: find(texts, L.TAP_TO_CONTINUE) ?: return null

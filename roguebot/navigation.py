@@ -9,7 +9,7 @@ import cv2
 
 from roguebot import config, labels
 from roguebot.device import Device
-from roguebot.mode_screens import back_arrow, parse_fight_result, quick_patrol_close, quick_patrol_open
+from roguebot.mode_screens import back_arrow, guild_screen, parse_fight_result, quick_patrol_close, quick_patrol_open
 from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, close_button_any_size,
                               footer_visible, is_loading, is_star_list, lobby_behind, outside_tap_clear,
                               parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list,
@@ -91,6 +91,7 @@ class Navigator:
         self.ads = ads  # watch ads (energy videos); only with an account that skips them
         self.elite_cost = elite_cost if elite_cost in config.ELITE_COSTS else config.ELITE_COST_DEFAULT
         self.resume_level: Callable[[], object] | None = None  # plays an interrupted run to its end
+        self.level_title: str | None = None  # lobby or star-list title, so a path fork knows the board
 
     # --- public API -------------------------------------------------------------------
 
@@ -98,6 +99,7 @@ class Navigator:
         """Start the last unlocked level of the mode (lobby INICIO/LISTO button); returns its number."""
         lobby = self._set_mode(mode)
         log.info("Starting latest %s level: %s", mode.value, lobby.level_title)
+        self.level_title = lobby.level_title
         self._press_start(lobby.start_button, mode)
         return parse_level_number(lobby.level_title or "")
 
@@ -117,6 +119,7 @@ class Navigator:
         self._open_star_list(mode)
         card = self._scroll_to(level)
         log.info("Starting %s star challenge: %s", mode.value, card.header.text)
+        self.level_title = card.header.text
         self._press_start(card.button, mode)
 
     def start_pending_stars(self, mode: Mode) -> int | None:
@@ -200,9 +203,11 @@ class Navigator:
 
     def level_in_progress(self) -> bool:
         """A level is on screen: the bot was stopped or restarted mid-level while the game kept running
-        (go_to_lobby can't leave a level board)."""
+        (go_to_lobby can't leave a level board). The guild map is not a level."""
         img, texts = self._capture()
-        return classify_level_screen(img, texts).kind in IN_LEVEL and not lobby_behind(texts)
+        if guild_screen(texts) or lobby_behind(texts):
+            return False
+        return classify_level_screen(img, texts).kind in IN_LEVEL
 
     def wait_for_lobby(self, timeout: float) -> Lobby:
         """Just after opening the game (splash, loading, login popups): retry until the lobby shows."""
@@ -339,6 +344,9 @@ class Navigator:
             elif end:  # a level or mode fight ended and nothing took its result (a part that failed in it)
                 log.info("Leaving a result screen")
                 self.device.tap(*end)
+            elif guild_screen(texts):  # map or personal vault: back arrow, never played as a level
+                log.info("Leaving the guild")
+                self.device.tap(*(back_arrow(img) or config.LIST_BACK))
             elif self.resume_level and self._on_board(img, texts):  # a level is still running (go_to_lobby can't leave it)
                 log.info("A level is on screen: playing it out")
                 self.resume_level()
@@ -388,7 +396,7 @@ class Navigator:
 
     @staticmethod
     def _on_board(img, texts: list[Text]) -> bool:
-        if lobby_behind(texts):  # a popup over the lobby, whatever it looks like
+        if lobby_behind(texts) or guild_screen(texts):  # lobby popup, or the guild map: not a level
             return False
         kind = classify_level_screen(img, texts).kind
         if kind is LevelScreen.SKILL_PICK:  # a level's level-up pick, not the dojo/raid skill step

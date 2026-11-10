@@ -206,6 +206,9 @@ class LogicTest {
         assertEquals(12, parseLevelNumber("12. Arenas Movedizas II"))
         assertEquals(4, parseLevelNumber("4."))
         assertNull(parseLevelNumber("Temporada 22"))
+        assertEquals(1, parseLevelNumber("2-1. Elysium I"))
+        assertEquals(3, parseLevelNumber("2-3. Molten Core I"))
+        assertEquals(1, parseLevelNumber("1. Elysium I"))
     }
 
     @Test

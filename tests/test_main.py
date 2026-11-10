@@ -317,8 +317,8 @@ def test_loop_survives_a_failed_cycle(monkeypatch):
             raise Stopped("Stopped by the user")
     with pytest.raises(Stopped):
         run_loop(monkeypatch, nav, [V], on_wait)
-    assert calls == [4, 4]  # the failed cycle: MuMu restarted, then the next try played
-    assert FakeEmulator.shutdowns == 1
+    assert calls == [4, 4]  # the failed cycle is tried again; MuMu stays open
+    assert FakeEmulator.shutdowns == 0
 
 
 def test_device_wait_is_interrupted_by_stop():
@@ -391,7 +391,7 @@ def test_a_patrol_problem_never_stops_the_run(monkeypatch):
     assert report.results == [V, V]
 
 
-def test_any_error_restarts_the_emulator_and_keeps_going(monkeypatch):
+def test_any_error_is_retried_without_closing_the_emulator(monkeypatch):
     nav = FakeNav(energy=15)
     starts = []
 
@@ -402,7 +402,7 @@ def test_any_error_restarts_the_emulator_and_keeps_going(monkeypatch):
         nav.energy -= 5
     nav.start_star_challenge = flaky_start
     report = run_with(monkeypatch, nav, [V, V, D], RunRequest(Mode.NORMAL, 4, repeat=True))
-    assert FakeEmulator.shutdowns == 2 and report.results == [V, V, D]  # results kept across restarts
+    assert FakeEmulator.shutdowns == 0 and report.results == [V, V, D]  # retried, MuMu not closed
 
 
 def test_the_same_error_too_many_times_stops_the_bot(monkeypatch):
@@ -413,7 +413,7 @@ def test_the_same_error_too_many_times_stops_the_bot(monkeypatch):
     nav.start_star_challenge = broken
     with pytest.raises(main.NavigationError, match="Level did not start"):
         run_with(monkeypatch, nav, [], RunRequest(Mode.NORMAL, 4, repeat=True))
-    assert FakeEmulator.shutdowns == main.config.MAX_SAME_ERROR  # then the 4th time it gives up
+    assert FakeEmulator.shutdowns == 0  # gave up without closing MuMu
 
 
 def test_a_resumed_level_counts_as_progress_but_not_as_the_requested_level(monkeypatch):
@@ -436,7 +436,7 @@ def test_a_resumed_level_counts_as_progress_but_not_as_the_requested_level(monke
     nav.detect_language, nav.start_star_challenge = detect, start
     report = run_with(monkeypatch, nav, [D, V], RunRequest(Mode.NORMAL, 4))
     assert report.results == [V] and nav.started == [("stars", 4)]
-    assert FakeEmulator.shutdowns == main.config.MAX_SAME_ERROR + 1  # never gave up
+    assert FakeEmulator.shutdowns == 0  # retried without closing MuMu
 
 
 def test_permanent_problems_are_not_retried(monkeypatch):
@@ -447,6 +447,33 @@ def test_permanent_problems_are_not_retried(monkeypatch):
     with pytest.raises(EmulatorError):
         main.make_runner(dry_run=False)(RunRequest(Mode.NORMAL, 4))
     assert FakeEmulator.shutdowns == 0
+
+
+def test_log_file_gets_every_line_and_the_traceback(tmp_path):
+    """The window shows log lines. The same lines, and tracebacks, are flushed to debug/bot.log."""
+    import logging
+    path = tmp_path / "bot.log"
+    logger = logging.getLogger("roguebot")
+    before, level = list(logger.handlers), logger.level
+    main._log_to_file(logging.INFO, path)
+    try:
+        logging.getLogger("roguebot.routine").info("Guild vault: opening")
+        try:
+            raise RuntimeError("vault tap failed")
+        except RuntimeError:
+            logger.exception("Run failed")
+        text = path.read_text(encoding="utf-8")
+        assert "Guild vault: opening" in text
+        assert "Traceback" in text and "RuntimeError: vault tap failed" in text
+        # A second line is readable without closing the process: the handler flushed.
+        logging.getLogger("roguebot.play").info("event -> tap (719, 2008)")
+        assert "event -> tap (719, 2008)" in path.read_text(encoding="utf-8")
+    finally:
+        for handler in list(logger.handlers):
+            if handler not in before:
+                handler.close()
+                logger.removeHandler(handler)
+        logger.setLevel(level)
 
 
 def test_error_key_ignores_numbers_and_screenshots():
@@ -500,7 +527,7 @@ def test_a_single_run_is_not_replayed_after_an_error_past_the_level(monkeypatch)
     nav.go_to_lobby = flaky_lobby
     report = run_with(monkeypatch, nav, [V], RunRequest(Mode.NORMAL, 4))
     assert report.results == [V] and nav.started.count(("stars", 4)) == 1
-    assert FakeEmulator.shutdowns == 1
+    assert FakeEmulator.shutdowns == 0
 
 
 def test_a_retry_does_not_run_the_routine_again(monkeypatch):
