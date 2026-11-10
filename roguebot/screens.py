@@ -13,7 +13,7 @@ from roguebot import config, labels as L
 from roguebot.mode_screens import guild_screen
 from roguebot.skills import RARITY_NAMES
 from roguebot.vision import Ocr, Text, find, match_template, matches, parse_level_number
-from roguebot.world2 import is_shop_screen, level_tap
+from roguebot.world2 import is_battle, is_shop_screen, level_tap
 
 log = logging.getLogger(__name__)
 
@@ -565,7 +565,8 @@ def monk_spin_button(texts: list[Text]) -> Text | None:
 
 def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board: str | None = None,
                           skills=None, min_skill_price: int | None = None,
-                          rolls: tuple[int, int] | None = None) -> LevelState:
+                          rolls: tuple[int, int] | None = None,
+                          left_shop_tokens: int | None = None) -> LevelState:
     if guild_screen(texts):  # guild map / personal vault: labels look like an event, they are not a level
         return LevelState(LevelScreen.UNKNOWN)
     if footer_visible(img):  # a main screen (lobby...), never a level: its texts can look like an event
@@ -629,7 +630,7 @@ def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board:
         return LevelState(LevelScreen.SHOP, shop_tap)
     # World 2 path forks and events. None on World 1 screens, so campfire and "leave" stay as they were.
     w2 = level_tap(img, texts, build=build, board=board, skills=skills, min_skill_price=min_skill_price,
-                   rolls=rolls)
+                   rolls=rolls, left_shop_tokens=left_shop_tokens)
     if w2:
         return LevelState(LevelScreen.EVENT, w2)
     event_option = _event_option(img, texts)
@@ -645,7 +646,9 @@ def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board:
         if free and _yellow_button(img, free.center):  # the video button is yellow; the gem one green
             return LevelState(LevelScreen.REVIVE, free.center)
         return LevelState(LevelScreen.UNKNOWN)  # no free revive left: let the countdown run out
-    if _counter(texts, L.FIGHT_ROUND) is not None:
+    # "Round 10/30 Wave 3/3" is one line. The counter regex requires the whole line to be
+    # "round N/M", so the wave suffix used to miss and the fight was tapped through.
+    if _counter(texts, L.FIGHT_ROUND) is not None or is_battle(texts):
         return LevelState(LevelScreen.FIGHT)
     # Late, like the red dice: lucky wheels and offers can be green there too, but their texts match first.
     if dice_auto(img):

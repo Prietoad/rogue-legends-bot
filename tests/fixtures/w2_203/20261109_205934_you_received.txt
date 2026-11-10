@@ -1,0 +1,17 @@
+EXP
+Lv.
+5
+19.6m/19.
+6m
+6.9m
+1.1m
+281
+You Received
+Legendary
+Souleater
+Whenever you defeat an enemy.
+your Max HP is increased by +5% for
+the rest of the current run.
+X
+Active
+Tap anywhere to claim

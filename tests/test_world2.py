@@ -60,7 +60,11 @@ def _cards(a="A", b="B", ca=frozenset(), cb=frozenset()):
 def test_elysium_path():
     cards = _cards(ca=frozenset({"statue"}), cb=frozenset({"shop"}))
     assert decide_path("elysium", cards, 300, 20).choice == "B"
-    assert decide_path("elysium", cards, 10, 5).choice == "B"  # rolls left <= 5 and tokens remain
+    assert decide_path("elysium", cards, 48, 5).choice == "B"  # rolls left <= 5 and a skill is affordable
+    assert decide_path("elysium", cards, 10, 5).choice == "A"  # 10 is under the cheapest skill
+    assert decide_path("elysium", cards, 25, 3).choice == "A"
+    assert decide_path("elysium", cards, 80, 3, left_shop_tokens=80).choice == "A"
+    assert decide_path("elysium", cards, 300, 2, left_shop_tokens=300).choice == "A"
     assert decide_path("elysium", cards, 0, 5).choice == "A"
     assert decide_path("elysium", cards, 100, 20).choice == "A"
     assert decide_path("elysium", cards, None, None).choice == "A"  # unreadable
@@ -213,7 +217,8 @@ def test_miner_grid_reader_on_a_drawn_board_and_the_blue_chest():
     img = np.zeros((700, 520, 3), np.uint8)
     img[:] = (30, 30, 30)
     # The reader looks at the middle of the frame. Keep every tile inside that band.
-    y0, x0, step, size = 140, 50, 56, 46
+    # The panel is the lower part of the frame. Tiles up by the speech bubble are not the grid.
+    y0, x0, step, size = 300, 40, 40, 32
     for r in range(7):
         for c in range(7):
             x, y = x0 + c * step, y0 + r * step

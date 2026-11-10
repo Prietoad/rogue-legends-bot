@@ -112,6 +112,15 @@ class Catalog:
             data = json.loads(path.read_text(encoding="utf-8"))
             self.skills = {k: Skill(**v) for k, v in data.items()}
 
+    def contains(self, name: str) -> bool:
+        """True when this name is already in the database, allowing for a small OCR slip."""
+        key = skill_key(name)
+        if not key:
+            return False
+        if key in self.skills:
+            return True
+        return bool(difflib.get_close_matches(key, list(self.skills), n=1, cutoff=0.85))
+
     def lookup(self, name: str, description: str, rarity: str, lang: str | None) -> Skill:
         """The known skill with this name (tolerating small OCR differences), or a new one, saved."""
         key = skill_key(name)

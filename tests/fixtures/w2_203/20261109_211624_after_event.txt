@@ -1,0 +1,10 @@
+Dice Battle!
+Current Reward
+x104
+Is this your first time
+playing?
+Gambler 17 / 21
+8
+Me 20 / 21
+Roll the dice and get the higher score.
+Don't go over 21!

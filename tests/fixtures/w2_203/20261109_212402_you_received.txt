@@ -1,0 +1,16 @@
+EXP
+Lv.
+20.7m/20.7m
+5.7m
+1.1m
+170
+You Received
+Common
+Lacerate 2
+Every 2 turns, deal 300% ATK to an enemy
+as Skill DMG. Reduce target's Damage over
+Time DMG Resistance by -24% for 2 turns.
+Grants you a shield equal to 9% Max HP.
+X
+Active
+Tap anywhere to claim

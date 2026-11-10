@@ -4,6 +4,7 @@ Mode-agnostic: normal and elite levels share the same gameplay.
 """
 
 import logging
+import threading
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -16,7 +17,7 @@ from roguebot.device import Device
 from roguebot.screens import (LevelScreen, LevelState, SkillCard, campfire_non_heal_tap, classify_level_screen,
                               game_speed, monk_spin_button, parse_fortune_teller, parse_shop, parse_skill_cards,
                               skill_reroll)
-from roguebot.skills import Catalog, Skill, infer_tags
+from roguebot.skills import Catalog, Skill, infer_tags, skill_key
 from roguebot.vision import Ocr, find
 from roguebot import world2
 
@@ -24,6 +25,45 @@ log = logging.getLogger(__name__)
 
 DEBUG_DIR = Path("debug")
 MAX_SHOP_STEPS = 16  # refreshes + purchases in one shop visit
+
+
+def load_seen(folder: Path) -> set[str]:
+    """Keys already written under `folder`, so a capture is not repeated next run."""
+    index = folder / "seen.txt"
+    if not index.exists():
+        return set()
+    return {line.strip() for line in index.read_text(encoding="utf-8").splitlines() if line.strip()}
+
+
+def capture_once(folder: Path, key: str, img, body: str, seen: set[str], sync: bool = False) -> bool:
+    """Write screenshot + text the first time `key` is seen. Later calls are a set lookup.
+
+    The image write is threaded so a new skill does not hold the next tap. Tests pass sync=True.
+    """
+    if not key or key in seen:
+        return False
+    seen.add(key)
+    folder.mkdir(parents=True, exist_ok=True)
+    with (folder / "seen.txt").open("a", encoding="utf-8") as fh:
+        fh.write(key + "\n")
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    stem = folder / f"{stamp}_{world2.slug(key)}"
+    n = 2
+    while stem.with_suffix(".txt").exists():
+        stem = folder / f"{stamp}_{world2.slug(key)}_{n}"
+        n += 1
+    image = None if img is None else img.copy()
+
+    def write() -> None:
+        stem.with_suffix(".txt").write_text(body, encoding="utf-8")
+        if image is not None:
+            cv2.imwrite(str(stem.with_suffix(".png")), image)
+
+    if sync:
+        write()
+    else:
+        threading.Thread(target=write, daemon=True).start()
+    return True
 
 
 def refresh_leaves_a_buy(money: int, cost: int, wanted_costs: list[int],
@@ -96,9 +136,18 @@ class Player:
         self._miner = None  # 7x7 board, kept for the whole level (later visits refill pickaxes)
         self._miner_centers = None
         self._miner_used = 0
+        self._miner_pending = None  # (row, col, point, signature) of a dig not yet confirmed
+        self._miner_skips: set[tuple[int, int]] = set()  # taps that did not change a tile
         self._open_chest = False  # goblin raid: the blue chest is still closed
         self._unknown_saved: set[str] = set()
         self._min_skill_price = config.SHOP_SKILL_FLOOR
+        self._left_shop_tokens: int | None = None  # tokens when the last shop was left
+        self._flip_sig = None
+        self._flip_rest: list[tuple[str, tuple[int, int]]] = []
+        # Deduped across runs. A lookup is cheap; the file write happens once per new name.
+        self._seen_skills = load_seen(DEBUG_DIR / "new_skills")
+        self._seen_curses = load_seen(DEBUG_DIR / "new_cursed_vendor")
+        self._seen_boons = load_seen(DEBUG_DIR / "boons")
 
     def play_level(self) -> LevelScreen:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
@@ -109,8 +158,11 @@ class Player:
         self._reset_monk()
         self._campfire_waits = 0
         self._miner, self._miner_centers, self._miner_used = None, None, 0
+        self._miner_pending, self._miner_skips = None, set()
         self._clearing_since, self._open_chest = None, False
         self._unknown_saved = set()
+        self._left_shop_tokens = None
+        self._flip_sig, self._flip_rest = None, []
         # A false "speed is locked" must not stick for the session. x4, once seen, does.
         self._speed_locked = False
         self._speed_cycle = []
@@ -124,18 +176,22 @@ class Player:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
             self._rolls.observe(texts)
+            world2.LAST = None
             state = classify_level_screen(img, texts, self._core_build(), self._board, None,
-                                           self._min_skill_price, rolls=self._rolls.cached())
+                                           self._min_skill_price, rolls=self._rolls.cached(),
+                                           left_shop_tokens=self._left_shop_tokens)
+            if world2.LAST is not None and world2.LAST.event == "path":
+                self._left_shop_tokens = None
             if world2.vendor_needs_shot(world2.LAST):
-                self._save_unknown(img, texts, "cursed_vendor")
+                self._capture_vendor(img, texts, world2.LAST)
             state = self._world2(img, texts, state)
             log.debug("screen: %s", state.kind.value)
             raw_kind = state.kind
 
             if raw_kind is LevelScreen.SKILL_PICK:
-                state = LevelState(state.kind, self._pick_skill(texts) or state.tap)
+                state = LevelState(state.kind, self._pick_skill(texts, img) or state.tap)
             elif raw_kind is LevelScreen.SHOP:
-                self._shop(texts)  # buys what the build wants and the coins allow; then state.tap exits
+                self._shop(texts, img)  # buys what the build wants and the coins allow; then state.tap exits
             elif raw_kind is LevelScreen.FORTUNE_TELLER:
                 state = LevelState(state.kind, self._fortune(texts))
             elif raw_kind is LevelScreen.MONK and not self._monk_yielded:
@@ -203,9 +259,11 @@ class Player:
                 return state.kind
 
             if state.kind is LevelScreen.UNKNOWN:
-                # After an event choice, keep tapping through dialogue and claim screens.
-                # A guild map or anything else with no event behind it still fails closed.
-                if (self._clearing_since is not None
+                # A fight, a claim, a victory, or the miner is not an unknown follow-up.
+                # Tapping through those used to hit the battle and never found Leave.
+                if world2.is_miner(texts) or world2.known_screen(texts):
+                    last_known = time.monotonic()
+                elif (self._clearing_since is not None
                         and time.monotonic() - self._clearing_since >= config.EVENT_CLEAR_TIMEOUT):
                     self._save_unknown(img, texts, "after event")
                     log.warning("Event follow-up still up; tapping through")
@@ -272,6 +330,9 @@ class Player:
     def _skill(self, card: SkillCard) -> Skill:
         """Catalog entry for this card. A user-locked tag (auto false) wins; otherwise a damage type
         read on the card itself wins over a stale saved tag, so a skill named shuriken is shuriken."""
+        name = world2.clean_card_name(card.name)
+        if name != card.name:
+            card = replace(card, name=name)
         known = self.catalog.lookup(card.name, card.description, card.rarity, labels.active_language())
         if not known.auto:
             return known
@@ -282,12 +343,36 @@ class Player:
             return replace(known, damage_type=damage_type, nature=nature, role=role)
         return known
 
-    def _pick_skill(self, texts) -> tuple[int, int] | None:
+    def _offer_text(self, texts, cards) -> list[str]:
+        """Full OCR of each card, not only the one line the name parser kept."""
+        blobs = []
+        for i, card in enumerate(cards):
+            nxt = cards[i + 1].tag if i + 1 < len(cards) else None
+            blob = world2.card_blob(texts, card.tag, nxt)
+            blobs.append(blob or card.description or card.name)
+        return blobs
+
+    def _note_unknown_card(self, img, texts, card: SkillCard, description: str) -> None:
+        name = world2.clean_card_name(card.name)
+        key = skill_key(name)
+        if not key or self.catalog.contains(name):
+            return
+        body = (f"name: {name}\nrarity: {card.rarity}\n"
+                f"description: {description}\n\n" + "\n".join(t.text for t in texts))
+        capture_once(DEBUG_DIR / "new_skills", key, img, body, self._seen_skills)
+
+    def _pick_skill(self, texts, img=None) -> tuple[int, int] | None:
         """Tap point of the card the build wants, or of the reroll button. None if no card was read."""
         wide = (80, 720) if find(texts, labels.SKILL_PROMPT) else None
         cards = parse_skill_cards(texts, wide)
         if not cards:
             return None
+        blobs = self._offer_text(texts, cards)
+        if img is not None:
+            for card, blob in zip(cards, blobs):
+                self._note_unknown_card(img, texts, card, blob)
+        if world2.is_boon_screen(texts):
+            return self._pick_boon(img, texts, cards, blobs)
         skills = [self._skill(c) for c in cards]
         reroll = skill_reroll(texts)
         i = choose(skills, self.build, self._state, can_reroll=reroll is not None and not self._rerolled)
@@ -305,17 +390,40 @@ class Player:
                  [f"{s.name}:{s.damage_type or '-'}" for s in skills])
         return config.SCREEN_SIZE[0] // 2, cards[i].tag.center[1] + config.SKILL_TAP_BELOW_RARITY
 
-    def _shop(self, texts) -> None:
+    def _pick_boon(self, img, texts, cards, blobs) -> tuple[int, int]:
+        """Major boon. Rank by the interim list, log the full text, and keep one screenshot."""
+        offers = [(world2.clean_card_name(c.name), blob) for c, blob in zip(cards, blobs)]
+        i = world2.choose_boon(offers, self._core_build())
+        log.info("Boon offer: %s", offers)
+        log.info("Boon pick: %s", offers[i][0])
+        key = skill_key(" ".join(name for name, _blob in offers)) or "boon"
+        body = "pick: %s\n%s\n\n%s" % (offers[i][0], offers, "\n".join(t.text for t in texts))
+        capture_once(DEBUG_DIR / "boons", key, img, body, self._seen_boons)
+        skills = [self._skill(c) for c in cards]
+        offer = tuple(s.name for s in skills)
+        if offer != self._last_offer:
+            self._state.take(skills[i])
+        self._last_offer = offer
+        self._rerolled = False
+        return config.SCREEN_SIZE[0] // 2, cards[i].tag.center[1] + config.SKILL_TAP_BELOW_RARITY
+
+    def _shop(self, texts, img=None) -> None:
         """Buy wanted skills the coins can pay, refreshing to find one while a refresh stays safe.
 
         An already-affordable wanted skill is bought before any refresh. A refresh (free, then
         paid, more than once) is used only when it leaves enough coins for a wanted skill.
         """
         tapped, free_used = set(), False
+        last_money = None
+        shot = img
         for _ in range(MAX_SHOP_STEPS):
             shop = parse_shop(texts)
             if shop is None or shop.money is None:
-                return
+                break
+            last_money = shop.money
+            if shot is not None:
+                for card in shop.cards:
+                    self._note_unknown_card(shot, texts, card, card.description)
             cards = [c for c in shop.cards if not c.sold and c.cost is not None and c.name not in tapped]
             skills = [self._skill(c) for c in cards]
             preferred = shop_order(skills, self.build, self._state, can_reroll=True, fill=False)
@@ -324,7 +432,7 @@ class Player:
                 if affordable:
                     self._buy(shop, cards, skills, affordable[0], tapped)
                 elif not self._refresh_shop(shop, [cards[i].cost for i in preferred], free_used):
-                    return
+                    break
                 else:
                     free_used = free_used or shop.free_reroll is not None
             elif self._refresh_shop(shop, [], free_used):
@@ -333,9 +441,12 @@ class Player:
                 fallback = shop_order(skills, self.build, self._state, can_reroll=False, fill=False) or []
                 affordable = [i for i in fallback if cards[i].cost <= shop.money]
                 if not affordable:
-                    return
+                    break
                 self._buy(shop, cards, skills, affordable[0], tapped)
-            texts = self.ocr.read(self.device.screenshot())
+            shot = self.device.screenshot()
+            texts = self.ocr.read(shot)
+        if last_money is not None:
+            self._left_shop_tokens = last_money
 
     def _buy(self, shop, cards, skills, i: int, tapped: set) -> None:
         log.info("Shop: buying %s (%s) for %d (coins %d)", skills[i].name,
@@ -560,6 +671,9 @@ class Player:
                 log.info("W2 back on the map: hp=%s/%s tokens=%s", hud.hp, hud.max_hp, hud.tokens)
             self._clearing_since = None
             self._miner_used = 0
+            self._miner_pending = None
+            self._miner_skips = set()
+            self._flip_sig, self._flip_rest = None, []
             self._open_chest = False
             self._event_bailed = False
             self._event_stuck_tap = None
@@ -573,6 +687,10 @@ class Player:
             return LevelState(LevelScreen.SHOP, leave.center if leave else state.tap)
         if world2.transient_kind(texts):
             return state
+        if find(texts, labels.MONK):
+            # The reward overlay ("You Received" / "Tap anywhere to claim") belongs to the
+            # monk handler, which taps the claim line. A generic center tap would skip a spin.
+            return state
         if world2.match_event(texts) == "goblin" and world2.LAST and world2.LAST.choice == "raid":
             self._open_chest = True
         # Fights, skill picks and path forks are not unknown events. Path choice already
@@ -580,19 +698,32 @@ class Player:
         # normal picker, which runs after this returns.
         if world2.ordinary_level_screen(texts):
             return state
+        passive = world2.known_screen(texts)
+        if passive == "battle" and state.kind is LevelScreen.UNKNOWN:
+            return LevelState(LevelScreen.FIGHT)
+        if passive == "claim" and not state.tap:
+            point = world2.dismiss_point(texts) or (config.SCREEN_SIZE[0] // 2, config.SCREEN_SIZE[1] // 2)
+            return LevelState(LevelScreen.CONTINUE, point)
+        if passive:
+            # Victory, dice, and a claim that already has a tap. Do not save them as unknown.
+            return state
         title = world2.event_title(texts)
         if title and not world2.is_known_title(title) and world2.looks_like_event(texts):
             self._save_unknown(img, texts, title)
             leave = world2.safe_leave_label(texts)
-            if leave is None:
-                log.info("Unknown event %s: no safe option; waiting", title)
-                return state
-            point = world2.choice_tap(leave, texts)
-            if world2.tap_forbidden(point):
-                log.info("Unknown event %s: safe option sits on the speed button; waiting", title)
-                return state
-            log.info("Unknown event %s: %s", title, leave.text)
-            return LevelState(LevelScreen.EVENT, point)
+            if leave is not None:
+                point = world2.choice_tap(leave, texts)
+                if world2.tap_forbidden(point):
+                    log.info("Unknown event %s: safe option sits on the speed button; waiting", title)
+                    return state
+                log.info("Unknown event %s: %s", title, leave.text)
+                return LevelState(LevelScreen.EVENT, point)
+            # TODO: remove coin flip after full data.
+            flipped = self._coin_flip(texts, title)
+            if flipped is not None:
+                return LevelState(LevelScreen.EVENT, flipped)
+            log.info("Unknown event %s: no safe option; waiting", title)
+            return state
         if self._open_chest and state.kind is LevelScreen.UNKNOWN:
             chest = world2.find_blue_chest(img)
             if chest:
@@ -602,28 +733,123 @@ class Player:
         return state
 
     def _miner_tap(self, img, texts) -> tuple[int, int] | None:
+        """Dig unopened tiles until the pickaxes are gone, then tap Leave.
+
+        Leave is not on screen before that, and this path never asks the coin flip to
+        pick an exit. A tap that does not change its tile is not counted; the next
+        unopened tile is tried instead.
+        """
         leave = find(texts, labels.LEAVE, exact=True)
-        if world2.miner_out(texts) and leave:
+        if leave is not None:
+            self._miner_pending = None
             log.info("Treasure Miner: out of pickaxes")
             return leave.center
+        if world2.miner_out(texts):
+            log.info("Treasure Miner: pickaxes spent; waiting for Leave")
+            return None
         claim = find(texts, labels.TAP_TO_CLAIM)
         if claim:
             return claim.center
-        viewed = world2.read_miner_grid(img)
+        viewed = world2.read_miner_grid(img, texts)
         if viewed is None:
-            self._save_unknown(img, texts, "treasure miner")
-            return leave.center if leave else None
-        board, centers = viewed
-        self._miner = world2.merge_board(self._miner, board)
+            centers = world2.fallback_miner_centers()
+            board = self._miner if self._miner is not None else world2.blank_miner()
+            log.info("Treasure Miner: grid not located; using the measured fallback")
+        else:
+            board, centers = viewed
+            board = world2.merge_board(self._miner, board)
+        if self._miner_pending:
+            r, c, point, sig = self._miner_pending
+            if world2.tile_changed(sig, world2.cell_signature(img, point)):
+                if board[r][c] == world2.UNK:
+                    board[r][c] = world2.DUG
+                self._miner_used += 1
+                self._miner_skips.discard((r, c))
+                log.info("Treasure Miner: dig %s changed the tile (%d pickaxes left)",
+                         (r, c), max(0, world2.MINER_PICKAXES - self._miner_used))
+            else:
+                self._miner_skips.add((r, c))
+                log.info("Treasure Miner: dig %s did not change the tile; trying another", (r, c))
+            self._miner_pending = None
+        for rr in range(world2.MINER_SIZE):
+            for cc in range(world2.MINER_SIZE):
+                if board[rr][cc] != world2.UNK:
+                    self._miner_skips.discard((rr, cc))
+        self._miner = board
         self._miner_centers = centers
-        nxt = world2.next_miner_tap(self._miner, world2.MINER_PICKAXES - self._miner_used)
+        icons = world2.count_pickaxes(img, centers)
+        left = world2.MINER_PICKAXES - self._miner_used
+        if icons is not None:
+            log.info("Treasure Miner: %d pickaxe icons visible", icons)
+        # Leave is the real end (it appears only after the last pickaxe). A 0 from the
+        # icon reader must not stop the digs early. Nine confirmed tile changes is the
+        # other stop, and then we wait for Leave instead of flipping a coin.
+        if left <= 0:
+            log.info("Treasure Miner: pickaxes spent; waiting for Leave")
+            return None
+        nxt = world2.next_unopened(board, self._miner_skips)
         if nxt is None:
-            return leave.center if leave else None
+            log.info("Treasure Miner: no unopened tile; waiting for Leave")
+            return None
         r, c = nxt
-        self._miner[r][c] = world2.DUG
-        self._miner_used += 1
-        log.info("Treasure Miner: dig %s (%d pickaxes left)", nxt, world2.MINER_PICKAXES - self._miner_used)
-        return centers[r][c]
+        if (r, c) in self._miner_skips:
+            # Every unopened cell missed once. Try the board again instead of stopping.
+            self._miner_skips.clear()
+        point = centers[r][c]
+        self._miner_pending = (r, c, point, world2.cell_signature(img, point))
+        log.info("Treasure Miner: dig %s (%d pickaxes left) -> tap %s", nxt, left, point)
+        return point
+
+    def _coin_flip(self, texts, title: str) -> tuple[int, int] | None:
+        """TODO: remove coin flip after full data.
+
+        One random safe button. If that tap does not change the screen, the next
+        button is tried. Gems, gold, and the VIP x4 badge are never in the list.
+        The miner does not use this.
+        """
+        if world2.is_miner(texts) or not world2.COIN_FLIP_TEMPORARY:
+            return None
+        dismiss = world2.dismiss_point(texts)
+        if dismiss is not None:
+            log.info("Unknown event %s: tap anywhere", title)
+            return dismiss
+        sig = tuple(t.norm for t in texts)
+        if self._flip_sig == sig:
+            if not self._flip_rest:
+                return None
+            label, point = self._flip_rest.pop(0)
+            world2.coin_flip_temporary([label] + [n for n, _p in self._flip_rest], pick=label)
+            return point
+        options = world2.coin_flip_labels(texts)
+        if not options:
+            self._flip_sig, self._flip_rest = None, []
+            return None
+        labels = [name for name, _point in options]
+        pick = world2.coin_flip_temporary(labels)
+        if pick is None:
+            return None
+        idx = labels.index(pick)
+        ordered = options[idx:] + options[:idx]
+        self._flip_sig = sig
+        self._flip_rest = list(ordered[1:])
+        log.info("Unknown event %s: %s", title, ordered[0][0])
+        return ordered[0][1]
+
+    def _capture_vendor(self, img, texts, decision) -> None:
+        """Unknown blessing/curse lines, once each, with both cards' OCR."""
+        lines = list(decision.inputs.get("unknown") or [])
+        if not lines:
+            if not decision.inputs.get("left_parsed"):
+                lines.append(decision.inputs.get("left_text") or "left unparsed")
+            if not decision.inputs.get("right_parsed"):
+                lines.append(decision.inputs.get("right_text") or "right unparsed")
+        body = f"pick: {decision.choice}\n\n" + "\n".join(t.text for t in texts)
+        for line in lines:
+            key = world2.slug(str(line))
+            if not key:
+                continue
+            capture_once(DEBUG_DIR / "new_cursed_vendor", key, img, f"line: {line}\n{body}",
+                         self._seen_curses)
 
     def _save_unknown(self, img, texts, title: str) -> None:
         slug = world2.slug(title)

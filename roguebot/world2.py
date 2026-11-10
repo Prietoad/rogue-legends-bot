@@ -6,6 +6,7 @@ safe option. Campfire, Wise Monk and World 1 events stay in screens.py / play.py
 """
 
 import logging
+import random
 import re
 from dataclasses import dataclass, field, replace
 
@@ -66,7 +67,17 @@ VENDOR_LINES = (
     {"id": "trip", "kind": "curse", "score": 40,
      "phrases": ("chance to trip and take damage instead of basic attacking",
                  "trip and take damage instead of basic attacking", "instead of basic attacking")},
+    # 2.0.3 playtest. The golden road is a strong blessing. Doubled shop prices is the
+    # mildest curse: take that card over any heavier curse.
+    {"id": "golden_road", "kind": "blessing", "score": 95,
+     "phrases": ("create a golden road of mega buff tiles", "golden road of mega buff", "mega buff tiles")},
+    {"id": "shop_prices", "kind": "curse", "score": 5,
+     "phrases": ("shop prices are doubled", "prices are doubled")},
 )
+
+# TODO: remove coin flip after full data. Unknown curses, boons, and events are not
+# ranked yet, so a choice the weights cannot separate used to wait forever.
+COIN_FLIP_TEMPORARY = True
 
 # Titles the generic World 1 handler already owns. An unknown title is anything else.
 KNOWN_OTHER_TITLES = (
@@ -322,6 +333,27 @@ def _line_has(blob: str, phrase: str) -> bool:
     return False
 
 
+_VENDOR_HEADER = re.compile(r"\b(?:cursed vendor|curses for a price)\b")
+
+
+def clean_vendor_text(text: str) -> str:
+    """Drop the banner and a leading '0' OCR reads on the sign cards.
+
+    '0 Shop prices are doubled' and 'Cursed Vendor CURSES FOR A PRICE ...' are the
+    same lines the table already knows once that junk is gone. Line breaks stay, so
+    a real unknown curse on its own line is still reported.
+    """
+    lines = []
+    for line in text.splitlines() or [""]:
+        n = normalize(line)
+        n = re.sub(r"\b0\b", " ", n)
+        n = _VENDOR_HEADER.sub(" ", n)
+        n = re.sub(r"[ \t]+", " ", n).strip(" .")
+        if n:
+            lines.append(n)
+    return "\n".join(lines)
+
+
 def _best_rule(blob: str, kind: str) -> dict | None:
     found = []
     for rule in VENDOR_LINES:
@@ -337,7 +369,9 @@ def score_vendor_card(text: str, rolls_left: int | None) -> tuple[int, list[str]
     """Blessing minus curse. Unknown clauses score 0 and are returned for the debug log.
 
     Campfires-removed uses its small late penalty when rolls_left <= LATE_ROLLS.
+    An unknown clause does not block the tap: it adds nothing, and the known side still wins.
     """
+    text = clean_vendor_text(text)
     blessing = _best_rule(text, "blessing")
     curse = _best_rule(text, "curse")
     penalty = 0
@@ -360,18 +394,45 @@ def score_vendor_card(text: str, rolls_left: int | None) -> tuple[int, list[str]
 
 
 def _side_parsed(text: str) -> bool:
+    text = clean_vendor_text(text)
     return _best_rule(text, "blessing") is not None or _best_rule(text, "curse") is not None
 
 
-def decide_vendor(left: str, right: str, rolls_left: int | None) -> Decision:
+def coin_flip_temporary(options: list[str], rng=None, pick: str | None = None) -> str | None:
+    """Random pick among options the weights cannot separate.
+
+    TODO: remove coin flip after full data. Every call logs
+    'COIN FLIP (temporary): options [...] -> picked X' so it can be found and deleted.
+    `pick` retries a later option after the previous tap did nothing; it is still logged.
+    """
+    if not options or not COIN_FLIP_TEMPORARY:
+        return None
+    if pick is None:
+        pick = (rng or random).choice(list(options))
+    elif pick not in options:
+        return None
+    log.info("COIN FLIP (temporary): options %s -> picked %s", list(options), pick)
+    return pick
+
+
+def decide_vendor(left: str, right: str, rolls_left: int | None, rng=None) -> Decision:
     ls, lu = score_vendor_card(left, rolls_left)
     rs, ru = score_vendor_card(right, rolls_left)
-    choice = "left" if ls >= rs else "right"
-    return Decision("cursed_vendor", choice,
-                    f"left {ls} vs right {rs}",
-                    {"left": ls, "right": rs, "rolls_left": rolls_left, "unknown": lu + ru,
-                     "left_parsed": _side_parsed(left), "right_parsed": _side_parsed(right),
-                     "left_text": left, "right_text": right})
+    unknown = lu + ru
+    parsed = (_side_parsed(left), _side_parsed(right))
+    # Known weights tied, and at least one line is not in the table: flip so the screen
+    # cannot sit there. A tie of two fully known cards stays on the left, as before.
+    if ls == rs and (unknown or not all(parsed)):
+        choice = coin_flip_temporary(["left", "right"], rng)
+        reason = "COIN FLIP (temporary); known weights tied on unknown lines"
+    else:
+        choice = "left" if ls >= rs else "right"
+        reason = f"left {ls} vs right {rs}"
+    return Decision("cursed_vendor", choice, reason,
+                    {"left": ls, "right": rs, "rolls_left": rolls_left, "unknown": unknown,
+                     "left_parsed": parsed[0], "right_parsed": parsed[1],
+                     "left_text": clean_vendor_text(left), "right_text": clean_vendor_text(right),
+                     "coin_flip": choice is not None and ls == rs and bool(unknown or not all(parsed))})
 
 
 def vendor_needs_shot(decision: Decision | None) -> bool:
@@ -381,6 +442,78 @@ def vendor_needs_shot(decision: Decision | None) -> bool:
     if decision.inputs.get("unknown"):
         return True
     return not decision.inputs.get("left_parsed") or not decision.inputs.get("right_parsed")
+
+
+def clean_card_name(name: str) -> str:
+    """Strip a leading '0' and other OCR junk glued onto a boon or skill name."""
+    text = (name or "").strip()
+    text = re.sub(r"^(?:0[\s.:-]*)+", "", text)
+    text = re.sub(r"^[^A-Za-z]+", "", text).strip()
+    return text or (name or "").strip()
+
+
+# Interim major-boon order for the poison farm (Plague Blade + Venom Loop).
+# (1) poison / DoT / status damage, (2) flat ATK / damage / crit,
+# (3) Max HP / damage reduction / shield, (4) utility. Attack outranks defense.
+_BOON_TIERS = (
+    ("poison", "venom", "toxic", "bleed", "wound", "damage over time"),
+    ("atk", "attack", "damage", "dmg", "crit"),
+    ("max hp", "damage reduction", "shield", "armor", "defense", "defence"),
+    ("gold", "reroll", "token"),
+)
+
+
+def _boon_has(text: str, word: str) -> bool:
+    return re.search(r"\b" + re.escape(word) + r"\b", text) is not None
+
+
+def boon_sort_key(name: str, description: str) -> tuple:
+    """Lower is better. A tie prefers a line that says damage or poison."""
+    text = normalize(f"{name} {description}")
+    tier = next((i for i, words in enumerate(_BOON_TIERS) if any(_boon_has(text, w) or w in text and " " in w
+                                                                  for w in words)), 9)
+    prefer = 0 if any(_boon_has(text, w) for w in ("damage", "poison", "venom", "dmg")) else 1
+    return tier, prefer
+
+
+def choose_boon(offers: list[tuple[str, str]], build: Build | None = None, rng=None) -> int:
+    """Index of the major boon to take. A pure tie of unknown lines is a coin flip.
+
+    A name that is one of the active preset's core skills outranks the interim list.
+    """
+    if not offers:
+        return 0
+    build = build or Build()
+
+    def key(i: int) -> tuple:
+        name, desc = offers[i]
+        core = is_core_skill(clean_card_name(name), build)
+        return (0 if core else 1, *boon_sort_key(name, desc), i)
+
+    best = min(range(len(offers)), key=key)
+    top = key(best)[:3]
+    tied = [i for i in range(len(offers)) if key(i)[:3] == top]
+    if len(tied) == 1:
+        return tied[0]
+    labels = [offers[i][0] for i in tied]
+    pick = coin_flip_temporary(labels, rng)
+    if pick is None:
+        return tied[0]
+    return tied[labels.index(pick)]
+
+
+def is_boon_screen(texts: list[Text]) -> bool:
+    """Major Boon card pick. A long description that happens to say 'boon' is not the banner."""
+    return any("boon" in t.norm and len(t.norm) <= 32 for t in texts)
+
+
+def card_blob(texts: list[Text], tag: Text, nxt: Text | None) -> str:
+    """Every OCR line on a skill/boon card, name and description together."""
+    top = tag.center[1] - 30
+    bot = (nxt.center[1] - 20) if nxt is not None else tag.center[1] + 420
+    rows = [t for t in texts if top <= t.center[1] < bot and t is not tag and re.search(r"[a-z]{2}", t.norm)]
+    rows.sort(key=lambda t: (t.center[1], t.center[0]))
+    return " ".join(t.text for t in rows)
 
 
 def decide_statue(skill_name: str | None, build: Build) -> Decision:
@@ -594,7 +727,8 @@ def _card(cards: list[PathCard], kind: str, letter: str) -> PathCard | None:
 
 
 def decide_path(board: str | None, cards: list[PathCard], tokens: int | None, rolls_left: int | None,
-                min_skill_price: int = config.SHOP_SKILL_FLOOR) -> Decision:
+                min_skill_price: int = config.SHOP_SKILL_FLOOR,
+                left_shop_tokens: int | None = None) -> Decision:
     """Which path card to take. None when the board and the card contents are both unknown.
 
     Letters are only the names from the table for a known board. An unknown board is
@@ -646,10 +780,15 @@ def decide_path(board: str | None, cards: list[PathCard], tokens: int | None, ro
         shop, statue = _card(cards, "shop", "B"), _card(cards, "statue", "A")
         if tokens is None:
             return take(statue, "tokens unreadable")
+        # The fork right after a shop still shows the same token count. Going back in
+        # buys nothing the visit just refused.
+        if left_shop_tokens is not None and tokens == left_shop_tokens:
+            return take(statue, "just left a shop with the same token count")
         if tokens >= 300:
             return take(shop, "tokens >= 300")
-        if rolls_left is not None and rolls_left <= LATE_ROLLS and tokens > 0:
-            return take(shop, "rolls left <= 5 and tokens remain")
+        # Same "at least one skill is affordable" bar as Atlantis (cheapest skill is 48).
+        if rolls_left is not None and rolls_left <= LATE_ROLLS and tokens >= min_skill_price:
+            return take(shop, "rolls left <= 5 and a skill is affordable")
         return take(statue, "else the prayer statue")
     # atlantis
     shop, camp = _card(cards, "shop", "A"), _card(cards, "campfire", "B")
@@ -721,7 +860,15 @@ def is_known_title(title: str) -> bool:
 
 
 def is_miner(texts: list[Text]) -> bool:
-    return match_event(texts) == "treasure_miner"
+    """Treasure Miner, including a frame whose title OCR missed.
+
+    The coin-flip fallback must never run here: there is no safe button until Leave,
+    and Leave itself is not drawn until every pickaxe has been used.
+    """
+    if match_event(texts) == "treasure_miner":
+        return True
+    blob = " ".join(t.norm for t in texts)
+    return ("remaining treasure" in blob or "dig up hidden" in blob or "treasure miner" in blob)
 
 
 def choice_labels(texts: list[Text]) -> list[Text]:
@@ -927,7 +1074,8 @@ def _decide(event: str, texts: list[Text], buttons: dict[str, Text], hud: Hud, b
 
 def level_tap(img, texts: list[Text], build: Build | None = None, board: str | None = None,
               skills: list[KnownSkill] | None = None, min_skill_price: int | None = None,
-              rolls: tuple[int, int] | None = None) -> tuple[int, int] | None:
+              rolls: tuple[int, int] | None = None,
+              left_shop_tokens: int | None = None) -> tuple[int, int] | None:
     """Tap for a World 2 path fork or a known World 2 event. None if this frame is neither.
 
     Sets LAST to the decision (including a path that could not be read). Campfire and
@@ -942,7 +1090,7 @@ def level_tap(img, texts: list[Text], build: Build | None = None, board: str | N
     if len(cards) >= 2:
         known = {"elysium", "ancient waterway", "molten core", "atlantis"}
         resolved = board if board in known else board_from_title(board)
-        decision = decide_path(resolved, cards, hud.tokens, hud.rolls_left, price)
+        decision = decide_path(resolved, cards, hud.tokens, hud.rolls_left, price, left_shop_tokens)
         LAST = decision
         _log(decision, hud)
         chosen = next((c for c in cards if c.key == decision.choice), None)
@@ -958,6 +1106,14 @@ def level_tap(img, texts: list[Text], build: Build | None = None, board: str | N
     decision = _decide(event, texts, buttons, hud, build, skills, enabled)
     LAST = decision
     _log(decision, hud)
+    if event == "cursed_vendor":
+        # The choice is "left" / "right". The buttons are both named Sign, so a lookup
+        # by the choice name used to return nothing and the screen sat there.
+        signs = _vendor_signs(texts)
+        idx = {"left": 0, "right": 1}.get(decision.choice or "")
+        if idx is None or idx >= len(signs):
+            return None
+        return choice_tap(signs[idx], texts)
     label = buttons.get(decision.choice or "")
     if label is None:
         return None
@@ -1033,6 +1189,34 @@ def is_shop_screen(texts: list[Text]) -> bool:
 
 
 _STAT_TOAST = re.compile(r"^max hp\s*[+\-]\s*\d+\s*%$")
+
+
+def known_screen(texts: list[Text]) -> str | None:
+    """A screen the 2.0.2 run saved as an unknown event. None when it really is unknown.
+
+    "claim" is tapped through (You Received / You Forgot / Lucky Treasure).
+    "victory" is the existing end screen (Continue / x2 Rewards), not a new choice.
+    "battle" waits. "dice" is the dice duel, including its win popup's siblings
+    that the duel handler already plays.
+    """
+    lines = [t.norm.strip("!¡.: ") for t in texts]
+
+    def short(phrases: tuple[str, ...], limit: int = 48) -> bool:
+        return any(any(p in n for p in phrases) for n in lines if len(n) <= limit)
+
+    if any(re.search(r"(?:round|ronda)\s*:?\s*\d+\s*/\s*\d+", n) or re.search(r"\bwave\s*\d+\s*/\s*\d+", n)
+           for n in lines if len(n) <= 40):
+        return "battle"
+    # A dice win popup also says "You Received" / "Tap anywhere to claim": that tap wins.
+    if short(("you received", "you forgot", "lucky treasure", "ucky treasure", "tap anywhere to claim")):
+        return "claim"
+    if short(("dice battle", "current reward", "winning streak", "gambler")):
+        return "dice"
+    if short(("victory", "victoria", "you survived", "longest journey")):
+        return "victory"
+    if short(("tap anywhere to continue", "tap to continue", "tap to claim")):
+        return "claim"
+    return None
 
 
 def transient_kind(texts: list[Text]) -> str | None:
@@ -1115,6 +1299,67 @@ def tap_forbidden(point: tuple[int, int]) -> bool:
     return x < 420 and y > 2050
 
 
+_COIN_BLOCK = (
+    "gem", "diamond", "gold", "buy", "purchase", "spend",
+    "give up", "quit", "abandon", "forfeit", "surrender",
+    "settings", "home", "exit run", "end run",
+)
+# The paid x4 speed badge. A fallback tap here toggles VIP speed.
+_VIP_X4 = (111, 2307)
+
+
+def _near_vip(point: tuple[int, int]) -> bool:
+    return abs(point[0] - _VIP_X4[0]) <= 90 and abs(point[1] - _VIP_X4[1]) <= 90
+
+
+def blocked_choice(text: str, point: tuple[int, int]) -> bool:
+    """Gems, gold, diamonds, purchases, quitting the run, and the VIP x4 badge.
+
+    Word boundaries, so a blessing that says "golden" is not treated as a gold price.
+    """
+    n = normalize(text)
+    if n.isdigit():  # a bare "60" is the gem price, not a choice
+        return True
+    if any(re.search(r"\b" + re.escape(w) + r"\b", n) for w in _COIN_BLOCK):
+        return True
+    return tap_forbidden(point) or _near_vip(point)
+
+
+def dismiss_point(texts: list[Text]) -> tuple[int, int] | None:
+    """'Tap anywhere to claim/continue' closes the popup. The center is not a price."""
+    phrases = ("tap anywhere to claim", "tap anywhere to continue", "tap to continue", "tap to claim",
+               "tap anywhere")
+    if any(any(p in t.norm for p in phrases) for t in texts):
+        return config.SCREEN_SIZE[0] // 2, config.SCREEN_SIZE[1] // 2
+    return None
+
+
+def coin_flip_applies(texts: list[Text]) -> bool:
+    """An unknown choice screen. Never a fight, a shop, the miner, or a known popup."""
+    if is_miner(texts) or is_shop_screen(texts) or ordinary_level_screen(texts):
+        return False
+    if known_screen(texts) or transient_kind(texts):
+        return False
+    title = event_title(texts)
+    if title and is_known_title(title):
+        return False
+    return looks_like_event(texts)
+
+
+def coin_flip_labels(texts: list[Text]) -> list[tuple[str, tuple[int, int]]]:
+    """Safe buttons on an unknown choice screen, in reading order. Blocklisted ones are gone."""
+    found = []
+    for t in choice_labels(texts):
+        point = choice_tap(t, texts)
+        blob = t.text + " " + _column_blob(t, texts)
+        if blocked_choice(blob, point) or blocked_choice(blob, t.center):
+            continue
+        if any(_near(point, p) for _label, p in found):
+            continue
+        found.append((t.text, point))
+    return found
+
+
 def safe_leave_label(texts: list[Text]) -> Text | None:
     """A recognized no-cost leave / walk-away label. Nothing else, and never the speed button."""
     if ordinary_level_screen(texts):
@@ -1150,13 +1395,17 @@ def _body_above(label: Text, other: Text | None, texts: list[Text]) -> str:
     return " ".join(t.text for t in parts)
 
 
+def _vendor_signs(texts: list[Text]) -> list[Text]:
+    return sorted((t for t in choice_labels(texts) if t.norm == "sign" or t.norm.startswith("sign ")),
+                  key=lambda t: t.center[0])[:2]
+
+
 def vendor_bodies(texts: list[Text]) -> tuple[str, str] | None:
     """Blessing and curse text of the left and right Sign cards.
 
     The lines are above each Sign button. Text under the button is the page footer, not the offer.
     """
-    signs = sorted((t for t in choice_labels(texts) if t.norm == "sign" or t.norm.startswith("sign ")),
-                   key=lambda t: t.center[0])
+    signs = _vendor_signs(texts)
     if len(signs) < 2:
         return None
     return _body_above(signs[0], signs[1], texts), _body_above(signs[1], signs[0], texts)
@@ -1323,7 +1572,24 @@ def merge_board(old, new):
     return out
 
 
+# Measured on a 1440x2560 Treasure Miner screen. Used only when the tiles themselves
+# cannot be found. Column step ~149, row step ~145.
+FALLBACK_MINER_COLS = (285, 434, 583, 732, 881, 1030, 1179)
+FALLBACK_MINER_ROWS = (1107, 1252, 1397, 1542, 1687, 1832, 1979)
+
+
+def fallback_miner_centers() -> list[list[tuple[int, int]]]:
+    """Tile centers in reference coordinates, one unopened cell at a time until Leave."""
+    return [[(FALLBACK_MINER_COLS[c], FALLBACK_MINER_ROWS[r]) for c in range(MINER_SIZE)]
+            for r in range(MINER_SIZE)]
+
+
+def blank_miner():
+    return [[UNK for _ in range(MINER_SIZE)] for _ in range(MINER_SIZE)]
+
+
 def _classify_cell(b: float, g: float, r: float) -> int:
+    """Single-pixel fallback. Dirt tiles are saturated, so this is only a hint."""
     mx, mn = max(b, g, r), min(b, g, r)
     if mx < 75:
         return DUG
@@ -1332,31 +1598,91 @@ def _classify_cell(b: float, g: float, r: float) -> int:
     return UNK
 
 
-def read_miner_grid(img: np.ndarray):
-    """7x7 cell classes and centers, from the tile squares themselves.
+def _patch_mean(img: np.ndarray, point: tuple[int, int]) -> tuple[float, float, float]:
+    x, y = point
+    h, w = img.shape[:2]
+    x0, x1 = max(0, x - 6), min(w, x + 6)
+    y0, y1 = max(0, y - 6), min(h, y + 6)
+    patch = img[y0:y1, x0:x1]
+    if patch.size == 0:
+        return 0.0, 0.0, 0.0
+    mean = patch.astype(float).mean(axis=(0, 1))
+    return float(mean[0]), float(mean[1]), float(mean[2])
 
-    None when a regular 7 by 7 of similar squares is not in the middle of the frame.
-    Colors: a saturated tile is a gem, a near-black tile is dug and empty, the rest is undug.
-    Real gem art may not match these cutoffs; a miss is logged and the visit can still Leave.
+
+def _classify_against_median(sample: tuple[float, float, float],
+                             median: tuple[float, float, float]) -> int:
+    """Undug dirt matches the median tile. A dark hole is dug. Anything else vivid is a gem.
+
+    The old cutoff called every brown tile a gem, because the dirt is saturated. That
+    made the bot refuse to tap the real grid.
+    """
+    b, g, r = sample
+    mb, mg, mr = median
+    mx = max(b, g, r)
+    dist = abs(b - mb) + abs(g - mg) + abs(r - mr)
+    dirt = r > g > b and (r - b) > 40
+    if mx < 75:
+        return DUG
+    if dirt and dist < 180:
+        return UNK
+    if dist > 90 and not dirt:
+        return GEM
+    return UNK
+
+
+def cell_signature(img: np.ndarray, point: tuple[int, int]) -> tuple[int, int, int]:
+    b, g, r = _patch_mean(img, point)
+    return int(b), int(g), int(r)
+
+
+def tile_changed(before: tuple[int, int, int], after: tuple[int, int, int], tol: int = 45) -> bool:
+    """A real dig shifts the patch. Sparkle and the idle character do not."""
+    return sum(abs(a - b) for a, b in zip(before, after)) > tol
+
+
+def _remaining_anchor(texts: list[Text] | None) -> int | None:
+    if not texts:
+        return None
+    hits = [t.center[1] for t in texts if "remaining treasure" in t.norm]
+    return min(hits) if hits else None
+
+
+def read_miner_grid(img: np.ndarray, texts: list[Text] | None = None):
+    """7x7 cell classes and centers, from the tile squares in the panel.
+
+    The search stays below the miner and the speech bubble. Those used to win the
+    contour cluster, so a dig was tapped at y≈530 (the bubble) and the pickaxe was
+    counted anyway. None when a regular 7 by 7 is not in the panel; the caller then
+    uses the measured fallback grid and keeps digging.
     """
     if img is None or img.size == 0 or img.ndim != 3:
         return None
     h, w = img.shape[:2]
-    y0, y1 = int(h * 0.16), int(h * 0.78)
-    x0, x1 = int(w * 0.05), int(w * 0.95)
-    roi = img[y0:y1, x0:x1]
+    anchor = _remaining_anchor(texts)
+    if anchor is not None:
+        top = max(0, int(anchor - 0.46 * h))
+        bot = min(h, int(anchor - 0.012 * h))
+    else:
+        # Panel on a 1440x2560 frame is about y 1000-2050. The character is above that.
+        top, bot = int(h * 0.40), int(h * 0.84)
+    left, right = int(w * 0.08), int(w * 0.94)
+    if bot - top < 40 or right - left < 40:
+        return None
+    roi = img[top:bot, left:right]
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(cv2.GaussianBlur(gray, (5, 5), 0), 40, 120)
-    contours, _hier = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    area = roi.shape[0] * roi.shape[1]
+    contours, _hier = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    side = 0.085 * w
+    lo, hi = (0.45 * side) ** 2, (1.35 * side) ** 2
     boxes = []
     for cnt in contours:
         x, y, bw, bh = cv2.boundingRect(cnt)
         if bw < 8 or bh < 8:
             continue
-        if not 0.72 <= bw / bh <= 1.38:
+        if not 0.75 <= bw / max(bh, 1) <= 1.35:
             continue
-        if not area / 140 <= bw * bh <= area / 20:
+        if not lo <= bw * bh <= hi:
             continue
         boxes.append((x + bw / 2, y + bh / 2, bw, bh))
     if len(boxes) < MINER_SIZE * 4:
@@ -1365,27 +1691,76 @@ def read_miner_grid(img: np.ndarray):
     ys = _cluster([b[1] for b in boxes], MINER_SIZE)
     if xs is None or ys is None:
         return None
-    board = [[UNK for _ in range(MINER_SIZE)] for _ in range(MINER_SIZE)]
-    centers = [[None for _ in range(MINER_SIZE)] for _ in range(MINER_SIZE)]
-    for cx, cy, _bw, _bh in boxes:
-        col = min(range(MINER_SIZE), key=lambda i: abs(xs[i] - cx))
-        row = min(range(MINER_SIZE), key=lambda i: abs(ys[i] - cy))
-        px, py = int(x0 + cx), int(y0 + cy)
-        px = min(w - 1, max(0, px))
-        py = min(h - 1, max(0, py))
-        b, g, r = (float(v) for v in img[py, px])
-        board[row][col] = _classify_cell(b, g, r)
-        centers[row][col] = (px, py)
+    if (ys[-1] - ys[0]) < 0.20 * h:
+        return None  # a flat cluster is the speech bubble, not the grid
+    centers = []
+    samples = []
     for row in range(MINER_SIZE):
+        crow = []
         for col in range(MINER_SIZE):
-            if centers[row][col] is not None:
-                continue
-            px = min(w - 1, max(0, int(x0 + xs[col])))
-            py = min(h - 1, max(0, int(y0 + ys[row])))
-            b, g, r = (float(v) for v in img[py, px])
-            board[row][col] = _classify_cell(b, g, r)
-            centers[row][col] = (px, py)
+            px = min(w - 1, max(0, int(left + xs[col])))
+            py = min(h - 1, max(0, int(top + ys[row])))
+            crow.append((px, py))
+            samples.append(_patch_mean(img, (px, py)))
+        centers.append(crow)
+    median = tuple(float(v) for v in np.median(np.array(samples), axis=0))
+    board = []
+    for row in range(MINER_SIZE):
+        board.append([_classify_against_median(samples[row * MINER_SIZE + col], median)
+                      for col in range(MINER_SIZE)])
     return board, centers
+
+
+def count_pickaxes(img: np.ndarray, centers) -> int | None:
+    """How many pickaxe icons sit in the row just above the grid. None when the row is unreadable.
+
+    A head is a light, low-saturation blob. The handle beside it is thinner and is not counted.
+    """
+    if img is None or not centers or img.ndim != 3:
+        return None
+    h, w = img.shape[:2]
+    first_y = centers[0][0][1]
+    y = int(first_y - 0.065 * h)
+    if y < 12 or y >= h - 12:
+        return None
+    x0 = max(0, centers[0][0][0] - int(0.04 * w))
+    x1 = min(w, centers[0][-1][0] + int(0.04 * w))
+    y0, y1 = max(0, y - 14), min(h, y + 14)
+    if x1 - x0 < 20:
+        return None
+    roi = img[y0:y1, x0:x1]
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    mask = ((hsv[:, :, 1] < 90) & (hsv[:, :, 2] > 85) & (hsv[:, :, 2] < 220)).astype(np.uint8)
+    _n, _labels, stats, _cent = cv2.connectedComponentsWithStats(mask, 8)
+    heads = 0
+    min_w, max_w = 0.02 * w, 0.07 * w
+    min_area = 0.00015 * w * h
+    for i in range(1, len(stats)):
+        _x, _y, bw, bh, area = stats[i]
+        if min_w <= bw <= max_w and bh >= 0.005 * h and area >= min_area:
+            heads += 1
+    if 1 <= heads <= MINER_PICKAXES:
+        return heads
+    if heads == 0 and float(roi.mean()) < 110:
+        return 0
+    return None
+
+
+def next_unopened(board, skips: set[tuple[int, int]] | None = None) -> tuple[int, int] | None:
+    """Next tile to dig. Cells that just failed to change are skipped, not given up on.
+
+    When every unopened cell was a miss, the hunt starts over. Leaving the screen is
+    not an option until Leave is actually drawn.
+    """
+    skips = skips or set()
+    masked = [row[:] for row in board]
+    for r, c in skips:
+        if 0 <= r < len(masked) and 0 <= c < len(masked[0]) and masked[r][c] == UNK:
+            masked[r][c] = DUG
+    nxt = next_miner_tap(masked, 1)
+    if nxt is None:
+        return next_miner_tap(board, 1)
+    return nxt
 
 
 def _cluster(values: list[float], k: int) -> list[float] | None:
