@@ -45,7 +45,7 @@ def test_info_section_lists_requirements(app):
 def test_language_switch_translates_every_widget(app):
     app.set_language("es")
     assert app.info.cget("text") == TEXTS["es"]["info"]
-    assert app.start.cget("text") == "Iniciar"
+    assert app.start.cget("text") == "▶  Iniciar"
     assert app.root.title() == TEXTS["es"]["title"]
     for widget, key in app._texts:
         assert widget.cget("text") == TEXTS["es"][key]
@@ -68,9 +68,11 @@ def test_level_entry_enabled_only_for_star_challenge(app):
 def test_invalid_level_shows_error_status(app):
     app.source.set("stars")
     app.level.set("abc")
+    assert str(app.start.cget("state")) == "disabled"  # Start stays off until the level is a number
     app._start()
     assert app.status.cget("text") == TEXTS["en"]["bad_level"]
-    assert str(app.start.cget("state")) != "disabled"
+    app.level.set("4")
+    assert str(app.start.cget("state")) == "normal"
 
 
 def test_only_keep_running_and_full_routine_options(app):
@@ -110,13 +112,13 @@ def test_pause_holds_the_run_and_resume_continues_it(app, monkeypatch):
         app.pause_button.invoke()
         assert app._paused and paused == [False, True]
         assert app.status.cget("text") == TEXTS["en"]["paused"]
-        assert app.pause_button.cget("text") == "Resume"
+        assert app.pause_button.cget("text") == "▶  Resume"
         app.set_language("es")
-        assert app.pause_button.cget("text") == "Reanudar"
+        assert app.pause_button.cget("text") == "▶  Reanudar"
         app.set_language("en")
         app.pause_button.invoke()
         assert paused == [False, True, False]
-        assert app.pause_button.cget("text") == "Pause"
+        assert app.pause_button.cget("text") == "❚❚  Pause"
         assert app.status.cget("text") == TEXTS["en"]["running"]
         return Report([LevelScreen.VICTORY])
 
@@ -126,7 +128,7 @@ def test_pause_holds_the_run_and_resume_continues_it(app, monkeypatch):
     app.root.update()
     assert not app._paused
     assert str(app.pause_button.cget("state")) == "disabled"
-    assert app.pause_button.cget("text") == "Pause"
+    assert app.pause_button.cget("text") == "❚❚  Pause"
 
 
 def test_stop_button(app, monkeypatch):
@@ -355,6 +357,24 @@ def test_invalid_saved_options_keep_the_defaults(app):
     before = app.options()
     app._restore_options({"mode": "hard", "source": 3, "level": "-1", "full": "yes", "damage_order": ["fire"]})
     assert app.options() == before
+
+
+def test_tabs_status_bar_and_colored_log(app):
+    labels = [app.notebook.tab(tab, "text") for tab in app.notebook.tabs()]
+    assert labels == ["Run", "Routines", "Build", "Settings"]
+    assert app.help_button.cget("text") == "?"
+    assert str(app.start.cget("state")) == "normal"
+    assert str(app.pause_button.cget("state")) == "disabled"
+    app._append("20:14:29 W2 haunting: choice ignore")
+    app._append("20:22:14 Level finished: victory (run 1)")
+    app._append("20:30:01 Error: boom")
+    assert "w2" in app.log_view.tag_names("1.0")
+    assert "win" in app.log_view.tag_names("2.0")
+    assert "error" in app.log_view.tag_names("3.0")
+    assert app.levels_value.cget("text") == "1" and app.wins_value.cget("text") == "1"
+    assert app.task_value.cget("text").startswith("Error:")
+    app._copy_log()
+    assert app.task_value.cget("text") == "Log copied"
 
 
 def test_log_view_keeps_only_the_last_lines(app, monkeypatch):

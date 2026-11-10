@@ -305,10 +305,12 @@ class Routine:
     def _claim_web_daily(self) -> None:
         """Claim Now opens the shop, Collect takes the day, then the free wheel is spun.
 
-        "Claim Now" only navigates. The day is the green Collect under the Daily Rewards cards,
-        which is below the fold. The wheel is further down; its FREE SPIN is found by text after
-        the page stops moving, not by a fixed coordinate. Already collected, or no free spin, is
-        skipped. This always returns; the caller leaves the browser either way.
+        "Claim Now" only navigates. The shop opens on the Daily Rewards cards, so Collect is
+        looked up before any scroll. A scroll, if one is still needed, is a short step, and an
+        overshoot (the heading leaves the screen) scrolls back up. The wheel is further down;
+        its FREE SPIN is found by text after the page stops moving, not by a fixed coordinate.
+        Already collected, or no free spin, is skipped. This always returns; the caller leaves
+        the browser either way.
         """
         log.info("Daily rewards: waiting for the browser")
         ready = self._wait_for(lambda img, texts: web_page_ready(texts), "daily reward web page",
@@ -354,7 +356,7 @@ class Routine:
 
     def _collect_day(self) -> None:
         log.info("Daily rewards: looking for Collect")
-        button = self._scroll_for(web_daily_claim, "Collect")
+        button = self._find_collect()
         if button is None:
             log.info("Daily rewards: no Collect button; already collected or not offered")
             return
@@ -394,6 +396,61 @@ class Routine:
             self._debug_shot(shot, "daily_wheel")
             return
         self._dismiss_web_popup(web_you_won, "you won")
+
+    def _page_signature(self, texts: list[Text]) -> tuple:
+        return tuple((t.norm, t.center[0] // 40, t.center[1] // 40) for t in texts)
+
+    def _daily_heading(self, texts: list[Text]) -> Text | None:
+        return find(texts, L.DAILY_TITLE)
+
+    def _find_collect(self):
+        """Collect, without scrolling past the Daily Rewards section.
+
+        The page after Claim Now already sits on that section. Wait until the text is there
+        or the page stops moving. Only then take small steps down, and step back up if the
+        heading scrolls off.
+        """
+        previous = None
+        deadline = time.monotonic() + config.WEB_COLLECT_PATIENCE
+        while True:
+            _, texts = self._capture()
+            hit = web_daily_claim(texts)
+            if hit:
+                return hit
+            signature = self._page_signature(texts)
+            if previous is not None and signature == previous:
+                break
+            previous = signature
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(config.POLL_INTERVAL)
+        saw_heading = False
+        previous = None
+        ups = 0
+        for _step in range(config.WEB_COLLECT_SCROLLS):
+            _, texts = self._capture()
+            hit = web_daily_claim(texts)
+            if hit:
+                return hit
+            heading = self._daily_heading(texts)
+            signature = self._page_signature(texts)
+            if heading:
+                saw_heading = True
+            elif saw_heading and ups < 3:
+                log.info("Daily rewards: scrolled past Daily Rewards; scrolling up")
+                self.device.swipe(*config.WEB_SCROLL_UP_SMALL, duration=config.SCROLL_DURATION)
+                ups += 1
+                previous = None
+                saw_heading = False
+                continue
+            if previous is not None and signature == previous:
+                log.info("Daily rewards: page settled while looking for Collect")
+                return None
+            previous = signature
+            log.info("Daily rewards: scrolling for Collect")
+            self.device.swipe(*config.WEB_SCROLL_DOWN_SMALL, duration=config.SCROLL_DURATION)
+        log.info("Daily rewards: Collect not on the page")
+        return None
 
     def _scroll_for(self, pred: Callable[[list[Text]], object], what: str):
         """Swipe down the shop until `pred` matches, or the page stops changing.

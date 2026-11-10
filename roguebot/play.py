@@ -89,6 +89,8 @@ class Player:
         self._speed_steps = 0
         self._event_bailed = False
         self._event_stuck_tap = None
+        self._event_alts: list[tuple[int, int]] = []
+        self._rolls = world2.RollTracker()
         self._board = world2.board_from_title(level_title)
         self._clearing_since: float | None = None  # after an event choice, tap through until the map
         self._miner = None  # 7x7 board, kept for the whole level (later visits refill pickaxes)
@@ -116,11 +118,14 @@ class Player:
         self._speed_steps = 0
         self._event_bailed = False
         self._event_stuck_tap = None
+        self._event_alts = []
+        self._rolls.reset()
         while True:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
+            self._rolls.observe(texts)
             state = classify_level_screen(img, texts, self._core_build(), self._board, None,
-                                           self._min_skill_price)
+                                           self._min_skill_price, rolls=self._rolls.cached())
             if world2.vendor_needs_shot(world2.LAST):
                 self._save_unknown(img, texts, "cursed_vendor")
             state = self._world2(img, texts, state)
@@ -220,19 +225,24 @@ class Player:
                 stuck = getattr(self, "_event_stuck_tap", None)
                 if (self._event_bailed and state.kind is LevelScreen.EVENT and stuck is not None
                         and _same_tap((state.kind, state.tap), (state.kind, stuck))):
-                    log.info("W2 event still on the tap that did nothing; waiting")
-                    last_tap, repeats = None, 0
-                    time.sleep(config.POLL_INTERVAL)
-                    continue
+                    point = self._event_alts.pop(0) if self._event_alts else None
+                    if point is None:
+                        log.info("W2 event still on the tap that did nothing; waiting")
+                        last_tap, repeats = None, 0
+                        time.sleep(config.POLL_INTERVAL)
+                        continue
+                    log.info("W2 event still on the tap that did nothing; trying %s", point)
+                    state = LevelState(LevelScreen.EVENT, point)
+                    repeats, first_repeat = 1, time.monotonic()
+                    last_tap = (state.kind, state.tap)
                 if state.kind is LevelScreen.EVENT and repeats >= 3 and not self._event_bailed:
                     self._event_bailed = True
                     self._event_stuck_tap = state.tap
+                    self._event_alts = world2.recovery_taps(texts, state.tap)
                     self._save_unknown(img, texts, "event stuck")
-                    leave = world2.safe_leave_label(texts)
-                    point = world2.choice_tap(leave, texts) if leave else None
-                    same = point is not None and _same_tap((state.kind, point), (state.kind, state.tap))
-                    if point and not world2.tap_forbidden(point) and not same:
-                        log.info("W2 event had no effect; taking %s", leave.text)
+                    if self._event_alts:
+                        point = self._event_alts.pop(0)
+                        log.info("W2 event had no effect; trying %s", point)
                         state = LevelState(LevelScreen.EVENT, point)
                         repeats, first_repeat = 1, time.monotonic()
                         last_tap = (state.kind, state.tap)
@@ -249,9 +259,12 @@ class Player:
                     log.info("board_ready -> hold %s for auto-play", state.tap)
                     self.device.hold(*state.tap, config.AUTO_PLAY_HOLD)
                     self._auto_held = True
+                    self._rolls.note_roll()
                 else:
                     log.info("%s -> tap %s", state.kind.value, state.tap)
                     self.device.tap(*state.tap)
+                    if state.kind is LevelScreen.BOARD_READY:
+                        self._rolls.note_roll()
             else:
                 last_tap, repeats = None, 0  # screen changed on its own: the last tap worked
                 time.sleep(config.POLL_INTERVAL)
@@ -550,6 +563,16 @@ class Player:
             self._open_chest = False
             self._event_bailed = False
             self._event_stuck_tap = None
+            self._event_alts = []
+        if world2.is_shop_screen(texts):
+            # The greeting and the item lines look like an event title. Buying happens in _shop;
+            # do not hand this frame to the unknown-event catcher (it taps Exit).
+            if state.kind is LevelScreen.SHOP:
+                return state
+            leave = find(texts, labels.LEAVE, exact=True)
+            return LevelState(LevelScreen.SHOP, leave.center if leave else state.tap)
+        if world2.transient_kind(texts):
+            return state
         if world2.match_event(texts) == "goblin" and world2.LAST and world2.LAST.choice == "raid":
             self._open_chest = True
         # Fights, skill picks and path forks are not unknown events. Path choice already

@@ -564,7 +564,8 @@ def test_daily_rewards_claims_scrolls_for_the_free_spin_and_goes_back(monkeypatc
     monkeypatch.setattr(routine.config, "WHEEL_SPIN_TIMEOUT", 0)
     monkeypatch.setattr(routine.config, "WEB_CONTENT_TIMEOUT", 0)
     r = make(itertools.chain(
-        [ES_LOBBY, ES_MENU, DAILY_POPUP, WEB_PAGE, WEB_CLAIMED, WEB_CLAIMED, WEB_CLAIMED, WEB_WHEEL],
+        [ES_LOBBY, ES_MENU, DAILY_POPUP, WEB_PAGE, WEB_CLAIMED, WEB_CLAIMED, WEB_CLAIMED, WEB_CLAIMED,
+         WEB_CLAIMED, WEB_WHEEL],
         itertools.repeat(ES_LOBBY)))
     assert r.daily() == routine.DONE
     assert r.device.taps[:4] == [routine.config.MENU_BUTTON, (397, 1084), (696, 1178), (989, 1415)]
@@ -652,6 +653,27 @@ def test_daily_rewards_skips_a_missing_collect_and_a_missing_spin(monkeypatch):
     assert (720, 1178) in r.device.taps  # the lobby still opens the page
     assert all(y < 1600 or y > 2100 for _, y in r.device.taps)  # no Collect, no SPIN
     assert r.device.backs >= 1  # the shop never leaves, so Back is used to get out
+
+
+def test_collect_is_tapped_without_scrolling_when_it_is_already_visible():
+    page = [Text("roguelegend.io", 220, 130, 390, 170), Text("Daily Rewards", 400, 700, 900, 760),
+            Text("Collect", 560, 1480, 880, 1560)]
+    r = make([page])
+    button = r._find_collect()
+    assert button is not None and button.center == (720, 1520)
+    assert getattr(r.device, "swipes", []) == []
+
+
+def test_collect_scrolls_back_up_after_passing_daily_rewards():
+    store = [Text("roguelegend.io", 220, 130, 390, 170)]
+    heading = store + [Text("Daily Rewards", 400, 200, 900, 260), Text("Day 3", 200, 400, 400, 460)]
+    past = store + [Text("Daily Wheel", 400, 500, 900, 560), Text("Points Store", 400, 900, 800, 960)]
+    back = store + [Text("Daily Rewards", 400, 700, 900, 760), Text("Collect", 560, 1480, 880, 1560)]
+    r = make([heading, heading, heading, past, back])
+    button = r._find_collect()
+    assert button is not None and button.center == (720, 1520)
+    assert r.device.swipes[0] == routine.config.WEB_SCROLL_DOWN_SMALL
+    assert routine.config.WEB_SCROLL_UP_SMALL in r.device.swipes
 
 
 def test_daily_rewards_without_a_claim_button_is_closed(monkeypatch):

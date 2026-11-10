@@ -7,7 +7,7 @@ safe option. Campfire, Wise Monk and World 1 events stay in screens.py / play.py
 
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import cv2
 import numpy as np
@@ -107,6 +107,62 @@ class Hud:
         if self.rolls_used is None or self.rolls_total is None:
             return None
         return max(0, self.rolls_total - self.rolls_used)
+
+
+class RollTracker:
+    """Last N/30 read on the map, and a dice roll that the map has not confirmed yet.
+
+    Event screens hide the counter, so a rule that needs the roll count would otherwise
+    see "unreadable". `observe` stores the counter whenever it is on screen. `note_roll`
+    bumps that count when this bot rolls the dice, until a later map frame confirms it.
+    `reset` at the start of each level: the counter is per level, not per session.
+    """
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self.used: int | None = None
+        self.total: int | None = None
+        self.pending = False
+        self._stale = 0
+
+    def observe(self, texts: list[Text]) -> bool:
+        """True when this frame showed N/30. A lower number right after a roll is the old frame."""
+        seen = _rolls(texts)
+        if not seen:
+            return False
+        used, total = seen
+        if self.pending and self.used is not None and used < self.used:
+            self._stale += 1
+            if self._stale < 3:
+                return True
+        self._stale = 0
+        self.used, self.total = used, total
+        self.pending = False
+        return True
+
+    def note_roll(self) -> None:
+        """The dice was just rolled. The map still paints the previous N for a frame or two."""
+        if self.used is None or self.pending:
+            return
+        self.used += 1
+        if self.total is not None:
+            self.used = min(self.used, self.total)
+        self.pending = True
+        self._stale = 0
+
+    def cached(self) -> tuple[int, int] | None:
+        if self.used is None:
+            return None
+        return self.used, self.total if self.total is not None else 30
+
+
+def with_cached_rolls(hud: Hud, rolls: tuple[int, int] | None) -> Hud:
+    """Fill a HUD whose counter is hidden from the last known N/30. A visible counter wins."""
+    if hud.rolls_used is not None or not rolls:
+        return hud
+    return replace(hud, rolls_used=rolls[0], rolls_total=rolls[1])
 
 
 @dataclass(frozen=True)
@@ -684,17 +740,91 @@ def _column_blob(label: Text, texts: list[Text]) -> str:
     return " ".join(parts)
 
 
-def choice_tap(label: Text, texts: list[Text]) -> tuple[int, int]:
-    """Where to tap. The icon sits between the choice name and the description under it.
+def _near(a: tuple[int, int], b: tuple[int, int], tol: int = 25) -> bool:
+    return abs(a[0] - b[0]) <= tol and abs(a[1] - b[1]) <= tol
 
-    A button whose text is the button (Take, Path A, Leave) has nothing below it: tap the text.
+
+def _in_title_band(label: Text) -> bool:
+    """Option titles sit above the icon. Lower text is the button itself (Path A, Take, Sign)."""
+    y = label.center[1]
+    lo, hi = config.EVENT_LABEL_Y
+    return lo - 40 <= y <= hi + 40
+
+
+def _title_anchor(label: Text, texts: list[Text]) -> Text:
+    """Bottom line of a wrapped title ("Embrace" / "Darkness"). The icon hangs under that line."""
+    anchor = label
+    for t in texts:
+        if t is label:
+            continue
+        if abs(t.center[0] - label.center[0]) > config.EVENT_COLUMN_X:
+            continue
+        dy = t.center[1] - anchor.center[1]
+        if 0 < dy <= 90 and t.center[1] <= config.EVENT_LABEL_Y[1] + 30:
+            anchor = t
+    return anchor
+
+
+def _caption_below(anchor: Text, texts: list[Text]) -> Text | None:
+    """The line under the icon ("Walk Away", "Learn a Common Skill"), not the wrapped title."""
+    floor = config.EVENT_LABEL_Y[1] + 40
+    hits = [t for t in texts if t is not anchor and t.center[1] >= floor
+            and 40 < t.center[1] - anchor.center[1] < 800
+            and abs(t.center[0] - anchor.center[0]) <= config.EVENT_COLUMN_X]
+    if not hits:
+        return None
+    return min(hits, key=lambda t: t.center[1])
+
+
+def tap_candidates(label: Text, texts: list[Text]) -> list[tuple[int, int]]:
+    """Places a choice can be tapped, best first.
+
+    A two-option event draws the name, then the icon button, then a caption. Tapping the
+    name does nothing. The button center is first and the caption is the backup. A control
+    whose own words are the button (Path A, Take, Sign) is tapped on that text.
     """
-    below = [t for t in texts if 40 < t.center[1] - label.center[1] < 460
-             and abs(t.center[0] - label.center[0]) <= config.EVENT_COLUMN_X and t is not label]
-    if not below:
-        return label.center
-    nxt = min(below, key=lambda t: t.center[1])
-    return label.center[0], (label.center[1] + nxt.center[1]) // 2
+    anchor = _title_anchor(label, texts)
+    points: list[tuple[int, int]] = []
+    if _in_title_band(label):
+        points.append((anchor.center[0], anchor.center[1] + config.EVENT_ICON_BELOW_LABEL))
+        caption = _caption_below(anchor, texts)
+        if caption is not None:
+            points.append(caption.center)
+    else:
+        below = [t for t in texts if 40 < t.center[1] - label.center[1] < 460
+                 and abs(t.center[0] - label.center[0]) <= config.EVENT_COLUMN_X and t is not label]
+        if below:
+            nxt = min(below, key=lambda t: t.center[1])
+            points.append((label.center[0], (label.center[1] + nxt.center[1]) // 2))
+        points.append(label.center)
+    out = []
+    for p in points:
+        if any(_near(p, q) for q in out) or tap_forbidden(p):
+            continue
+        out.append(p)
+    return out
+
+
+def choice_tap(label: Text, texts: list[Text]) -> tuple[int, int]:
+    """The point that should be tapped for this choice. Never the title text of a two-option event."""
+    found = tap_candidates(label, texts)
+    return found[0] if found else label.center
+
+
+def recovery_taps(texts: list[Text], failed: tuple[int, int]) -> list[tuple[int, int]]:
+    """Other points in the same column after `failed` did nothing: the button, then its caption.
+
+    The other option is not included. Switching choices is not a retry.
+    """
+    labels = [t for t in choice_labels(texts)
+              if abs(t.center[0] - failed[0]) <= config.EVENT_COLUMN_X + 40]
+    points: list[tuple[int, int]] = []
+    for label in labels:
+        for p in tap_candidates(label, texts):
+            if _near(p, failed) or any(_near(p, q) for q in points) or tap_forbidden(p):
+                continue
+            points.append(p)
+    return points
 
 
 def _option_enabled(img: np.ndarray | None, label: Text) -> bool:
@@ -796,15 +926,17 @@ def _decide(event: str, texts: list[Text], buttons: dict[str, Text], hud: Hud, b
 
 
 def level_tap(img, texts: list[Text], build: Build | None = None, board: str | None = None,
-              skills: list[KnownSkill] | None = None, min_skill_price: int | None = None) -> tuple[int, int] | None:
+              skills: list[KnownSkill] | None = None, min_skill_price: int | None = None,
+              rolls: tuple[int, int] | None = None) -> tuple[int, int] | None:
     """Tap for a World 2 path fork or a known World 2 event. None if this frame is neither.
 
     Sets LAST to the decision (including a path that could not be read). Campfire and
-    World 1 events return None so the existing handler keeps them.
+    World 1 events return None so the existing handler keeps them. `rolls` is the last
+    N/30 from the map when this frame hides the counter.
     """
     global LAST
     build = build or Build()
-    hud = read_hud(texts)
+    hud = with_cached_rolls(read_hud(texts), rolls)
     price = config.SHOP_SKILL_FLOOR if min_skill_price is None else min_skill_price
     cards = path_cards(texts)
     if len(cards) >= 2:
@@ -875,9 +1007,53 @@ def ordinary_level_screen(texts: list[Text]) -> bool:
     return is_battle(texts) or is_skill_offer(texts) or is_path_fork(texts)
 
 
+def shop_header(texts: list[Text]) -> Text | None:
+    """The wooden SHOP sign. A path card's "SHOP" icon is much lower and is not this."""
+    mid = config.SCREEN_SIZE[0] // 2
+    hits = [t for t in texts if t.norm.strip("!¡ ") in ("shop", "tienda")
+            and t.center[1] < 520 and abs(t.center[0] - mid) < 320]
+    return hits[0] if hits else None
+
+
+def is_shop_screen(texts: list[Text]) -> bool:
+    """World 2 shop: the SHOP header and/or the Reroll + Exit buttons.
+
+    The greeting changes ("The hero befor…", "I have exactly what…") and an item line
+    ("When HP <40%, ATK") can sit where an event title would. Neither of those is the shop.
+    The black market is not this: its prices may be gems, and it is left without buying.
+    """
+    if find(texts, L.BLACK_MARKET):
+        return False
+    leave = find(texts, L.LEAVE, exact=True)
+    reroll = find(texts, L.SHOP_REROLL)
+    header = shop_header(texts)
+    if leave and reroll:
+        return True
+    return bool(header and (leave or reroll))
+
+
+_STAT_TOAST = re.compile(r"^max hp\s*[+\-]\s*\d+\s*%$")
+
+
+def transient_kind(texts: list[Text]) -> str | None:
+    """A map toast, elite banner, or chest popup. Not an event and not worth saving.
+
+    "chest" is tapped through ("Tap anywhere to open"). "toast" and "banner" just wait.
+    """
+    for t in texts:
+        n = t.norm.strip("!¡. ")
+        if _STAT_TOAST.match(n):
+            return "toast"
+        if "you found a chest" in n or "encontraste un cofre" in n:
+            return "chest"
+        if n in ("elite enemy", "incoming"):
+            return "banner"
+    return None
+
+
 def looks_like_event(texts: list[Text]) -> bool:
     """A title-like line plus two choices in the bottom half. Not a fight, skill pick, path, shop or the board."""
-    if ordinary_level_screen(texts):
+    if ordinary_level_screen(texts) or is_shop_screen(texts) or transient_kind(texts):
         return False
     labels = choice_labels(texts)
     if len(labels) < 2:

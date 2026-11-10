@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.2 (2026-11-10)
+- World 2 two-option events tap the icon button under the option name, or the caption under that button. Haunting Spirits (Ignore), Two Fight the Third Benefits (Observe), and Another Deal with the Devil (Leave) were tapping the title text, which does nothing. If that tap still does nothing, the bot tries the button center and then the caption before it waits. Another Deal with the Devil uses the same devil rule as Deal with the Devil.
+- World 2 shops are recognized by the SHOP sign and the Reroll and Exit buttons. The shopkeeper's greeting and an item description are not the title. The visit buys with the normal shop rules (skill priority, free reroll, then paid refreshes that still leave a buy). Tokens are the currency. Gems and gold are not spent.
+- The roll counter is read from the map whenever it shows N/30 and kept for event screens, which hide it. A dice roll the bot just made counts too, until the map shows the new number. It resets each level.
+- Daily Rewards looks for the green Collect before scrolling. Claim Now already opens that section. A scroll is a short step, and if the heading scrolls off the bot scrolls back up.
+- Map toasts ("Max HP -4%", "Max HP +10%"), the Elite Enemy / Incoming banner, and "You found a Chest!" are not saved as unknown events. The chest is still tapped through.
+- The window is a dark layout with the game's purple and gold: Run, Routines, Build, and Settings tabs, a status line (state, task, timer, levels, wins, losses), larger Start / Pause / Stop buttons, and a color-coded log. The requirements text is behind ?. The same options are saved.
+
 ## 2.0.1 (2026-11-10)
 - Daily rewards collects the day and spins the free wheel. Claim Now only opens the shop. The bot scrolls to the green Collect under the day card, confirms Collected, then keeps scrolling until the page stops and taps FREE SPIN by the words on the button. SPIN waits for You won. Already collected, or no free spin, is skipped. The browser is closed with its ✕, then Android Back, and the game has to be on screen again. A failed step saves `debug/daily_*.png`. Nothing with a price is tapped.
 - Unknown events no longer fire on a fight (`Round N/30`), a skill pick (`POWER UP!` / `LEVEL UP!` and `Select a Skill to learn!`), or a Path A/B fork. Those go through the normal fight wait, the skill picker, and the path rules. A fallback tap is only a recognized leave / walk-away label, never the VIP speed button, and if there is no such label the bot waits.

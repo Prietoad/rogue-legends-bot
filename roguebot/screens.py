@@ -13,7 +13,7 @@ from roguebot import config, labels as L
 from roguebot.mode_screens import guild_screen
 from roguebot.skills import RARITY_NAMES
 from roguebot.vision import Ocr, Text, find, match_template, matches, parse_level_number
-from roguebot.world2 import level_tap
+from roguebot.world2 import is_shop_screen, level_tap
 
 log = logging.getLogger(__name__)
 
@@ -564,7 +564,8 @@ def monk_spin_button(texts: list[Text]) -> Text | None:
 
 
 def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board: str | None = None,
-                          skills=None, min_skill_price: int | None = None) -> LevelState:
+                          skills=None, min_skill_price: int | None = None,
+                          rolls: tuple[int, int] | None = None) -> LevelState:
     if guild_screen(texts):  # guild map / personal vault: labels look like an event, they are not a level
         return LevelState(LevelScreen.UNKNOWN)
     if footer_visible(img):  # a main screen (lobby...), never a level: its texts can look like an event
@@ -622,10 +623,13 @@ def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board:
     leave = find(texts, L.LEAVE, exact=True)
     if leave and find(texts, L.BLACK_MARKET):  # never seen: its prices may be gems, so just leave
         return LevelState(LevelScreen.LEAVE, leave.center)
-    if leave and find(texts, L.SHOP_REROLL):  # shop: "Salir" is the button itself
-        return LevelState(LevelScreen.SHOP, leave.center)
+    if is_shop_screen(texts):  # SHOP header and/or Reroll + Exit. The greeting is not the title.
+        reroll = find(texts, L.SHOP_REROLL)
+        shop_tap = leave.center if leave else (reroll.center if reroll else None)
+        return LevelState(LevelScreen.SHOP, shop_tap)
     # World 2 path forks and events. None on World 1 screens, so campfire and "leave" stay as they were.
-    w2 = level_tap(img, texts, build=build, board=board, skills=skills, min_skill_price=min_skill_price)
+    w2 = level_tap(img, texts, build=build, board=board, skills=skills, min_skill_price=min_skill_price,
+                   rolls=rolls)
     if w2:
         return LevelState(LevelScreen.EVENT, w2)
     event_option = _event_option(img, texts)

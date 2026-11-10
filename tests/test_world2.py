@@ -345,3 +345,158 @@ def test_battles_skill_picks_and_path_forks_are_not_unknown_events():
     assert picked.tap is not None and picked.tap[0] > 400
     forked = classify_level_screen(img, fork)
     assert forked.kind is LevelScreen.EVENT and forked.tap == (1000, 2240)
+
+
+def test_two_option_events_tap_the_button_under_the_title():
+    """The name sits at y≈1790 and does nothing. The icon button is ~240 px lower."""
+    from roguebot.screens import LevelScreen, classify_level_screen
+    from roguebot.world2 import choice_tap, match_event, recovery_taps
+    img = np.zeros((2560, 1440, 3), np.uint8)
+    observe = Text("Observe", 430, 1763, 590, 1823)  # center (510, 1793), the live miss
+    steal = Text("Steal", 840, 1764, 1010, 1824)
+    texts = [Text("Two Fight, the Third Benefits", 360, 1480, 1080, 1560),
+             Text("You witness a Goblin and a Skeleton fighting over a magical scroll.", 200, 1620, 1240, 1680),
+             observe, steal,
+             Text("Learn a Common Skill", 300, 2200, 720, 2280),
+             Text("Learn a Legendary Skill", 780, 2140, 1120, 2200),
+             Text("Lose -25% Max HP", 800, 2220, 1100, 2280)]
+    assert match_event(texts) == "two_fight"
+    state = classify_level_screen(img, texts)
+    assert state.kind is LevelScreen.EVENT
+    assert abs(state.tap[0] - 510) < 30
+    assert state.tap[1] > 1950 and abs(state.tap[1] - 1793) > 80
+    assert choice_tap(observe, texts)[1] == observe.center[1] + 238
+    # The title tap did nothing: the next tries are the button, then the caption.
+    alts = recovery_taps(texts, observe.center)
+    assert alts and alts[0][1] > 1950
+    assert any(abs(p[1] - 2240) < 40 for p in alts)
+
+
+def test_another_deal_with_the_devil_leaves_on_the_button():
+    from roguebot.screens import LevelScreen, classify_level_screen
+    from roguebot.world2 import match_event
+    img = np.zeros((2560, 1440, 3), np.uint8)
+    leave = Text("Leave", 840, 1764, 1006, 1824)  # (923, 1794) was the live miss
+    texts = [Text("Another Deal with the Devil", 340, 1460, 1100, 1540),
+             Text('The mischievous dark imp appears before you once more: "Sign again, again!"',
+                  160, 1600, 1280, 1680),
+             Text("Sign", 400, 1760, 620, 1828), leave,
+             Text("Learn 1 Legendary Skill", 280, 2140, 740, 2200),
+             Text("Forget 2 Common Skills", 280, 2220, 740, 2280),
+             Text("Walk Away", 800, 2220, 1050, 2300)]
+    assert match_event(texts) == "devil"
+    state = classify_level_screen(img, texts)  # skill list unreadable: leave
+    assert state.kind is LevelScreen.EVENT
+    assert abs(state.tap[0] - leave.center[0]) < 30
+    assert state.tap[1] > 1950
+
+
+def test_roll_tracker_remembers_the_map_and_a_dice_roll():
+    from roguebot.world2 import RollTracker, read_hud
+    rolls = RollTracker()
+    assert rolls.cached() is None
+    board = [Text("2/30", 40, 900, 90, 980), Text("18.5m/18.5m", 400, 40, 700, 80)]
+    assert rolls.observe(board)
+    assert rolls.cached() == (2, 30)
+    event = [Text("Haunting Spirits", 500, 1360, 940, 1440)]
+    assert not rolls.observe(event)
+    assert read_hud(event).rolls_used is None
+    assert rolls.cached() == (2, 30)  # the event hides the counter; the last map value stands
+    rolls.note_roll()
+    assert rolls.cached() == (3, 30)
+    assert rolls.observe([Text("2/30", 40, 900, 90, 980)])  # the pre-roll frame is ignored once
+    assert rolls.cached() == (3, 30)
+    assert rolls.observe([Text("4/30", 40, 900, 90, 980)])
+    assert rolls.cached() == (4, 30)
+    rolls.reset()
+    assert rolls.cached() is None
+
+
+def test_stat_toast_elite_banner_and_chest_are_not_unknown_events():
+    from roguebot.world2 import is_shop_screen, looks_like_event, transient_kind
+    toast = [Text("Max HP -4%", 520, 900, 920, 980), Text("Tap To Stop", 560, 2100, 880, 2160),
+             Text("Max HP +10%", 520, 980, 920, 1040)]
+    assert transient_kind(toast) == "toast" and not looks_like_event(toast)
+    minus = [Text("Max HP -10%", 500, 880, 940, 960)]
+    assert transient_kind(minus) == "toast"
+    banner = [Text("Elite Enemy", 520, 360, 920, 440), Text("Incoming", 560, 460, 880, 530)]
+    assert transient_kind(banner) == "banner" and not looks_like_event(banner)
+    chest = [Text("You found a Chest!", 480, 300, 960, 380), Text("Tap anywhere to open!", 480, 2080, 960, 2160)]
+    assert transient_kind(chest) == "chest" and not looks_like_event(chest)
+    assert not is_shop_screen(toast) and not is_shop_screen(chest)
+
+
+def test_haunting_shop_and_chest_screenshots(ocr):
+    from pathlib import Path
+    from conftest import fixture_image
+    from roguebot.screens import LevelScreen, classify_level_screen, parse_shop
+    from roguebot.world2 import is_shop_screen, looks_like_event, match_event, transient_kind
+    root = Path(__file__).parent / "fixtures"
+
+    haunt = fixture_image(root / "w2_haunting_spirits.png")
+    texts = ocr.read(haunt)
+    assert match_event(texts) == "haunting"
+    ignored = classify_level_screen(haunt, texts)  # no counter on this screen: ignore
+    assert ignored.kind is LevelScreen.EVENT
+    assert abs(ignored.tap[0] - 924) <= 40 and ignored.tap[1] > 1980
+    embraced = classify_level_screen(haunt, texts, rolls=(8, 30))
+    assert embraced.tap[0] < 700 and embraced.tap[1] > 1980
+    late = classify_level_screen(haunt, texts, rolls=(12, 30))
+    assert late.tap[0] > 800
+
+    for name, money, prices in (
+            ("w2_shop.png", 233, {48, 190, 95}),
+            ("w2_shop_enraged.png", 505, {48, 95})):
+        img = fixture_image(root / name)
+        shop_texts = ocr.read(img)
+        assert is_shop_screen(shop_texts) and not looks_like_event(shop_texts)
+        state = classify_level_screen(img, shop_texts)
+        assert state.kind is LevelScreen.SHOP and state.tap is not None and state.tap[1] > 2300
+        shop = parse_shop(shop_texts)
+        assert shop is not None and shop.money == money and shop.free_reroll is not None
+        assert {c.cost for c in shop.cards} == prices
+        assert shop.cards and all(c.name for c in shop.cards)
+
+    chest_img = fixture_image(root / "w2_chest.png")
+    chest_texts = ocr.read(chest_img)
+    assert transient_kind(chest_texts) == "chest" and not looks_like_event(chest_texts)
+    opened = classify_level_screen(chest_img, chest_texts)
+    assert opened.kind is LevelScreen.CONTINUE and opened.tap[1] > 2000
+
+
+def test_stuck_guard_tries_the_button_and_the_caption(monkeypatch):
+    import numpy as np
+    from roguebot import play
+    from roguebot.screens import LevelScreen, LevelState
+    clock = iter(range(0, 5000))
+    monkeypatch.setattr(play.time, "monotonic", lambda: next(clock) * 0.05)
+    monkeypatch.setattr(play.time, "sleep", lambda s: None)
+    title = (924, 1800)
+    states = iter([LevelState(LevelScreen.EVENT, title)] * 4 + [LevelState(LevelScreen.VICTORY, (720, 2200))])
+    monkeypatch.setattr(play, "classify_level_screen", lambda *args, **kwargs: next(states))
+    texts = [Text("Haunting Spirits", 500, 1360, 940, 1440),
+             Text("Ignore", 844, 1770, 1004, 1830),
+             Text("Walk Away", 800, 2230, 1050, 2310),
+             Text("Embrace", 400, 1740, 620, 1800),
+             Text("Darkness", 400, 1800, 620, 1840),
+             Text("Lose -40% Max HP", 360, 2200, 680, 2280)]
+
+    class Dev:
+        taps = []
+
+        def screenshot(self):
+            return np.zeros((10, 10, 3), np.uint8)
+
+        def tap(self, x, y, settle=0):
+            Dev.taps.append((x, y))
+
+    class Read:
+        def read(self, img):
+            return texts
+
+    player = play.Player(Dev(), Read())
+    monkeypatch.setattr(player, "_save_unknown", lambda *args, **kwargs: None)
+    assert player.play_level() is LevelScreen.VICTORY
+    ys = [y for _x, y in Dev.taps if _x > 800]
+    assert title[1] in ys  # the title was tried
+    assert any(y > 1980 for y in ys)  # then the button or the caption, not an endless wait
