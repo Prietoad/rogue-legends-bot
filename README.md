@@ -54,4 +54,4 @@ See `CLAUDE.md` for how it works inside: architecture, game knowledge, and every
 
 ## Known issues
 
-World 2 maps (lobby titles `2-N`, the path choice, and World 2 events) are not handled yet. The bot does not pick a path and can stop on that screen. World 1 `N.` levels are what Last unlocked farms.
+World 2 lobby titles (`2-1. Elysium I`) farm the same chapter-local level the Star Challenge list shows (`1. Elysium I`). Path forks and World 2 events follow the 2.0.0 rules. An event the bot cannot read is saved under `debug/unknown_events/` and skipped with a no-cost option. The bot does not close MuMu Player when a run hits an error; the traceback is in `debug/bot.log`.

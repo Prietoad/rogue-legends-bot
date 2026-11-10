@@ -249,7 +249,7 @@ def test_x2_rewards_button_that_stays_is_given_up_for_continue(monkeypatch):
     monkeypatch.setattr(play.time, "sleep", lambda s: None)
     end = [Text("Continuar", 600, 2360, 840, 2400), Text("x2 Recompensas", 1000, 2200, 1300, 2240)]
     states = iter([LevelState(LevelScreen.DOUBLE_REWARD, (1150, 2220))] * 3 + [LevelState(LevelScreen.VICTORY, (720, 2380))])
-    monkeypatch.setattr(play, "classify_level_screen", lambda img, texts: next(states))
+    monkeypatch.setattr(play, "classify_level_screen", lambda img, texts, *args, **kwargs: next(states))
     taps = []
 
     class Dev:

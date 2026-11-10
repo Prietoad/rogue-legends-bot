@@ -11,7 +11,7 @@ from typing import Callable
 from roguebot import config, labels as L
 from roguebot.build import Build, BuildState, offer_is_unfavorable, shop_order
 from roguebot.device import Device
-from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, fight_skip, free_donation, parse_patrol, parse_quick_patrol, guild_hall, guild_hall_donate, guild_vault, in_guild, is_guild_map, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
+from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, fight_in_progress, fight_skip, free_donation, parse_patrol, parse_quick_patrol, guild_hall, guild_hall_donate, guild_screen, guild_vault, in_guild, is_guild_map, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
                                    parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
                                    parse_skill_choice, parse_tower, personal_vault_claim, pick_opponent,
                                    quick_patrol_close, quick_patrol_open, vip_cards_icon, vip_claim_all,
@@ -141,10 +141,17 @@ class Routine:
         Floors 1-9 show Next (or "Próximo piso"): tap it and stay in the fight. The ticket count
         is not what decides that — a wrong count used to tap Okay and bounce back to the tower
         menu. Floor 10 has no Next: Okay, then the chest on the clear screen.
+
+        Next starts the next floor's fight at once (Round 1 is already on screen). That fight is
+        waited out. A fixed action budget must not give up in the second after Next: four cleared
+        towers are 40 floors, which used to expire the budget as floor 10 of the next tower began.
+        The budget only counts a victory that was already on screen, with no round before it
+        (the same result read again). A floor that actually played resets it.
         """
         self._open_mode(L.TOWER)
         climbing = False  # Next was tapped: the next floor follows, the tower menu does not
-        for _ in range(config.MAX_MODE_ACTIONS):
+        stalls = 0
+        while stalls < config.MAX_MODE_ACTIONS:
             if not climbing:
                 screen = self._wait_for(lambda img, texts: self._claim_or(texts, self._tower_or_chest), "tower screen")
                 if screen.tickets < 1:
@@ -161,6 +168,7 @@ class Routine:
             else:
                 log.info("Tower: floor cleared")  # Okay, then the chest if the tower is done
                 climbing = False
+            stalls = 0 if result.saw_fight else stalls + 1
         self._fail("Tower did not finish")
 
     def dungeon(self, label: L.Label) -> str:
@@ -459,11 +467,27 @@ class Routine:
             time.sleep(config.POLL_INTERVAL)
         if not claim:
             log.info("Guild vault: no free daily personal claim")
-            return DONE
-        log.info("Guild vault: daily personal claim")
-        self._tap(claim)
-        self._wait_change(lambda t: personal_vault_claim(t) is None)
+        else:
+            log.info("Guild vault: daily personal claim")
+            self._tap(claim)
+            self._wait_change(lambda t: personal_vault_claim(t) is None)
+        self._leave_guild()
         return DONE
+
+    def _leave_guild(self) -> None:
+        """Close the vault (or the hall) and leave the guild map by the bottom-left arrow.
+
+        One back from the vault returns to the map. The next back leaves the map for the
+        main screen. The arrow is the same bottom-left button as the star list's.
+        """
+        for _ in range(MAX_BACK_STEPS):
+            img, texts = self._capture()
+            if parse_lobby(texts) or not guild_screen(texts):
+                return
+            back = back_arrow(img) if img is not None else None
+            log.info("Leaving the guild")
+            self.device.tap(*(back or config.LIST_BACK))
+            time.sleep(config.UI_SETTLE)
 
     def vip(self) -> str:
         """VIP cards: "Reclamar todo" (daily rewards). A grey button (already claimed) ignores the tap."""
@@ -536,11 +560,24 @@ class Routine:
         self._fail("Could not get back to the game from the browser")
 
     def _back_to_modes(self) -> bool:
-        """Back out of a mode (popups, ✕, ← arrows) to the modes list. False if it was not reached."""
-        for _ in range(MAX_BACK_STEPS):
+        """Back out of a mode (popups, ✕, ← arrows) to the modes list. False if it was not reached.
+
+        A tower fight has no ← (Skip and x4 only). Leaving in the middle of Round 1 used to
+        burn the attempts on a screen that cannot be closed and report that the modes list
+        was unreachable. The fight is waited out and its result dismissed first; then the
+        tower screen's ← can be tapped.
+        """
+        idle = 0
+        for _ in range(MAX_BACK_STEPS * 4):
             img, texts = self._capture()
             if is_modes_list(texts):
                 return True
+            if fight_in_progress(texts) or parse_fight_result(texts):
+                log.info("Finishing the fight before leaving the mode")
+                self._push(img, texts)  # _fight decides on this frame, not the one after it
+                self._fight(next_floor=False)
+                idle = 0
+                continue
             close_text, close_x, back = popup_close(texts), close_button(img), back_arrow(img)
             if close_text:
                 self._tap(close_text)
@@ -549,6 +586,9 @@ class Routine:
             elif back:
                 self.device.tap(*back)
             else:  # loading or an animation: wait, never guess
+                idle += 1
+                if idle >= MAX_BACK_STEPS:
+                    break
                 time.sleep(config.UI_SETTLE)
         log.info("Could not get back to the modes list")
         return False
@@ -594,10 +634,12 @@ class Routine:
         skipped = False
         rerolled_offer = None  # this offer was already rerolled (a missed tap must not spin forever)
         loading_since = None
+        saw_fight = False  # a round, a skill step, or Loading came up before the result
         img = None
         while True:
             img, texts = self._capture()
             if is_loading(texts):
+                saw_fight = True
                 if loading_since is None:
                     loading_since = time.monotonic()
                     log.info("Fight: waiting through Loading")
@@ -612,12 +654,15 @@ class Routine:
                 use_next = next_floor and result.victory and result.next_floor
                 self._tap(result.next_floor if use_next else result.button)
                 if use_next:  # the next fight follows: never read this win again on a stale frame
-                    self._wait_change(lambda t: parse_fight_result(t) is None)
-                else:
-                    result = FightResult(result.victory, result.button)
-                return result
+                    # Leaving the victory (a round, or Loading) means the next floor started.
+                    # The victory still being up means the tap did not start a fight.
+                    started = self._result_cleared()
+                    return FightResult(True, result.button, result.next_floor,
+                                       saw_fight=saw_fight or started)
+                return FightResult(result.victory, result.button, saw_fight=saw_fight)
             if time.monotonic() >= deadline:
                 break
+            saw_fight = True  # round counter, skill step, or the tower floor HUD
             if self.skip_fights and not skipped:
                 button = fight_skip(img, texts)
                 if button:
@@ -700,6 +745,16 @@ class Routine:
             if parse_lobby(texts):
                 return texts
         return texts
+
+    def _result_cleared(self) -> bool:
+        """True once the victory/defeat panel is gone. False if it is still there when the wait ends."""
+        deadline = time.monotonic() + config.CHANGE_TIMEOUT
+        while True:
+            if parse_fight_result(self._capture()[1]) is None:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(config.POLL_INTERVAL)
 
     def _wait_change(self, changed: Callable[[list[Text]], bool]) -> None:
         """Wait (up to CHANGE_TIMEOUT) until a tap's effect shows, so the next decision is not taken on a

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0 (2026-11-09)
+- World 2. Lobby titles like `2-1. Elysium I` use the chapter-local number (`1`), the same id as the Star Challenge row `1. Elysium I`. A locked row still has no Start button (`Unlock by completing the chapter.`).
+- Path forks follow the board. Elysium takes the shop at 300+ tokens, or with 5 rolls left and any tokens, otherwise the prayer statue (unreadable: statue). Ancient Waterway always takes the anvil and shop. Molten Core has no fork. Atlantis takes the campfire unless tokens are 300+ or the shop will not come around again and a skill is affordable. An unknown board is read from the path icons, not from the letter.
+- World 2 events use the playtest rules (Statue, Cursed Vendor, Herb, Slime, both taxis, Locked Box, Kidnapped, Devil, Chaos Magician, Two Fight, Anvil, Haunting Spirits, Abandoned Cart, Goblin, Boiling Springs, Vista, Magical Book). A missing HUD value uses that event's safe fallback. Core skills come from the active preset, not a hard-coded poison build. The Cursed Vendor scores blessings and curses from a table. After a choice the bot taps through dialogue and claim screens until the map; if one stays up 20s it saves a shot and taps through.
+- Treasure Miner finishes a partially dug gem first (the board is remembered for the run), otherwise hunts on a spread of undug tiles, and leaves when the pickaxes are gone.
+- An event title the bot does not know is saved under `debug/unknown_events/` with the OCR text. It picks a leave / no-cost option and keeps farming.
+- Tower of Heroes keeps climbing after Next. The old 40-action cap used to give up about a second after Next, while Floor 10 Round 1 was already on screen. It now stops on a defeat or when the tickets are gone. Getting back to the modes list waits out a fight that is still going, then uses the back arrow.
+- Guild vault: after the free claim, or when there is nothing to claim, the bot closes the vault and leaves the guild map with the bottom-left arrow. The guild map is not a level (it was being tapped on the Guild Camp ship).
+- An error is written to `debug/bot.log` with its traceback and the run retries. The bot does not close or kill MuMu Player. Log lines are flushed to that file as they are shown in the window.
+- Wise Monk, the campfire (upgrade unless HP is under 40%), and World 1 events are unchanged.
+
 ## 1.10.3 (2026-11-09)
 - Wise Monk: a spin counts only after its reward is claimed, so the second spin cannot start while the first result is still open. A "SPIN"/"GIRAR" read near y=2080 (the gap above the button at y≈2280) is not tapped. If the button is still there after the tap, it is tried once more and still not counted. Any wait on this screen gives up after 20s: a warning, a screenshot in `debug/monk_*.png`, a tap on the reward or Leave when one is readable, then normal screen detection. It no longer sits on the wheel with no log.
 - Daily rewards: after the shop page has actually rendered, tap Collect under the current day, then Back to the shop on the Collected popup. Scroll to the Daily Wheel section, tap FREE SPIN, tap SPIN, wait for the wheel to stop, then Back to the shop on You won. Already collected, or no free spin, is skipped. Each step polls until it shows or a deadline passes, and the bot always leaves the browser and goes back to the game.

@@ -277,19 +277,38 @@ def test_donation_from_the_guild_map_does_not_leave_and_reenter():
     assert (720, 1607) in r.device.taps  # the free donation
 
 
-def test_vault_claims_the_free_personal_reward_and_not_a_price():
+def test_vault_claims_the_free_personal_reward_and_not_a_price(monkeypatch):
     labels.set_language("en")
+    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
     guild_map = [Text("Guild Hall", 640, 980, 860, 1040), Text("Raid Boss", 1000, 1400, 1200, 1460),
                  Text("Vault", 160, 1480, 320, 1540)]
     inside = [Text("Personal Vault", 480, 400, 960, 460), Text("Daily", 560, 900, 760, 950),
               Text("Claim", 600, 1100, 840, 1160)]
     priced = [Text("Personal Vault", 480, 400, 960, 460), Text("Claim", 1000, 1100, 1200, 1160),
               Text("50", 1080, 1160, 1160, 1200)]
-    r = make([guild_map, inside, priced])
+    lobby = [Text("Patrol", 650, 1900, 790, 1945), Text("OFF", 880, 2060, 990, 2095),
+             Text("START", 600, 2070, 720, 2115)]
+    r = make([guild_map, inside, priced, guild_map, lobby])
     assert r.vault() == routine.DONE
     assert r.device.taps[0] == (240, 1510)  # the vault building
     assert (720, 1130) in r.device.taps  # free Claim
     assert (1100, 1130) not in r.device.taps  # the gem-priced claim
+    assert r.device.taps[-1] == routine.config.LIST_BACK  # guild map back to the main screen
+
+
+def test_vault_with_nothing_to_claim_backs_out_to_the_lobby(monkeypatch):
+    """No free claim: close the vault, then the map's bottom-left arrow. Never play the map as a level."""
+    labels.set_language("en")
+    monkeypatch.setattr(routine.config, "UI_SETTLE", 0)
+    guild_map = [Text("Guild Hall", 640, 980, 860, 1040), Text("Raid Boss", 1000, 1400, 1200, 1460),
+                 Text("Coming soon", 500, 1750, 940, 1840), Text("Guild Camp", 520, 1900, 900, 1960),
+                 Text("Vault", 160, 1480, 320, 1540)]
+    inside = [Text("Personal Vault", 480, 400, 960, 460), Text("Daily", 560, 900, 760, 950)]
+    lobby = [Text("Patrol", 650, 1900, 790, 1945), Text("OFF", 880, 2060, 990, 2095),
+             Text("START", 600, 2070, 720, 2115)]
+    r = make([guild_map, inside, inside, guild_map, lobby])
+    assert r.vault() == routine.DONE
+    assert r.device.taps == [(240, 1510), routine.config.LIST_BACK, routine.config.LIST_BACK]
 
 
 def test_donate_skipped_outside_a_guild():
@@ -717,6 +736,59 @@ def test_tower_win_without_next_floor_reads_the_tower_screen_again(monkeypatch):
     monkeypatch.setattr(r, "_open_mode", lambda label: None)
     assert r.tower() == routine.DONE
     assert r.device.taps == [(720, 2417), (465, 1965), (720, 2417), (717, 2330)]
+
+
+# The failure screenshot: Tower of Heroes 172, Floor 10, Round 1/30, Skip. Next has
+# already started this fight. It is not a result and it has no back arrow.
+TOWER_FLOOR_FIGHT = [Text("Tower of Heroes 172", 360, 70, 1080, 130),
+                     Text("Floor 10", 520, 150, 920, 220),
+                     Text("Round: 1/30", 430, 250, 1010, 310),
+                     Text("Skip", 560, 2320, 880, 2400)]
+
+
+def test_tower_waits_out_the_fight_next_floor_just_started(monkeypatch):
+    """Budget 1 used to fail the instant Next was tapped, while Floor 10 Round 1 was already up."""
+    monkeypatch.setattr(routine.config, "MAX_MODE_ACTIONS", 1)
+    r = make([tower(5), LOADING, tower_win(), TOWER_FLOOR_FIGHT, TOWER_FLOOR_FIGHT, LOADING, DEFEAT])
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    assert r.tower() == routine.DONE
+    assert r.device.taps == [(720, 2417), (975, 1965), (717, 2330)]
+
+
+def test_tower_climbs_past_the_action_budget_until_a_defeat(monkeypatch):
+    """Four towers are 40 floors. The old cap died on the next floor instead of climbing on."""
+    monkeypatch.setattr(routine.config, "MAX_MODE_ACTIONS", 3)
+    frames = [tower(9)]
+    for _ in range(5):
+        frames += [LOADING, tower_win()]
+    frames += [LOADING, DEFEAT]
+    r = make(frames)
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    assert r.tower() == routine.DONE
+    assert r.device.taps[0] == (720, 2417)
+    assert r.device.taps[1:-1] == [(975, 1965)] * 5
+    assert r.device.taps[-1] == (717, 2330)
+
+
+def test_tower_stops_when_next_never_leaves_the_victory_screen(monkeypatch):
+    """A victory that stays up is not an endless climb. The safety budget still applies."""
+    monkeypatch.setattr(routine.config, "MAX_MODE_ACTIONS", 2)
+    monkeypatch.setattr(routine.config, "CHANGE_TIMEOUT", 0)
+    r = make([tower(5)] + [tower_win()] * 6)
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    with pytest.raises(NavigationError, match="Tower did not finish"):
+        r.tower()
+
+
+def test_back_to_modes_finishes_a_tower_fight_then_leaves(monkeypatch):
+    """Round 1 has no ←. Wait the fight out, dismiss the result, then the tower screen's ←."""
+    menu = [Text("Tower of Heroes 172", 560, 245, 880, 290), Text("0/10", 800, 65, 905, 100),
+            Text("Challenge", 620, 2395, 820, 2440)]
+    r = make([TOWER_FLOOR_FIGHT, DEFEAT, menu, MODES_TOP])
+    monkeypatch.setattr(routine, "close_button", lambda img: None)
+    monkeypatch.setattr(routine, "back_arrow", lambda img: (120, 2447) if r.device.taps else None)
+    assert r._back_to_modes()
+    assert r.device.taps == [(717, 2330), (120, 2447)]
 
 
 def test_press_taps_again_when_the_tap_did_not_register(monkeypatch):

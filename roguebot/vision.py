@@ -15,7 +15,9 @@ from roguebot import config
 
 log = logging.getLogger(__name__)
 
-_LEVEL_RE = re.compile(r"^\s*(\d+)\s*\.")
+# "12. Name" is a world-1 level. "2-1. Elysium I" is world 2, chapter-local level 1
+# (the star list shows "1. Elysium I", not "2-1").
+_LEVEL_RE = re.compile(r"^\s*(?:(\d+)\s*-\s*)?(\d+)\s*\.")
 
 
 @dataclass(frozen=True)
@@ -42,9 +44,21 @@ def normalize(s: str) -> str:
 
 
 def parse_level_number(s: str) -> int | None:
-    """'12. Arenas Movedizas II' -> 12."""
+    """'12. Arenas Movedizas II' -> 12. '2-1. Elysium I' -> 1.
+
+    World 2 lobby titles are "world-chapter. Name". The star list uses the chapter-local
+    number ("1. Elysium I"), so the number the scroll and the pin use is the part after the dash.
+    """
     m = _LEVEL_RE.match(s)
-    return int(m.group(1)) if m else None
+    return int(m.group(2)) if m else None
+
+
+def parse_world(s: str) -> int | None:
+    """'2-1. Elysium I' -> 2. A world-1 title '12. Name' has no world prefix."""
+    m = _LEVEL_RE.match(s)
+    if not m or not m.group(1):
+        return None
+    return int(m.group(1))
 
 
 def matches(t: Text, label, exact: bool = False) -> bool:
