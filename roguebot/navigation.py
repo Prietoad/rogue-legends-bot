@@ -7,14 +7,14 @@ from pathlib import Path
 
 import cv2
 
-from roguebot import config, labels
+from roguebot import config, labels, world2
 from roguebot.device import Device
 from roguebot.mode_screens import back_arrow, guild_screen, parse_fight_result, quick_patrol_close, quick_patrol_open
 from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, close_button_any_size,
                               footer_visible, is_loading, is_star_list, lobby_behind, outside_tap_clear,
                               parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list,
                               clipped_star_card, popup_close,
-                              resume_prompt, tutorial_hand, update_required)
+                              resume_prompt, tutorial_hand, update_required, vault_cinematic)
 from roguebot.vision import Ocr, Text, find, parse_level_number
 
 log = logging.getLogger(__name__)
@@ -314,6 +314,27 @@ class Navigator:
                 self._tap_text(resume)
                 self.resume_level()
                 continue
+            if world2.is_skill_info(texts):
+                close = close_button_any_size(img)
+                if close:
+                    self.device.tap(*close)
+                else:
+                    time.sleep(config.UI_SETTLE)
+                continue
+            if world2.is_miner(texts):
+                leave = find(texts, labels.LEAVE, exact=True)
+                close = close_button_any_size(img)
+                if leave:
+                    self._tap_text(leave)
+                elif close:
+                    self.device.tap(*close)
+                else:
+                    self.device.back()
+                continue
+            if vault_cinematic(img, texts):
+                self.device.tap(config.SCREEN_SIZE[0] // 2, config.SCREEN_SIZE[1] // 2)
+                time.sleep(config.UI_SETTLE)
+                continue
             lobby = parse_lobby(texts)
             if lobby:
                 from roguebot.play import clear_level_abandoned
@@ -384,7 +405,7 @@ class Navigator:
                     time.sleep(config.UI_SETTLE)
             elif not self._leave_other_app():  # loading, animation or a screen we don't know: wait, never guess
                 time.sleep(config.UI_SETTLE)
-        self._fail("Could not reach the Aventura lobby", img)
+        self._fail("Could not reach the Adventure lobby", img)
 
     def _improvise_close(self, img, texts: list[Text]) -> None:
         """An unknown popup over the lobby: its ✕ at another size, else a tap outside it (the dimmed

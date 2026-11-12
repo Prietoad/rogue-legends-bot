@@ -542,6 +542,21 @@ class DojoScreen:
     chest: Text | None           # progress chest "RECLAMAR" (free reward), when ready
 
 
+def dojo_unavailable(img: np.ndarray, texts: list[Text], ocr: Ocr) -> bool:
+    """A closed/zero-ticket Dojo card on the Modes list (also after pause/resume)."""
+    entry = mode_entry(texts, L.DOJO)
+    if not is_modes_list(texts) or entry is None:
+        return False
+    if mode_closed(texts, entry):
+        return True
+    y = entry.center[1]
+    # The card's ticket pill is below its title, on the right. Never read another card's count.
+    digits = [t for t in texts if t.norm.isdigit() and t.center[0] > 1240 and y + 120 < t.center[1] < y + 300]
+    if not digits and img is not None:
+        digits = [t for t in ocr.read(img, (1240, y + 120, 1405, y + 300)) if t.norm.isdigit()]
+    return bool(digits) and all(int(t.norm) == 0 for t in digits)
+
+
 def parse_dojo(img: np.ndarray, texts: list[Text], ocr: Ocr) -> DojoScreen | None:
     """Dojo Battle main screen. Tickets are re-read from a crop (full-frame OCR misses them)."""
     title = find(texts, L.DOJO)

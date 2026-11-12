@@ -794,7 +794,7 @@ def test_tower_climbs_past_the_action_budget_until_a_defeat(monkeypatch):
 
 def test_tower_stops_when_next_never_leaves_the_victory_screen(monkeypatch):
     """A victory that stays up is not an endless climb. The safety budget still applies."""
-    monkeypatch.setattr(routine.config, "MAX_MODE_ACTIONS", 2)
+    monkeypatch.setattr(routine.config, "MODE_FIGHT_TIMEOUT", 0)
     monkeypatch.setattr(routine.config, "CHANGE_TIMEOUT", 0)
     r = make([tower(5)] + [tower_win()] * 6)
     monkeypatch.setattr(r, "_open_mode", lambda label: None)
@@ -855,25 +855,23 @@ def test_dojo_and_raid_skill_picks_follow_the_build(tmp_path):
     assert set(r.catalog.skills) >= {"fireball", "iceshard", "superflash", "glasscannon"}  # learned by the catalog
 
 
-def test_raid_rerolls_when_one_wanted_skill_cannot_fill_the_pick(tmp_path):
-    """Need two skills. One fire card is not enough for a fire-only build: reroll, do not take the venom."""
+def test_raid_keeps_one_wanted_skill_and_fills_the_remaining_pick(tmp_path):
+    """A preferred fire card preserves the whole two-card offer (§8)."""
     from roguebot.build import Build
     from roguebot.skills import Catalog
     mixed = [("Common", "Fire Ball", "Every 2 rounds, cast a Fireball."),
              ("Common", "Venom Drip", "Every 2 rounds, cast Venom.")]
-    both = [("Common", "Fire Ball", "Every 2 rounds, cast a Fireball."),
-            ("Common", "Fire Wave", "Cast a wave of Fire.")]
     reroll = [Text("Reroll (1)", 280, 2100, 520, 2160)]
     r = make([named_skill_screen(0, 2, mixed) + reroll,
-              named_skill_screen(0, 2, both),
-              named_skill_screen(1, 2, both),
-              named_skill_screen(2, 2, both),
+              named_skill_screen(1, 2, mixed),
+              named_skill_screen(2, 2, mixed),
               [Text("DEFEAT", 600, 880, 840, 940), Text("OK", 680, 2300, 760, 2350)]])
     r.build = Build(nature="magic", order=("fire",), strict=True)
     r.catalog = Catalog(tmp_path / "skills.json")
     r._fight()
-    assert r.device.taps[0] == (400, 2130)
-    assert r.device.taps[1][1] == 755 + 90  # the fire card, after the reroll
+    assert r.device.taps[0] == (800, 755 + 90)  # keep Fire Ball, never the reroll
+    assert r.device.taps[1] == (800, 755 + 306 + 90)  # fill with the remaining card
+    assert (400, 2130) not in r.device.taps
 
 
 def test_raid_rerolls_once_when_nothing_fits_the_build(tmp_path):

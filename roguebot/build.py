@@ -29,6 +29,7 @@ class Build:
     support_every: int | None = None                # take a support skill after this many damage skills
     avoid: tuple[str, ...] = FARM_AVOID             # normalized name fragments never preferred
     strict: bool = False                            # only the damage types listed in order (fire-only)
+    pets_equipped: bool = True                      # conservative when equipment is not readable
 
 
 # Named presets. The order is a soft synergy bias (no gear OCR). Shop stays wanted-only.
@@ -57,6 +58,37 @@ class BuildState:
         return build.support_every is not None and self.damage_since_support >= build.support_every
 
 
+# Game's poison order (§5a). Equal tiers keep the existing upgrade/rarity tie breaks.
+_POISON_TIERS = (
+    ("Poison Strike",), ("Deep Venom",), ("Combo Mastery",), ("Follow-up Strike",),
+    ("Corrosion",), ("Poison Mastery",), ("Venom Burst",), ("Weapon Mastery",),
+    ("Combo Rate Up", "Relentless Flurry"), ("Master of War",), ("Poison Cloud",),
+    ("Fester", "Ultimate Poison"), ("Special Experiment",), ("Enhanced Combo",),
+    ("Toxic Retaliation",), ("Envenom", "Sneaky Poison", "Crippling Cloud", "Poison Shuriken"),
+)
+POISON_RANK = {skill_key(name): tier for tier, names in enumerate(_POISON_TIERS) for name in names}
+
+
+def poison_build(build: Build) -> bool:
+    return build.nature == PHYSICAL and bool(build.order) and build.order[0] == "venom"
+
+
+def protected_core(name: str, build: Build, state: BuildState | None = None) -> bool:
+    if not poison_build(build):
+        return False
+    key = skill_key(name)
+    if key == "specialexperiment":
+        return build.pets_equipped
+    if key == "combomastery":
+        # A statue's named skill is already owned; a level suffix also proves ownership.
+        return state is None or _upgraded(Skill(name, None, "", None, PHYSICAL, DAMAGE), state) == 0 or "lv" in normalize(name)
+    return key in {"corrosion", "poisonstrike", "deepvenom"}
+
+
+def _poison_rank(skill: Skill) -> int:
+    return POISON_RANK.get(skill_key(skill.name), len(_POISON_TIERS))
+
+
 def _rarity(skill: Skill) -> int:
     """0 = best (mythic)."""
     return RARITY_NAMES.index(skill.rarity) if skill.rarity in RARITY_NAMES else len(RARITY_NAMES)
@@ -68,6 +100,8 @@ def _type_rank(skill: Skill, build: Build) -> int:
 
 def _avoided(skill: Skill, build: Build) -> bool:
     name = normalize(skill.name)
+    if poison_build(build) and skill_key(skill.name) == "combobolt":
+        return True
     return any(piece in name for piece in build.avoid)
 
 
@@ -92,7 +126,7 @@ def ranked(skills: list[Skill], build: Build, state: BuildState) -> list[int]:
     Type order first, then a skill this run already took (upgrade it), then rarity.
     """
     damage = sorted((i for i, s in enumerate(skills) if _damage_ok(s, build)),
-                    key=lambda i: (_type_rank(skills[i], build), _upgraded(skills[i], state), _rarity(skills[i]), i))
+                    key=lambda i: ((_poison_rank(skills[i]) if poison_build(build) else _type_rank(skills[i], build)), _upgraded(skills[i], state), _rarity(skills[i]), i))
     if not state.wants_support(build):
         return damage
     support = sorted((i for i, s in enumerate(skills) if s.role == SUPPORT and not _avoided(s, build)),
@@ -105,6 +139,8 @@ def fallback(skills: list[Skill], build: Build | None = None) -> list[int]:
     order = sorted(range(len(skills)), key=lambda i: (_rarity(skills[i]), i))
     if build is None:
         return order
+    if poison_build(build):
+        order = [i for i in order if skill_key(skills[i].name) != "combobolt"]
     kept = [i for i in order if not _avoided(skills[i], build)]
     return kept or order
 
@@ -114,17 +150,13 @@ def _preferred(skills: list[Skill], build: Build, state: BuildState) -> list[int
 
     Untyped damage is left out: it is the top-of-screen physical fallback, not the build.
     """
-    return [i for i in ranked(skills, build, state) if skills[i].role == SUPPORT or skills[i].damage_type]
+    return [i for i in ranked(skills, build, state) if skills[i].role == SUPPORT or skills[i].damage_type
+            or (poison_build(build) and skill_key(skills[i].name) in POISON_RANK)]
 
 
 def offer_is_unfavorable(skills: list[Skill], build: Build, state: BuildState, picks: int = 1) -> bool:
-    """True when the offer has fewer preferred skills than this step must take.
-
-    Preferred means a named damage type the build wants, or a support skill when one is due.
-    Untyped and off-build cards do not count, so a Dojo / raid / dive pick rerolls instead of
-    filling the rest of the offer with them. `picks` is how many cards this step still has to take.
-    """
-    return len(_preferred(skills, build, state)) < max(1, picks)
+    """Reroll only when there is no preferred card; keep one and fill the remaining picks."""
+    return not _preferred(skills, build, state)
 
 
 def choose(skills: list[Skill], build: Build, state: BuildState, can_reroll: bool) -> int | None:
@@ -137,7 +169,8 @@ def choose(skills: list[Skill], build: Build, state: BuildState, can_reroll: boo
     wanted = ranked(skills, build, state)
     if wanted:  # untyped damage of the right nature, and no reroll left
         return wanted[0]
-    return fallback(skills, build)[0]
+    remaining = fallback(skills, build)
+    return remaining[0] if remaining else None
 
 
 # A common whose type sits next to the build, and is the same nature, does not fight the build.
@@ -171,6 +204,8 @@ def _shop_keeps(skill: Skill, build: Build, state: BuildState) -> bool:
     """On-build skills, a due support, and non-common untyped cards. Off-build commons are out."""
     if _avoided(skill, build):
         return False
+    if poison_build(build) and skill_key(skill.name) in POISON_RANK and _damage_ok(skill, build):
+        return True
     if skill.role == SUPPORT and state.wants_support(build):
         return True
     if skill.damage_type in build.order and _damage_ok(skill, build):
@@ -206,6 +241,6 @@ def shop_order(skills: list[Skill], build: Build, state: BuildState, can_reroll:
 def core_index(skills: list[Skill], build: Build) -> int | None:
     """A damage skill of the active preset's types. Reroll must not throw one of these away."""
     for i, skill in enumerate(skills):
-        if skill.role == DAMAGE and skill.damage_type in build.order and not _avoided(skill, build):
+        if (protected_core(skill.name, build) or (skill.role == DAMAGE and skill.damage_type in build.order)) and not _avoided(skill, build):
             return i
     return None

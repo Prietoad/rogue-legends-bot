@@ -61,9 +61,14 @@ def name_is_support(name: str) -> bool:
     return _SUPPORT_RE.search(normalize(name)) is not None
 
 
+def clean_skill_name(name: str) -> str:
+    """Remove a card's level suffix before catalog lookup or persistence."""
+    return re.sub(r"[\s-]*\b(?:lv|lvl|level)\.?[\s-]*\d+\s*\+?\s*$", "", name, flags=re.I).strip()
+
+
 def skill_key(name: str) -> str:
     """Letters only, so OCR variants ("Ultimate-Bolt", "Ultimate Bolt", "CounterMastery") share a key."""
-    return re.sub(r"[^a-z]", "", normalize(name))
+    return re.sub(r"[^a-z]", "", normalize(clean_skill_name(name)))
 
 
 # OCR fragments from half-faded cards. Dropped on load and never auto-added.
@@ -170,6 +175,7 @@ class Catalog:
         A close name (>= 0.8) is the same skill. A fragment is returned for this decision
         and not written, so a faded card does not pollute the file or block a later capture.
         """
+        name = clean_skill_name(name)
         key = skill_key(name)
         if not key:
             damage_type, nature, role = infer_tags(name, description)

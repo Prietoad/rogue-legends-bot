@@ -2508,5 +2508,25 @@
   "role": "damage",
   "description": "Weapon Attacks will apply 1 stack of Wound.",
   "auto": true
+ },
+ "serpentstance": {
+  "name": "Serpent Stance",
+  "lang": "en",
+  "rarity": "mythic",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Dealing any form of non-poison damage will apply 1 stack of Poison on the enemy.",
+  "auto": false
+ },
+ "outbreak": {
+  "name": "Outbreak",
+  "lang": "en",
+  "rarity": "legendary",
+  "damage_type": "venom",
+  "nature": "physical",
+  "role": "damage",
+  "description": "At round 3, apply Poison 15 times on all enemies.",
+  "auto": false
  }
 }
