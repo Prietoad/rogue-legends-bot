@@ -13,7 +13,7 @@ from roguebot import config, labels as L
 from roguebot.mode_screens import guild_screen
 from roguebot.skills import RARITY_NAMES
 from roguebot.vision import Ocr, Text, find, match_template, matches, parse_level_number
-from roguebot.world2 import is_battle, is_exp_toast, is_shop_screen, level_tap
+from roguebot.world2 import is_battle, is_exp_toast, is_shop_screen, is_skill_info, level_tap, spinner_stop
 
 log = logging.getLogger(__name__)
 
@@ -566,6 +566,17 @@ def monk_spin_button(texts: list[Text]) -> Text | None:
     return max(hits, key=lambda t: t.center[1]) if hits else None
 
 
+def vault_cinematic(img: np.ndarray, texts: list[Text]) -> bool:
+    """The open guild safe animation, with no interactive controls or prices."""
+    if img is None or img.ndim != 3 or texts:
+        return False
+    template = cv2.imread(str(Path(__file__).parent / "templates" / "vault_cinematic.png"))
+    if template is None:
+        return False
+    small = cv2.resize(img, (180, 320), interpolation=cv2.INTER_AREA)
+    return float(cv2.matchTemplate(small, template, cv2.TM_CCOEFF_NORMED)[0, 0]) >= 0.85
+
+
 def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board: str | None = None,
                           skills=None, min_skill_price: int | None = None,
                           rolls: tuple[int, int] | None = None,
@@ -574,6 +585,11 @@ def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board:
         return LevelState(LevelScreen.UNKNOWN)
     if footer_visible(img):  # a main screen (lobby...), never a level: its texts can look like an event
         return LevelState(LevelScreen.UNKNOWN)
+    if is_skill_info(texts):
+        return LevelState(LevelScreen.CONTINUE, close_button_any_size(img))
+    stop = spinner_stop(texts)
+    if stop:
+        return LevelState(LevelScreen.CONTINUE, stop.center)
     proceed = find(texts, L.CONTINUE, exact=True)
     double = find(texts, L.DOUBLE_REWARD)
     if proceed and double:  # always double the reward with the (VIP-skipped) ad before continuing
@@ -631,6 +647,8 @@ def classify_level_screen(img: np.ndarray, texts: list[Text], build=None, board:
         reroll = find(texts, L.SHOP_REROLL)
         shop_tap = leave.center if leave else (reroll.center if reroll else None)
         return LevelState(LevelScreen.SHOP, shop_tap)
+    if is_battle(texts) and not find(texts, L.REVIVE_PROMPT):
+        return LevelState(LevelScreen.FIGHT)
     # World 2 path forks and events. None on World 1 screens, so campfire and "leave" stay as they were.
     w2 = level_tap(img, texts, build=build, board=board, skills=skills, min_skill_price=min_skill_price,
                    rolls=rolls, left_shop_tokens=left_shop_tokens)

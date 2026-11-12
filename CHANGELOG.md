@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.5 (2026-11-12)
+- Treasure Miner uses confirmed digs for its nine-pickaxe budget, validates all grid edges, ignores dimmed icons, retries stale tile reads, and backs out of a missing Leave instead of digging into a reward popup.
+- Poison picks, token shops and rerolls use Game's combo/venom ranking. Catalog-backed statue protection includes Corrosion, Poison Strike, Deep Venom, owned Combo Mastery and Special Experiment with pets. Ninja Dodge and Heal Shuriken remain non-core.
+- Skill Info closes through its scaled ✕ before claims or unknown-event handling, including during lobby recovery. The watchdog ignores OCR jitter and uses elapsed time even on unknown screens.
+- Zoomed maps, Level Modifiers, reward/elite Tap To Stop spinners and garbled Round 1/30 fight counters no longer fall into unknown-event coin flips. HUD Level/Modifiers and SHOP are blocked as choices.
+- Tower skip climbs track floor changes instead of consuming a fixed action budget. Zero-ticket dojo cards after pause/resume skip safely. Guild vault recovery recognizes and dismisses the open-safe cinematic.
+- Added reviewed Serpent Stance and Outbreak catalog entries and clean level-suffix lookup. Added offline 2.0.5 fixture and behavior regressions.
+- No auto-spending gems, gold or diamonds; shops continue to use event tokens only. Arena, VIP and the phone version are unchanged. Pending curse/blessing weights remain TODO.
+
 ## 2.0.4 (2026-11-10)
 - Boiling Springs stays only when HP% minus the red "-N% HP Damage" cost is still at least 40%. The green "+N% Max HP" line is not the cost. A Stay that changes HP or the description counts as a tap that landed, and the bot keeps tapping the icon. It never taps the description text, and after 30s with no change it takes Get Out.
 - A screen whose roll counter, HP, tokens and text have not changed for 90s taps the back arrow or ✕, then a safe exit (Get Out, Walk Away, Leave, NEXT), and saves `debug/watchdog_*.png`. After 5 minutes it ends the level so the next one can start. The coin flip only taps short button labels. It never taps description text, the Skills book, the VIP x4 badge, or "N attempts left".

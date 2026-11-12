@@ -16,7 +16,7 @@ from roguebot.build import Build, BuildState, choose, core_index, shop_order
 from roguebot.device import Device
 from roguebot.mode_screens import back_arrow
 from roguebot.screens import (LevelScreen, LevelState, SkillCard, campfire_non_heal_tap, classify_level_screen,
-                              close_button, game_speed, monk_spin_button, parse_fortune_teller, parse_shop,
+                              close_button, close_button_any_size, game_speed, monk_spin_button, parse_fortune_teller, parse_shop,
                               parse_skill_cards, rarity_name, skill_reroll)
 from roguebot.skills import Catalog, Skill, infer_tags, skill_key, skill_name_rejected
 from roguebot.vision import Ocr, find
@@ -198,6 +198,7 @@ class Player:
         self._reset_monk()
         self._campfire_waits = 0
         self._miner, self._miner_centers, self._miner_used = None, None, 0
+        self._miner_wait_since = None
         self._miner_pending, self._miner_skips = None, set()
         self._clearing_since, self._open_chest = None, False
         self._unknown_saved = set()
@@ -339,7 +340,8 @@ class Player:
                     self._fail("Stuck on an unknown screen", img)
             else:
                 last_known = time.monotonic()
-            watched = self._watch.see(world2.progress_signature(texts), last_known)
+            watched = self._watch.see(world2.progress_signature(texts),
+                                      last_known if state.kind is not LevelScreen.UNKNOWN else time.monotonic())
             if watched != "ok" and self._watchdog(img, texts, watched):
                 return LevelScreen.DEFEAT
 
@@ -549,6 +551,8 @@ class Player:
             else:
                 log.info("No wanted skill in %s: rerolling", [s.name for s in skills])
                 self._save_reroll(img, texts, skills)
+                if reroll is None:
+                    return None
                 self._rerolled = True
                 return reroll.center
         if partial and shown is not None:
@@ -839,6 +843,8 @@ class Player:
 
     def _world2(self, img, texts, state: LevelState) -> LevelState:
         """Miner, unknown events, and the goblin chest. Known events are already in `state`."""
+        if world2.is_skill_info(texts):
+            return LevelState(LevelScreen.CONTINUE, close_button_any_size(img) if self._real_frame(img) else None)
         if world2.is_skills_overlay(texts):
             point = config.SKILLS_BACK
             if self._real_frame(img):
@@ -885,9 +891,14 @@ class Player:
             return state
         if world2.match_event(texts) == "goblin" and world2.LAST and world2.LAST.choice == "raid":
             self._open_chest = True
+        if (state.kind is not LevelScreen.UNKNOWN or world2.is_quiet_map(texts)
+                or find(texts, labels.REVIVE_PROMPT)):
+            return state
         # Fights, skill picks and path forks are not unknown events. Path choice already
         # happened in classify (level_tap). A battle is waited out. A skill pick is the
         # normal picker, which runs after this returns.
+        if world2.is_battle(texts):
+            return LevelState(LevelScreen.FIGHT)
         if world2.ordinary_level_screen(texts):
             return state
         passive = world2.known_screen(texts)
@@ -937,8 +948,7 @@ class Player:
             log.info("Treasure Miner: out of pickaxes")
             return leave.center
         if world2.miner_out(texts):
-            log.info("Treasure Miner: pickaxes spent; waiting for Leave")
-            return None
+            return self._miner_wait_for_leave()
         claim = find(texts, labels.TAP_TO_CLAIM)
         if claim:
             return claim.center
@@ -970,24 +980,26 @@ class Player:
         self._miner = board
         self._miner_centers = centers
         icons = world2.count_pickaxes(img, centers)
+        log.debug("Treasure Miner: icons=%s confirmed digs=%d", icons, self._miner_used)
         counted = world2.MINER_PICKAXES - self._miner_used
-        if icons is not None and icons > 0:
-            left = icons
-            log.info("Treasure Miner: %d pickaxe icons visible", icons)
-        else:
-            left = counted
-            if icons == 0:
-                log.info("Treasure Miner: 0 pickaxe icons visible; still using the dig count (%d left)", left)
+        # Confirmed digs are authoritative; neither stuck-high nor stuck-low icons override them.
+        left = max(0, counted)
         # Leave is the real end (it appears only after the last pickaxe). A 0 from the
         # icon reader must not stop the digs early. Nine confirmed tile changes is the
         # other stop, and then we wait for Leave instead of flipping a coin.
         if left <= 0:
-            log.info("Treasure Miner: pickaxes spent; waiting for Leave")
-            return None
+            return self._miner_wait_for_leave()
+        self._miner_wait_since = None
         nxt = world2.next_unopened(board, self._miner_skips)
         if nxt is None:
-            log.info("Treasure Miner: no unopened tile; waiting for Leave")
-            return None
+            # Discard a stale merged board, re-locate with the measured fallback, and retry.
+            board, centers = world2._board_at(img, world2.scaled_fallback_centers(img))
+            self._miner, self._miner_centers = board, centers
+            self._miner_skips.clear()
+            nxt = world2.next_unopened(board)
+            if nxt is None:
+                # Misclassified cracked tiles: probe an unconfirmed cell, never a popup control.
+                nxt = (self._miner_used // world2.MINER_SIZE, self._miner_used % world2.MINER_SIZE)
         r, c = nxt
         if (r, c) in self._miner_skips:
             # Every unopened cell missed once. Try the board again instead of stopping.
@@ -996,6 +1008,17 @@ class Player:
         self._miner_pending = (r, c, point, world2.cell_signature(img, point))
         log.info("Treasure Miner: dig %s (%d pickaxes left) -> tap %s", nxt, left, point)
         return point
+
+    def _miner_wait_for_leave(self):
+        now = time.monotonic()
+        since = getattr(self, "_miner_wait_since", None)
+        if since is None:
+            self._miner_wait_since = now
+        elif now - since >= 8:
+            log.info("Treasure Miner: Leave missing after spent pickaxes; using Android back")
+            self.device.back()
+            self._miner_wait_since = now
+        return None
 
     def _coin_flip(self, texts, title: str) -> tuple[int, int] | None:
         """TODO: remove coin flip after full data.

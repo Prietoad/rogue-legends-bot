@@ -14,7 +14,7 @@ import cv2
 from roguebot import config, labels as L
 from roguebot.build import Build, BuildState, offer_is_unfavorable, shop_order
 from roguebot.device import Device
-from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, fight_in_progress, fight_skip, free_donation, parse_patrol, parse_quick_patrol, guild_hall, guild_hall_donate, guild_screen, guild_vault, in_guild, is_guild_map, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
+from roguebot.mode_screens import (FightResult, DojoScreen, dojo_unavailable, back_arrow, daily_claim, fight_in_progress, fight_skip, free_donation, parse_patrol, parse_quick_patrol, guild_hall, guild_hall_donate, guild_screen, guild_vault, in_guild, is_guild_map, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
                                    parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
                                    parse_skill_choice, parse_tower, personal_vault_claim, pick_opponent,
                                    quick_patrol_close, quick_patrol_open, vip_cards_icon, vip_claim_all,
@@ -23,7 +23,7 @@ from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, fight_i
 from roguebot.navigation import NavigationError, Navigator, _still_there
 from roguebot.play import PlayError
 from roguebot.screens import (LevelScreen, classify_level_screen, close_button, close_button_any_size, is_loading,
-                              parse_energy, parse_lobby, parse_skill_cards, popup_close, rarity_name, skill_reroll)
+                              parse_energy, parse_lobby, parse_skill_cards, popup_close, rarity_name, skill_reroll, vault_cinematic)
 from roguebot.skills import Catalog, Skill
 from roguebot.vision import Ocr, Text, find
 
@@ -149,13 +149,14 @@ class Routine:
         Next starts the next floor's fight at once (Round 1 is already on screen). That fight is
         waited out. A fixed action budget must not give up in the second after Next: four cleared
         towers are 40 floors, which used to expire the budget as floor 10 of the next tower began.
-        The budget only counts a victory that was already on screen, with no round before it
-        (the same result read again). A floor that actually played resets it.
+        Floor-index changes and observed fights reset the elapsed stall timer. Repeated reads
+        of the same victory without a transition eventually fail; advancing floors have no action cap.
         """
         self._open_mode(L.TOWER)
         climbing = False  # Next was tapped: the next floor follows, the tower menu does not
-        stalls = 0
-        while stalls < config.MAX_MODE_ACTIONS:
+        last_floor = None
+        progress_at = time.monotonic()
+        while True:
             if not climbing:
                 screen = self._wait_for(lambda img, texts: self._claim_or(texts, self._tower_or_chest), "tower screen")
                 if screen.tickets < 1:
@@ -163,6 +164,13 @@ class Routine:
                     return DONE
                 log.info("Tower: challenge (%d tickets)", screen.tickets)
                 self._press(screen.challenge)
+            img, texts = self._capture()
+            # A skip can finish before a Round frame is observed. Its floor index is progress too.
+            floor = tuple(t.norm for t in texts if "tower of heroes" in t.norm or "floor" in t.norm)
+            self._push(img, texts)
+            now = time.monotonic()
+            if floor and floor != last_floor:
+                last_floor, progress_at = floor, now
             result = self._fight(next_floor=True)
             if not result.victory:
                 return DONE
@@ -172,8 +180,10 @@ class Routine:
             else:
                 log.info("Tower: floor cleared")  # Okay, then the chest if the tower is done
                 climbing = False
-            stalls = 0 if result.saw_fight else stalls + 1
-        self._fail("Tower did not finish")
+            if result.saw_fight:
+                progress_at = time.monotonic()
+            elif time.monotonic() - progress_at >= config.MODE_FIGHT_TIMEOUT:
+                self._fail("Tower did not finish: stuck on the same result")
 
     def dungeon(self, label: L.Label) -> str:
         """Crystal Mines / Pet Kingdom: challenge the shown (highest) difficulty; after a defeat,
@@ -210,8 +220,7 @@ class Routine:
             log.info("Dojo: closed for now")
             return SKIPPED
         for _ in range(config.MAX_MODE_ACTIONS):
-            screen = self._wait_for(lambda img, texts: self._claim_or(texts, lambda t: parse_dojo(img, t, self.ocr)),
-                                    "dojo screen")
+            screen = self._wait_for(self._dojo_screen, "dojo screen")
             if screen.chest:
                 log.info("Dojo: claiming the progress chest")
                 self._tap(screen.chest)
@@ -224,6 +233,17 @@ class Routine:
                 self._press(screen.challenge)
                 self._fight()
         self._fail("Dojo did not run out of tickets")
+
+    def _dojo_screen(self, img, texts):
+        if dojo_unavailable(img, texts, self.ocr):
+            return DojoScreen(None, 0, None)
+        if is_modes_list(texts):
+            # A pause may leave the card unopened; retry against the current frame.
+            entry = mode_entry(texts, L.DOJO)
+            if entry:
+                self._tap(entry)
+            return None
+        return self._claim_or(texts, lambda t: parse_dojo(img, t, self.ocr))
 
     def dive(self) -> str:
         """Dungeon Dive: a 3-depth level board, played like a normal level (build, auto-play) while there
@@ -611,6 +631,10 @@ class Routine:
         """
         for _ in range(MAX_BACK_STEPS):
             img, texts = self._capture()
+            if vault_cinematic(img, texts):
+                self.device.tap(config.SCREEN_SIZE[0] // 2, config.SCREEN_SIZE[1] // 2)
+                time.sleep(config.UI_SETTLE)
+                continue
             if parse_lobby(texts) or not guild_screen(texts):
                 return
             back = back_arrow(img) if img is not None else None
@@ -860,7 +884,7 @@ class Routine:
                 continue
             order = shop_order(skills, self.build, state, can_reroll=False)  # wanted first, then rarest
             if choice.chosen < choice.needed:
-                if choice.chosen >= len(choice.cards):
+                if choice.chosen >= len(choice.cards) or choice.chosen >= len(order):
                     self._fail("Skill cards not recognized", img)
                 skill = skills[order[choice.chosen]]
                 log.info("Skill: %s (%s, %s, %s)", skill.name, skill.rarity, skill.damage_type or "-", skill.role or "-")

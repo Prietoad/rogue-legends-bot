@@ -87,6 +87,7 @@ VICTORY = _l("victoria", "victory")
 DOUBLE_REWARD = _l(en="x2 rewards")                  # ad button, bottom-right of the end screen (some runs)
 
 # In level
+TAP_TO_STOP = _l("toca para detener", "tap to stop")
 SKILL_PROMPT = _l("selecciona una habilidad", "select a skill")
 EXACT_BUTTONS = _l(                                  # buttons that just advance the game, matched exactly
     ("girar", "girar!", "reclamar"),                 # wheels (exact: their bubble says "One spin! ...")

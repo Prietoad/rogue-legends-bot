@@ -14,8 +14,8 @@ import cv2
 import numpy as np
 
 from roguebot import config, labels as L
-from roguebot.build import PRESETS, Build
-from roguebot.skills import DAMAGE_TYPES, MAGIC, PHYSICAL, infer_tags, name_is_support
+from roguebot.build import PRESETS, Build, protected_core
+from roguebot.skills import DAMAGE_TYPES, MAGIC, PHYSICAL, Catalog, DAMAGE, infer_tags, name_is_support, skill_key
 from roguebot.vision import Text, find, normalize
 
 log = logging.getLogger(__name__)
@@ -247,8 +247,13 @@ def is_core_skill(name: str | None, build: Build) -> bool | None:
         return None
     if name_is_support(cleaned):
         return False
-    damage_type, _, _role = infer_tags(cleaned, "")
-    if damage_type and damage_type in build.order:
+    if protected_core(cleaned, build):
+        return True
+    if skill_key(cleaned) == "specialexperiment" and not build.pets_equipped:
+        return False
+    known = Catalog().skills.get(skill_key(cleaned))
+    damage_type, _, role = (known.damage_type, known.nature, known.role) if known else infer_tags(cleaned, "")
+    if role == DAMAGE and damage_type and damage_type in build.order:
         return True
     return False
 
@@ -880,7 +885,7 @@ def is_known_title(title: str) -> bool:
     n = normalize(title)
     if any(normalize(p) in n for _e, titles, _c in _EVENTS for p in titles):
         return True
-    return any(p in n for p in KNOWN_OTHER_TITLES)
+    return n == "level modifiers" or any(p in n for p in KNOWN_OTHER_TITLES)
 
 
 def is_miner(texts: list[Text]) -> bool:
@@ -1169,7 +1174,7 @@ def _log(decision: Decision, hud: Hud) -> None:
         log.info("W2 cursed vendor unknown line: %s", line)
 
 
-_BATTLE_RE = re.compile(r"(?:round|ronda)\s*:?\s*\d+\s*/\s*\d+")
+_BATTLE_RE = re.compile(r"(?:round|ronda)\s*:?\s*(?:\d+\s*/\s*\d+|[1-9]\d?30\b)")
 
 
 _ENEMY_HP = re.compile(r"\d+(?:[.,]\d+)?\s*[kmb]")
@@ -1251,6 +1256,18 @@ def is_shop_screen(texts: list[Text]) -> bool:
 _STAT_TOAST = re.compile(r"^max hp\s*[+\-]\s*\d+\s*%$")
 
 
+def spinner_stop(texts: list[Text]) -> Text | None:
+    """Reward/elite spinner stop, distinguished from the ordinary auto-play dice toggle."""
+    stop = find(texts, L.TAP_TO_STOP, exact=True)
+    if stop is None or stop.center[1] <= 1800:
+        return None
+    blob = " ".join(t.norm for t in texts)
+    evidence = ("depth:" in blob or "eliteenemy" in blob or "elite enemy" in blob
+                or any(_STAT_TOAST.match(t.norm.replace("maxhp", "max hp")) for t in texts)
+                or any(re.search(r"x\d+(?:[.,]\d+)?[km]", t.norm) and t.center[1] < 1500 for t in texts))
+    return stop if evidence else None
+
+
 def known_screen(texts: list[Text]) -> str | None:
     """A screen the 2.0.2 run saved as an unknown event. None when it really is unknown.
 
@@ -1266,6 +1283,8 @@ def known_screen(texts: list[Text]) -> str | None:
 
     if is_battle(texts):
         return "battle"
+    if spinner_stop(texts) or (find(texts, L.LEVEL_MODIFIERS, exact=True) and find(texts, L.CONTINUE, exact=True)):
+        return "panel"
     # A dice win popup also says "You Received" / "Tap anywhere to claim": that tap wins.
     if short(("you received", "you forgot", "lucky treasure", "ucky treasure", "tap anywhere to claim")):
         return "claim"
@@ -1310,6 +1329,8 @@ def event_title(texts: list[Text]) -> str | None:
 
     Body lines under the buttons ("Restaura", "30% de HP") are not the title.
     """
+    if is_battle(texts) or is_skill_info(texts) or find(texts, L.TAP_TO_STOP, exact=True):
+        return None
     labels = choice_labels(texts)
     if len(labels) < 2:
         return None
@@ -1360,7 +1381,7 @@ def tap_forbidden(point: tuple[int, int]) -> bool:
     if x < 420 and y > 2050:
         return True
     sx, sy = config.SKILLS_BUTTON
-    return abs(x - sx) <= 90 and abs(y - sy) <= 90
+    return abs(x - sx) <= 110 and sy - 520 <= y <= sy + 90
 
 
 _COIN_BLOCK = (
@@ -1402,6 +1423,8 @@ def coin_flip_applies(texts: list[Text]) -> bool:
     """An unknown choice screen. Never a fight, a shop, the miner, or a known popup."""
     if is_miner(texts) or is_shop_screen(texts) or ordinary_level_screen(texts):
         return False
+    if is_quiet_map(texts) or find(texts, L.TAP_TO_STOP, exact=True):
+        return False
     if is_skills_overlay(texts) or is_bandits(texts) or powerup_next(texts):
         return False
     if known_screen(texts) or transient_kind(texts):
@@ -1421,7 +1444,7 @@ def _coin_button(t: Text) -> bool:
     if t.center[1] <= config.TOP_BAR_MAX_Y:
         return False
     name = t.norm.strip("!¡ ")
-    if name in ("skills", "skill", "vip", "settings") or "attempt" in name:
+    if name in ("skills", "skill", "vip", "settings", "level", "modifiers", "level modifiers", "shop", "tienda") or "attempt" in name:
         return False
     words = name.split()
     if not words or len(words) > 3:
@@ -1433,6 +1456,8 @@ def _coin_button(t: Text) -> bool:
 
 def coin_flip_labels(texts: list[Text]) -> list[tuple[str, tuple[int, int]]]:
     """Safe buttons on an unknown choice screen, in reading order. Blocklisted ones are gone."""
+    if is_battle(texts):
+        return []
     found = []
     for t in choice_labels(texts):
         if not _coin_button(t):
@@ -1741,7 +1766,9 @@ def miner_step_ok(coords: list[float], expected: float, width_or_height: int, ax
     want = expected * scale
     if want <= 0:
         return False
-    return abs(step - want) / want <= config.MINER_STEP_TOLERANCE
+    fallback = FALLBACK_MINER_COLS if axis == 0 else FALLBACK_MINER_ROWS
+    edges_ok = abs(coords[0] - fallback[0] * scale) <= 40 * scale and abs(coords[-1] - fallback[-1] * scale) <= 40 * scale
+    return edges_ok and abs(step - want) / want <= config.MINER_STEP_TOLERANCE
 
 
 def scaled_fallback_centers(img: np.ndarray) -> list[list[tuple[int, int]]]:
@@ -1855,32 +1882,29 @@ def count_pickaxes(img: np.ndarray, centers) -> int | None:
         return None
     x0 = max(0, centers[0][0][0] - int(0.04 * w))
     x1 = min(w, centers[0][-1][0] + int(0.04 * w))
-    y0, y1 = max(0, y - 14), min(h, y + 14)
+    y0, y1 = max(0, y - int(0.016 * h)), min(h, y + int(0.006 * h))
     if x1 - x0 < 20:
         return None
     roi = img[y0:y1, x0:x1]
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    mask = ((hsv[:, :, 1] < 90) & (hsv[:, :, 2] > 85) & (hsv[:, :, 2] < 220)).astype(np.uint8)
+    mask = ((hsv[:, :, 1] < 90) & (hsv[:, :, 2] > 130)).astype(np.uint8)
     _n, _labels, stats, _cent = cv2.connectedComponentsWithStats(mask, 8)
-    heads = 0
-    min_w, max_w = 0.02 * w, 0.07 * w
-    min_area = 0.00015 * w * h
+    heads = []
+    min_w, max_w = 0.018 * w, 0.07 * w
+    min_area = 0.00004 * w * h
     for i in range(1, len(stats)):
-        _x, _y, bw, bh, area = stats[i]
-        if min_w <= bw <= max_w and bh >= 0.005 * h and area >= min_area:
-            heads += 1
-    slots = _pickaxe_slots(img, centers)
-    if 1 <= heads <= MINER_PICKAXES and heads >= (slots or 0):
-        return heads
-    # Unused pickaxes dim to dark silhouettes. The light-head mask then reports 0 or 1
-    # while the icons are still on the bar. Count a slot that still has a dark core.
-    if slots is not None and 1 <= slots <= MINER_PICKAXES:
-        return slots
-    if 1 <= heads <= MINER_PICKAXES:
-        return heads
-    if heads == 0 and slots == 0 and float(roi.mean()) < 110:
-        return 0
-    return None
+        x, _y, bw, bh, area = stats[i]
+        if min_w <= bw <= max_w and bh >= 0.004 * h and area >= min_area:
+            heads.append(x + bw / 2)
+    # A highlight can split one head into two connected components. Merge those,
+    # but not neighboring slots (about 0.078 of the frame width apart).
+    groups = []
+    for x in sorted(heads):
+        if not groups or x - groups[-1][-1] > 0.055 * w:
+            groups.append([x])
+        else:
+            groups[-1].append(x)
+    return len(groups) if len(groups) <= MINER_PICKAXES else None
 
 
 def _pickaxe_slots(img: np.ndarray, centers) -> int | None:
@@ -1967,9 +1991,14 @@ def _banner_power(t: Text) -> bool:
     return n in ("powerup", "levelup", "subistedenivel", "subidadepoder") and len(t.norm) <= 28
 
 
+def is_skill_info(texts: list[Text]) -> bool:
+    return any(t.norm.strip("!¡ ") in ("skill info", "informacion de habilidad")
+               and t.center[1] < 1000 for t in texts)
+
+
 def is_skills_overlay(texts: list[Text]) -> bool:
     """The owned-skills book: a "Skills" title up top, not the HUD button at the bottom."""
-    return any(t.norm.strip("!¡ ") in ("skills", "habilidades") and t.center[1] < 700
+    return is_skill_info(texts) or any(t.norm.strip("!¡ ") in ("skills", "habilidades") and t.center[1] < 700
                and abs(t.center[0] - config.SCREEN_SIZE[0] // 2) < 420 for t in texts)
 
 
@@ -1997,7 +2026,14 @@ def bandits_done(texts: list[Text]) -> bool:
 
 def is_quiet_map(texts: list[Text]) -> bool:
     """The level map (HUD and the speed button) with no event on it. Not worth saving."""
-    if match_event(texts) or is_skill_offer(texts) or is_battle(texts) or looks_like_event(texts):
+    if match_event(texts) or is_skill_offer(texts) or is_battle(texts) or is_skills_overlay(texts):
+        return False
+    if any(t.norm.strip("!¡ ") in ("sign", "stay", "leave", "get out") for t in texts):
+        return False
+    blob = " ".join(t.norm for t in texts)
+    if "exp" in blob and re.search(r"\blv\b", blob) and any(t.norm == "skills" for t in texts):
+        return True
+    if looks_like_event(texts):
         return False
     hud = read_hud(texts)
     if not hp_plausible(hud.hp, hud.max_hp):
@@ -2064,11 +2100,18 @@ def event_snapshot(texts: list[Text]) -> tuple:
 
 
 def progress_signature(texts: list[Text]) -> tuple:
-    """Roll counter, HP, tokens, and the screen text. Unchanged means the run is stuck."""
+    """Stable screen kind and progress counters, ignoring OCR/animation jitter."""
+    if is_skill_info(texts):
+        return ("skill_info",)
+    if is_skills_overlay(texts):
+        return ("skills",)
+    if is_battle(texts):
+        return ("battle",)
     hud = read_hud(texts)
-    lines = tuple(t.norm for t in texts)
-    hp = None if hud.hp is None else int(hud.hp)
-    return (hud.rolls_used, hud.rolls_total, hp, hud.tokens, lines)
+    # Stable controls and counters, not raw descriptions, OCR boxes or animated HP/token text.
+    controls = tuple(sorted({t.norm for t in texts if t.norm in
+                            {"stay", "leave", "sign", "next", "continue", "tap to stop"}}))
+    return (match_event(texts), hud.rolls_used, hud.rolls_total, controls)
 
 
 class StuckWatch:
