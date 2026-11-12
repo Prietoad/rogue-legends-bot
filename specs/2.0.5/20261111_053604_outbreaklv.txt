@@ -1,0 +1,28 @@
+name: Outbreak-Lv-2+
+rarity: legendary
+description: Outbreak-Lv-2+ At round 3, apply Poison 15 times on all enemies.
+
+EXP
+Lv.
+17.9m/17.9m
+5m
+2m
+67
+POWER UP!
+Select a Skill to learn!
+Legendary
+Warrior-Lv.2+
+Physical DMG +50%, Weapon Attack
+DMG +50%, Magical DMG -50%
+Common
+Ultimate-Poison+
+When using your Ultimate, apply 2
+3 stacks of Poison.
+Legendary
+Outbreak-Lv-2+
+At round 3, apply Poison 15 times
+on all enemies.
+VIP
+Active
+x4
+Skills

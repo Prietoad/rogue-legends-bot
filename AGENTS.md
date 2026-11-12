@@ -66,7 +66,7 @@ A full live farm is not available to the coding agent. Mark anything that still 
 - **Never auto-spend gems, gold, or diamonds.** Shops buy with event tokens only. Prize-strip gem/coin amounts (see `specs/2.0.5/BUGS.md` item #10) are rewards, not purchases. Do not tap offer, price, or gem-spend buttons. Close purchase popups only through their "tap to close" / ✕ affordances.
 - **Arena and VIP stay untouched.** Do not change Arena or VIP behavior, screens, or settings in this release.
 - **Version is 2.0.5.** Bump every version string this repo uses for the desktop bot: at least `roguebot/__init__.py` (`__version__`), the assertion in `tests/test_logic.py`, and a `## 2.0.5` section in `CHANGELOG.md` (and README if it still names 2.0.4). Leave the phone app version alone unless it is generated from the same string.
-- **Stay scoped to `specs/2.0.5/BUGS.md`.** Implement numbered items #1–#10, including §5a (Game's poison ranking and protected core). Leftovers at the bottom of that file (vendor curse/blessing weights, catalog junk names) are reference only — do not invent weights.
+- **Stay scoped to `specs/2.0.5/BUGS.md`.** Implement numbered items #1–#15, including §5a (Game's poison ranking and protected core). Add the catalog skills in the **New data to add** section (Serpent Stance, Outbreak under the clean names). Recurrences of #1–#10 are extra evidence and fixtures, not new items. Leftovers and Cursed Vendor lines (weights still TODO) are reference only — do not invent curse/blessing weights.
 - **Ninja Dodge stays not core** (Brian, 2.0.4). Heal Shuriken likewise.
 - **Add offline tests with the fixtures where possible.** Every code change needs tests, and `python -m pytest -q` must pass.
 - Do not rewrite unrelated modules, and do not start "cleanup" refactors outside the bug list.
@@ -77,7 +77,7 @@ Open **one** pull request targeting `main`, titled `2.0.5: <short summary of the
 
 The PR body must include:
 
-- A checklist of items #1–#10 (and §5a) with what changed for each.
+- A checklist of items #1–#15 (and §5a) plus the New data skills, with what changed for each.
 - A **live-unverified** section listing behavior that still needs a farm on Brian's PC (for example miner visits with no fixture, statue offerings, dojo/raid 4-card offers with no screenshot, watchdog timing on a real hang).
 - Confirmation that gems/gold are never auto-spent and that Arena and VIP were not changed.
 - How to run the new tests.

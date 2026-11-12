@@ -1,0 +1,33 @@
+reroll
+Combo Mastery
+Weapon-Mastery
+Darkside
+
+EXP
+24.9m/24.9m
+5.8m
+1.2m
+163
+BLACK
+LEVEL UP!
+Select a Skill to learn!
+Legendary
+Combo Mastery Lv. 2
+Combo Rate +30%, gain ATK +10%
+on every Combo Attack, lasts until
+end of battle.
+Legendary
+Weapon-Mastery
+Your Basic Attacks, Combo Attacks
+and Counter Attacks deal +80%
+more DMG
+Legendary
+Darkside
+When HP >50%, ATK  but
+drain 10% of your HP every turn.
+Reroll (1)
+GG
+VIP
+Active
+x4
+Skills

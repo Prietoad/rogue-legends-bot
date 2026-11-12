@@ -1,0 +1,32 @@
+reroll
+Ultimate-Resistance
+Vampirico
+Combo Mastery
+
+EXP
+Lv.2
+23.6m/23.6m
+5.4m
+1.2m
+238
+X
+LEVEL UP!
+Select a Skill to learn!
+Legendary
+Ultimate Resistance
+You take 40% less damage from
+enemy Ultimate Attacks
+Legendary
+Vampiric
+Lifesteal Rate +25%, Lifesteal Effect
++50%, Magic DMG -50%
+Legendary
+Combo Mastery Lv. 2
+Combo Rate +30%, gain ATK +10%
+on every Combo Attack, lasts until
+end of battle.
+Reroll (1)
+VIP
+Active
+x4
+Skills

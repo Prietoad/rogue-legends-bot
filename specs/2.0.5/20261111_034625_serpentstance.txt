@@ -1,0 +1,40 @@
+name: Serpent-Stance
+rarity: mythic
+description: Dealing any form of non- poison damage will apply 1 stack of Poison on the enemy
+
+EXP
+Lv. 9
+19.7m/37.3m
+6.5m
+1.5m
+283
+SHOP
+Yes! Buy more!
+3/3
+Max HP
+Heal 30%
+19
+95
+Common
+Live Wire
+SALE! 
+When attacked by an
+96
+enemy, cast Bolt.
+48
+Mythic
+Serpent-Stance
+Dealing any form of non-
+poison damage will apply 1
+285
+stack of Poison on the enemy
+Common
+Affliction Affection-Lv. 2
+Deal 4% more damage for
+each unique Status Effect
+95
+on the enemy
+Reroll
+Exit
+10
+Skills

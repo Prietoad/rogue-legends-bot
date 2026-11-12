@@ -2,7 +2,7 @@
 
 From Brian's 2.0.4 live tests on Nov 10, 2026 (America/New_York). Source baseline is `main` at `91a01cdf` (release 2.0.4). Fixtures in this folder are referenced as `specs/2.0.5/<file>`. Afternoon session 3:35–5:36 PM: 15 runs, no hangs, no gem/gold spend, no core skill rerolled away. Evening sessions 5:50–9:18 PM added items #6–#10. Daily Rewards worked in the evening (Claim Now → Collect → free spin → "you won" → Android back ×2).
 
-This list may still grow from later 2.0.4 logs before implementation starts. Implement every numbered item, including §5a. Leftovers at the end are reference only: do not invent curse/blessing weights, and do not treat them as in-scope work.
+Later 2.0.4 sessions overnight Nov 10–11 and through the evening of Nov 11 added items #11–#15, a recurrences section, and a New data section (Serpent Stance, Outbreak). Implement every numbered item (#1–#15), including §5a, and add the catalog skills in New data. Recurrences are evidence for existing items, not new work. Curse/blessing weights stay held: do not invent them.
 
 Coordinates and line numbers below are for 1440×2560 frames and the 2.0.4 source.
 
@@ -250,8 +250,145 @@ Suggested fix: recognize "Tap To Stop" on a dungeon board and tap that button (n
 
 ---
 
-## Leftovers (not in-scope items)
 
-Zooms / mid-walk boards still saved as `after_event` in later evening captures (`20261110_175334_after_event`, `20261110_184247_after_event`) are the same class as #4, not a hang. Follow-up Strike / Weapon Mastery rerolls wait on the #5 poison ranking. `New skill: Wean` at 7:17:55 PM (dojo fade) is more catalog junk, same family as 2.0.4 #11. Inn / "revives are disabled" / "always stop at a black market" / "next Mythic becomes Trash" still log as unknown vendor lines; curse/blessing weights stay held — do not invent weights.
+## 11. Treasure Miner: "no unopened tile, waiting for Leave" while tiles and pickaxes remain; watchdog ends the level; lobby recovery fails
 
-Trash as a skill already worked (`Skill: Trash (only choice)` at 6:06:38, 7:57:49, and 9:07:17 PM; fixture `specs/2.0.5/20261110_180638_trash.png` + `.txt`). Reference vendor captures, not new work: `specs/2.0.5/20261110_180607_the_next_mythic_skill_you_learn_becomes.png` (signed the trash-curse / black-market card) and `specs/2.0.5/20261110_184713_revives_are_disabled.png` (signed left: elite HP down + revives disabled, vs inn + half skills disabled).
+Nov 11, 8:49–9:03 PM ET, SC 17 run 4. Icons stuck at **2** the whole visit (same leftover as #1, the stuck-low case). The dig-change counter still moved 8, 7, …, 2. At 8:50:22 PM, after `changed the tile (2 pickaxes left)`, the bot logged `no unopened tile; waiting for Leave` and sat there. Leave never appeared.
+
+Watchdog at 8:51:22 PM: `back`, then `no back arrow or safe exit`; 8:51:32 PM `exit`, same; 8:54:50 PM `stop` — `screen unchanged for 300s; ending the level`. `go_to_lobby` then failed four times (`specs/2.0.5/fail_20261111_205702.png` and later retries `_210352` not in this folder), `Same error 4 times, giving up`, `Run failed`.
+
+The watchdog / fail frames are the same miner board: "Perfect timing. My arms need a break.", **2 lit pickaxes + 7 dim**, many closed (cracked) tiles still on the grid, **Remaining Treasures: 5**, and **no Leave button**. The grid reader was wrong (centers were a measured board, not fallback, e.g. `(560, 1099)` … `(1147, 1390)`), so it stopped digging while pickaxes and tiles remained. `play.py` miner path only taps Leave when the Leave label is found, or waits when it thinks the board is exhausted (`play.py:934-941`). `go_to_lobby` has no miner Leave / safe-exit path for this screen (`navigation.py:387`).
+
+Fixtures: `specs/2.0.5/watchdog_back_20261111_205121.png`, `specs/2.0.5/watchdog_stop_20261111_205450.png`, `specs/2.0.5/fail_20261111_205702.png`.
+
+Suggested fix: if icons or "Remaining Treasures" show remaining work, do not wait for Leave — reread / fall back to the measured centers and keep digging. Only wait for Leave after the dig counter (or a real 0-icon read) says the pickaxes are gone. If Leave is still missing, treat the miner's "arms need a break" line (or a long wait) as a reason to try a board tap or a safe exit, not a 5-minute hang. `go_to_lobby` should dismiss this event (Leave if present, else a back / close) instead of failing four times.
+
+### Acceptance criteria
+
+- On a board with remaining closed tiles and remaining pickaxes (as in the three fixtures: 2 lit pickaxes, Remaining Treasures 5, no Leave), the bot keeps digging or re-locates the grid. It does not log `no unopened tile; waiting for Leave` and sit until the watchdog stops the level.
+- It only waits for Leave when Leave is actually on screen, or after the dig counter (or a real 0-icon read) says the pickaxes are gone.
+- A stuck miner is left without a Run failed / Aventura-lobby give-up. `go_to_lobby` dismisses this event (Leave if present, else a back / close / safe exit) instead of failing four times.
+- Offline tests load the three fixtures and check that the board is not treated as exhausted.
+
+---
+
+## 12. Tower skip-climb dies with "Tower did not finish" on a Victory / Next screen (Tower of Heroes 201)
+
+Nov 11, 7:07:09–7:33:25 PM ET. After dojo failed, tower started (`challenge (10 tickets)`, one tower cleared, then `challenge (19 tickets)`). Skip was on. It climbed successfully for ~26 minutes (`Skipping the fight` / `Fight finished: victory` / `Tower: next floor` — 12× `floor cleared`, 205× `next floor`). Then `Routine: tower failed: Tower did not finish` on a **Victory!** screen, "Tower of Heroes 201", with **OK** and **Next** still up (Auto Next Level unchecked). The routine then "Finished the fight before leaving" (another victory) and moved on to dungeon dive.
+
+`routine.py:158-176` loops `while stalls < MAX_MODE_ACTIONS` (`config.py:214`, **40**). `stalls` resets only when `result.saw_fight` is true; otherwise it increments. A long skip-climb, or repeated reads of the same Victory/Next if Next did not start the next floor, can burn that budget while the climb is still succeeding. The comment at `routine.py:149-153` already warns that four 10-floor towers (40 floors) used to trip this.
+
+Fixture: `specs/2.0.5/fail_20261111_193325.png`.
+
+Suggested fix: reset the stall budget on every real floor change (the "Tower of Heroes N" index, or a Next that actually leaves the victory). Do not count a skipped floor that already showed a round/result as a stall. If Victory + Next is on screen when the budget expires, tap Next (or OK after the last floor) and continue, instead of failing the mode. Raise or remove a 40-action cap that is smaller than a 19-ticket skip-climb.
+
+### Acceptance criteria
+
+- A 19-ticket skip-climb can clear many towers without "Tower did not finish" while Next is still a valid advance.
+- The fixture (Victory! / Tower of Heroes 201 / OK + Next) is treated as a floor advance, not a mode failure.
+- The routine only fails the tower when it is actually stuck (same victory for a long time, no Next/OK).
+- Offline tests load the fixture and check that Victory + Next is a continue, not a fatal tower error.
+
+---
+
+## 13. Dojo: "Expected the dojo screen" on the Modes list (0 tickets) after a pause
+
+Nov 11, 7:06:42–7:07:04 PM ET. Routine entered dojo, Brian paused 8 s later and resumed 4 s later, then `Routine: dojo failed: Expected the dojo screen`. The fixture is the **Modes** list, not an inner dojo page: Dojo Battle shows **0 tickets**, Tower has 10, Dive has 2. Tower ran next from that same list and worked.
+
+`dojo()` (`routine.py:205-226`) already skips when `screen.tickets < 1` (`Dojo: no tickets left`), but only after `_wait_for(..., "dojo screen")` (`routine.py:213-214, 962`) has parsed an inner dojo screen. After the pause, parse never matched, so it failed instead of treating the modes list + 0 tickets as a skip. `_open_mode` (`routine.py:638`) may also have returned success before the screen settled.
+
+Fixture: `specs/2.0.5/fail_20261111_190704.png`.
+
+Suggested fix: if `_wait_for` is still on the modes list, treat 0 tickets (or a closed card) as a skip, same as arena. Don't fail the routine. Pause/resume should re-run `_open_mode` or re-read tickets rather than requiring the inner screen on a stale deadline.
+
+### Acceptance criteria
+
+- A 0-ticket dojo on the Modes list (as in the fixture) is logged as "no tickets left" and skipped.
+- A short pause on the modes list does not produce "Expected the dojo screen" or a routine error.
+- Offline tests load the fixture and check that it is treated as a skip, not a dojo-screen failure.
+
+---
+
+## 14. Guild vault cinematic blocks lobby recovery after "no free daily personal claim"
+
+Nov 11, 7:46:44–7:48:02 PM ET. `Guild vault: opening`, then `no free daily personal claim` at 7:47:06, then 56 s later `Routine: could not get back to the lobby after vault: Could not reach the Aventura lobby`. The fixture is a full-screen **open-safe animation** (gold light, no buttons, no footer, no back arrow). After the error the bot logged `Leaving the guild` twice and started SC 17 — farm continued. No gem spend.
+
+`vault()` (`routine.py:577-604`) taps the building, waits for a personal-claim button or the personal-vault title, then `_leave_guild()` (`routine.py:606-618`), which only backs out while `guild_screen` is true. This cinematic is not a lobby and may not look like the guild map, so recovery falls through to `go_to_lobby` and dies on a screen with no close control (`navigation.py:387`).
+
+Fixture: `specs/2.0.5/fail_20261111_194801.png`.
+
+Suggested fix: after "no free claim" (and after a claim), wait out or tap through the vault cinematic before leaving. If `go_to_lobby` sees this animation, wait for it to finish or tap the center; don't start the four-retry Aventura failure. Still never tap a gem claim.
+
+### Acceptance criteria
+
+- A vault visit with no free claim returns to the lobby without a routine error.
+- The cinematic fixture is not a "Could not reach the Aventura lobby" give-up. The bot waits it out or taps the center, then leaves.
+- Gem prices stay untapped. Never auto-spend gems or gold.
+- Offline tests load the fixture and check that it is recognized as the vault cinematic, not a fatal lobby-recovery failure.
+
+---
+
+## 15. Fight start frames are saved as unknown events; coin flip can tap SHOP or skill-tray labels
+
+Three times overnight, a Round 1/30 fight was not classified as a battle (`world2.py:1178-1184` looks for `round … d+/d+`). OCR turned "Round 1/30" into **"Round 1730"**, or used a pet HP bar as the event title:
+
+- 12:42:06 AM Nov 11: saved as `12.1m(8.7m)` (pet HP under the player), `no safe option; waiting`. Fight ended on its own 14 s later. Fixture: `specs/2.0.5/20261111_004206_12_1m_8_7m.png` (+ `.txt`).
+- 12:44:58 AM: saved as `23.6m(9.4m)`; **`COIN FLIP … options ['SHOP'] -> picked SHOP`**, tap `(1019, 2288)` — the SHOP label on the dimmed board behind the skill tray. The fight still ended; a skill pick followed 17 s later. Fixture: `specs/2.0.5/20261111_004457_23_6m_9_4m.png` (+ `.txt`).
+- 1:09:04 AM: saved as `Round 1730`; **`COIN FLIP … options ['BOSS in', 'roiis'] -> picked BOSS in`**, tap `(608, 2029)` — garbled names in the skill tray. Won the run shortly after. Fixture: `specs/2.0.5/20261111_010904_round_1730.png` (+ `.txt`).
+
+`is_battle` must not depend on a perfect slash in "Round 1/30". Coin flip should never run on a fight (skill tray, enemy HP, or a SHOP building behind the combat UI).
+
+Suggested fix: treat a fight as a battle when "Round" + a 1/30-style counter is present (including "Round 1730"), or when the player/enemy HP bars and the skill tray are up. Never coin-flip those frames; wait them out. Add "SHOP" (a board label, not a choice) to the HUD / coin-flip blocklist during combat.
+
+### Acceptance criteria
+
+- All three fixtures are classified as a battle, never saved as an unknown event, and never receive a coin-flip tap on SHOP or a skill-tray label.
+- "Round 1730" (OCR of "Round 1/30") and pet-HP titles like `12.1m(8.7m)` / `23.6m(9.4m)` are not treated as event titles.
+- The bot waits for the fight or the next skill pick.
+- Offline tests load all three fixtures and check battle classification plus the SHOP / skill-tray blocklist.
+
+---
+
+### Recurrences of #1–#10 (not new items)
+
+- **#1** Miner icon count still overrides the dig counter. Stuck-at-9 and digging after `0 pickaxes left` again, including the two visits that opened Skill Info and became #6 crashes (10:55–10:56 PM Nov 10; 6:08–6:09 AM Nov 11). The #11 visit is the stuck-at-2 form (icons stayed 2 while the dig counter went 8…2), same as the 5:15 PM Nov 10 visit already noted under #1.
+- **#2** Off-board miner tap `dig (2, 6) (2 pickaxes left) -> tap (1303, 1244)` at 4:06:03 PM ET Nov 11. No `grid step off … using fallback` line.
+- **#4** Zoomed / mid-walk boards still saved as `after_event` (16 times in this window, 11:39 PM Nov 10 through 12:03 AM Nov 12). Not hangs.
+- **#6** Skill Info over "Tap anywhere to claim" after miner, continue `(719, 2380/2381)` misses the ✕, then four Aventura-lobby fails, Run failed. **Twice more:** 10:56:25–10:59:54 PM Nov 10 (Skill Info for **Venom Burst**, `specs/2.0.5/play_20261110_225625.png`; later fail frames `_225718`…`_225954` were not in the capture set) and 6:09:08–6:12:11 AM Nov 11 (Skill Info for **Undying**, `specs/2.0.5/play_20261111_060908.png`; later fail frames `_060953`…`_061211` were not in the capture set). Same close-button miss as before (`close_button` none, `close_button_any_size` finds the ✕).
+- **#8** Combo Mastery rerolled four more times: 2:03:06 AM, 2:21:52 AM, 4:19:23 PM, 4:29:13 PM ET Nov 11 (`specs/2.0.5/20261111_020306.png`, `specs/2.0.5/20261111_161923.png`, each + `.txt`). Raid at 7:45:47 PM rerolled an offer that already had PoisonShuriken (same `offer_is_unfavorable` whole-offer rule). Follow-up-Strike (11:41:40 PM Nov 10) and Weapon-Mastery (several, e.g. 10:40 PM, 11:50 PM, 1:02 AM, 3:04 AM, 4:48 PM) are the #5 ranking, not protected core.
+- **#9** Dungeon Level Modifiers coin-flip again at 7:33:52 PM (picked HUD **Modifiers**, recovered with Continue 2 s later) and 7:37:33 PM (picked Continue). At 7:35:08 PM a mid-dive board (`Depth: 1/3`, faded Tap To Stop) was saved as `depth_1_3_1_4m` and the flip picked HUD **Level** (`specs/2.0.5/20261111_193352_level_modifiers.png`, `specs/2.0.5/20261111_193508_depth_1_3_1_4m.png`, each + `.txt`). Both dives still won.
+- **#10** "Tap To Stop" still unhandled, but this time it was the only coin-flip option and was picked correctly: 2:53:55 AM and 5:55:42 PM (**Elite Enemy incoming** on a star-challenge board — new flavor, `specs/2.0.5/20261111_025355_eliteenemy.png` + `.txt`) and 4:10:02 AM (prize-strip title `MaxHP +11%`, `specs/2.0.5/20261111_041002_maxhp_11.png` + `.txt`).
+
+Minor leftovers: World 2 **DEFEAT** banner with "Chapter 13" and no Continue was saved as unknown at 3:01:37 AM, then correctly finished as defeat 2 s later (`specs/2.0.5/20261111_030137_chapter_13.png` + `.txt`). Bandits "event stuck" at 5:59:39 AM recovered immediately. `New skill: Sern` at 7:46:09 PM (raid fade) and `New skill: Outbreak-Lv-2+` (level suffix kept in the name) are more catalog junk, same family as 2.0.4 #11. Vendor unknown lines are the same five already listed; no new curse/blessing text. Weights still held for Game. Inn / trash / revives-disabled / black-market second sentence / pets-disabled still unweighted.
+
+Trash as a skill already worked on Nov 10 (`Skill: Trash (only choice)`; fixture `specs/2.0.5/20261110_180638_trash.png` + `.txt`). Reference vendor captures from that evening, not new work: `specs/2.0.5/20261110_180607_the_next_mythic_skill_you_learn_becomes.png` and `specs/2.0.5/20261110_184713_revives_are_disabled.png`.
+
+---
+
+## New data to add
+
+For Codex to add to `data/` (curse/blessing **weights stay TODO**, pending Game). No new Cursed Vendor *lines* this window — only recurrences of lines already captured on Nov 10. No `boons/` or `new_cursed_vendor/` files after 9:15 PM Nov 10.
+
+### Skills (add under the clean name)
+
+- **Serpent Stance** (mythic, venom, physical, damage). "Dealing any form of non-poison damage will apply 1 stack of Poison on the enemy." Shop offer at 3:46:25 AM ET Nov 11; not bought (285 coins, 283 on hand). Fixture: `specs/2.0.5/20261111_034625_serpentstance.png` (+ `.txt`).
+- **Outbreak** (legendary, venom, physical, damage). "At round 3, apply Poison 15 times on all enemies." Seen as **Outbreak Lv. 2+** on a POWER UP pick at 5:36:04 AM ET Nov 11. Add as `outbreak`, not `Outbreak-Lv-2+`. Fixture: `specs/2.0.5/20261111_053604_outbreaklv.png` (+ `.txt`).
+
+### Cursed Vendor lines already known (recurrence counts in this window only)
+
+Exact text as logged (`W2 cursed vendor unknown line:`):
+
+- `revives are disabled` ×11
+- `the next mythic skill you learn becomes trash` ×10
+- `every campfire becomes an inn (full heal + upgrade 2 skills)` ×9
+- `you always stop at a black market` ×8
+- `your pets are disabled for the first 3 rounds in every battle` ×5
+
+One vendor coin flip at 1:41:19 AM ET Nov 11: known weights tied (0 vs 0) on unknown inn vs revives-disabled, picked left. Expected while those lines stay unweighted.
+
+### Other screen text worth teaching (handlers, not weight tables)
+
+- Treasure Miner speech: "Perfect timing. My arms need a break." (see #11; Leave is not on this frame).
+- Board event: **"Elite Enemy incoming"** + green **Tap To Stop** (see #10 recurrence).
+- Dungeon / board HUD book: "Level" / "Modifiers" (see #9).
+- Defeat banner: **"DEFEAT"** with a **"Chapter N"** tag and no Continue button on the first frame.
