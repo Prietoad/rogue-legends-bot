@@ -1,0 +1,32 @@
+reroll
+Warrior
+Combo Mastery
+Exoplating
+
+EXP
+22.1m/22.1m
+5m
+1.1m
+159
+X
+LEVEL UP!
+Select a Skill to learn!
+Legendary
+Warrior Lv. 2
+Physical DMG +30%, Weapon Attack
+DMG +30%, Magical DMG -30%
+Legendary
+Combo Mastery Lv.2
+Combo Rate +30%, gain ATK +10%
+on every Combo Attack, lasts until
+end of battle.
+Legendary
+Exoplating
+At the start of combat, gain a Shield
+equal to 70% of your Max HP, but
+Max HP ↓↓↓↓
+Reroll (1)
+VIP
+Active
+x4
+Skills

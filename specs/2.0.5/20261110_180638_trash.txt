@@ -1,0 +1,19 @@
+name: Trash
+rarity: useless
+description: Trash What was once an impressive ability has now been reduced to sludge...
+
+EXP
+30.3m/33.3m
+5.4m
+1.4m
+POWER UP!
+Select a Skill to learn!
+Useless
+Trash
+What was once an impressive
+ability has now been reduced to
+sludge...
+VIP
+Active
+x4
+Skills

@@ -1,0 +1,32 @@
+reroll
+Warrior
+Wizard
+Weapon-Mastery
+
+EXP
+23.6m/23.6m
+5.4m
+1.2m
+160
+LEVEL UP!
+Select a Skill to learn!
+Legendary
+Warrior Lv. 2
+Physical DMG +30%, Weapon Attack
+DMG +30%, Magical DMG -30%
+Legendary
+Wizard Lv.2
+Magical DMG +30%, Skill DMG +30%,
+Physical DMG -30%
+口
+Legendary
+Weapon-Mastery
+Your Basic Attacks, Combo Attacks
+and Counter Attacks deal +80%
+more DMG
+Reroll (1)
+GG
+VIP
+Active
+x4
+Skills

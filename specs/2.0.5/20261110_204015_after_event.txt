@@ -1,0 +1,16 @@
+Skill Info
+Common
+Opportunist+
+Deal increased DMG to enemies
+afflicted with Wound. Effect
+increased
+Wound
+A status effect that deals physical damage
+every turn.
+Physical DMG
+Damage dealt by Weapon Attacks, Wound or
+Poison.
+Poison
+A status effect that deals physical damage
+every turn.
+Skills

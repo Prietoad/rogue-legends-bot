@@ -1,0 +1,31 @@
+reroll
+Glass Cannon
+Follow-up-Strike
+Warrior
+
+EXP
+23.6m/23.6m
+5.4m
+1.2m
+145
+X
+LEVEL UP!
+Select a Skill to learn!
+Legendary
+Glass Cannon
+ATK ↑↑+↑, Max HP ↓↓↓
+Legendary
+Follow-up-Strike
+Every 4 Basic Attacks or Combo Attacks,
+deliver an additional Combo Attack that
+is guaranteed to critically strike.
+Legendary
+Warrior Lv. 2
+Physical DMG +30%, Weapon Attack
+DMG +30%, Magical DMG -30%
+Reroll (1)
+VIP
+GG
+Active
+x4
+Skills
