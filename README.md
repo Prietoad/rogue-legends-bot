@@ -64,3 +64,9 @@ Next release, need to add a Guild Wars check and action.
 This distribution contains source and default skill data. It does not include personal settings, account logs, OCR transcripts, or new account-run screenshots. The public Luxury Pass fixture is generic full-screen offer artwork without account details. Exact account-run fixture tests remain private; the public suite explicitly skips those checks.
 
 Configure MuMu and your preferred run mode on first launch. Runtime settings and debug output stay local and should not be committed. The 2.0.8 fix keeps normal season banners from blocking startup; popup dismissal still requires the verified layout and never taps a purchase.
+
+## Credits
+
+- Original project: Prietoad
+- Fork development and testing: myself @bmarch0805
+- AI-assisted development: Cursor and OpenAI Codex
