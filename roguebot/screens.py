@@ -258,6 +258,7 @@ class LevelScreen(Enum):
     CONTINUE = "continue"        # screen whose only action is one button (see labels.CONTINUE_BUTTONS)
     DICE_DUEL = "dice_duel"      # "¡Batalla de Dados!" 21-style minigame
     PATH_CHOICE = "path_choice"  # board fork (Heliora): "Camino A" / "Camino B" cards showing where each path leads
+    ANVIL = "anvil"              # "Yunque del Herrero": take the item or gamble on upgrading it (the Player decides)
     CONTRACT = "contract"        # "Vendedor Maldito": sign one of two contracts (the Player picks which)
     MINER = "miner"              # "Minero de Tesoros" minigame: dig tiles (the Player picks which)
     FLIP_CARDS = "flip_cards"    # "Excavar en Busca de Tesoro" memory minigame; flip face-down cards in order
@@ -403,6 +404,16 @@ def parse_contracts(texts: list[Text]) -> list[Contract]:
             for b in buttons] if len(buttons) > 1 else []
 
 
+def parse_anvil(texts: list[Text]) -> tuple[Text, Text, int | None] | None:
+    """"Yunque del Herrero": (take button, upgrade button, success chance in % or None); None elsewhere."""
+    take, upgrade = find(texts, L.ANVIL_TAKE, exact=True), find(texts, L.ANVIL_UPGRADE, exact=True)
+    if not (find(texts, L.ANVIL) and take and upgrade):
+        return None
+    chance = find(texts, L.ANVIL_CHANCE)
+    m = re.search(r"(\d+)\s*%", chance.norm) if chance else None
+    return take, upgrade, int(m.group(1)) if m else None
+
+
 DIRT, EMPTY, TREASURE = "dirt", "empty", "treasure"
 
 
@@ -496,6 +507,9 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
         button = find(texts, label)
         if button:
             return LevelState(LevelScreen.CONTINUE, button.center)
+    anvil = parse_anvil(texts)  # after the claim text: the reward banner shows over the anvil
+    if anvil:
+        return LevelState(LevelScreen.ANVIL, anvil[0].center)
     duel = _dice_duel(texts)
     if duel:
         return LevelState(LevelScreen.DICE_DUEL, duel)

@@ -254,6 +254,19 @@ object Screens {
         }
     }
 
+    data class Anvil(val take: Text, val upgrade: Text, val chance: Int?)
+
+    private val ANVIL_CHANCE_RE = Regex("""(\d+)\s*%""")
+
+    /** "Yunque del Herrero": take button, upgrade button, success chance in % (or null); null elsewhere. */
+    fun parseAnvil(texts: List<Text>): Anvil? {
+        val take = find(texts, L.ANVIL_TAKE, exact = true)
+        val upgrade = find(texts, L.ANVIL_UPGRADE, exact = true)
+        if (find(texts, L.ANVIL) == null || take == null || upgrade == null) return null
+        val chance = find(texts, L.ANVIL_CHANCE)?.let { ANVIL_CHANCE_RE.find(it.norm) }?.groupValues?.get(1)?.toInt()
+        return Anvil(take, upgrade, chance)
+    }
+
     data class Contract(val button: Text, val terms: String)
 
     /** "Vendedor Maldito": the contracts on offer, left to right; empty on any other screen. */
@@ -329,6 +342,7 @@ object Screens {
         if (proceed != null && find(texts, L.LEVEL_MODIFIERS, exact = true) != null) return LevelState(LevelScreen.CONTINUE, proceed.center)
         find(texts, L.EXACT_BUTTONS, exact = true)?.let { return LevelState(LevelScreen.CONTINUE, it.center) }
         for (label in L.CONTINUE_BUTTONS) find(texts, label)?.let { return LevelState(LevelScreen.CONTINUE, it.center) }
+        parseAnvil(texts)?.let { return LevelState(LevelScreen.ANVIL, it.take.center) }  // after the claim text: the reward banner shows over the anvil
         diceDuel(texts)?.let { return LevelState(LevelScreen.DICE_DUEL, it) }
         if (find(texts, L.FLIP_CARDS_PROMPT) != null) {
             return LevelState(LevelScreen.FLIP_CARDS, Config.FLIP_CARDS.firstOrNull { faceDown(img, it) })
@@ -476,7 +490,7 @@ object Screens {
 enum class LevelScreen(val value: String) {
     VICTORY("victory"), DEFEAT("defeat"), DOUBLE_REWARD("double_reward"), REVIVE("revive"), SKILL_PICK("skill_pick"),
     BOARD_READY("board_ready"), AUTO_PLAY("auto_play"), FIGHT("fight"), EVENT("event"), SHOP("shop"), LEAVE("leave"),
-    FORTUNE_TELLER("fortune_teller"), PATH_CHOICE("path_choice"), MINER("miner"), CONTRACT("contract"),
+    FORTUNE_TELLER("fortune_teller"), PATH_CHOICE("path_choice"), MINER("miner"), CONTRACT("contract"), ANVIL("anvil"),
     CONTINUE("continue"), DICE_DUEL("dice_duel"), FLIP_CARDS("flip_cards"), UNKNOWN("unknown")
 }
 

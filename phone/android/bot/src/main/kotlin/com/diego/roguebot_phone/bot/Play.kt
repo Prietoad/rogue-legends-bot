@@ -63,6 +63,8 @@ class Player(
                 s = LevelState(s.kind, event(img, texts) ?: s.tap)
             } else if (s.kind == LevelScreen.MINER) {
                 s = LevelState(s.kind, miner(img, texts))
+            } else if (s.kind == LevelScreen.ANVIL) {
+                s = LevelState(s.kind, anvil(texts))
             } else if (s.kind == LevelScreen.CONTRACT) {
                 s = LevelState(s.kind, contract(texts))
             } else if (s.kind == LevelScreen.SHOP) {
@@ -172,6 +174,14 @@ class Player(
         val i = Strategy.chooseEvent(options.map { it.norm }, hp) ?: return null
         Log.info("Event: ${options.joinToString(" / ") { it.text }} (HP ${hp?.let { "${Math.round(it * 100)}%" } ?: "?"}) -> ${options[i].text}")
         return Screens.eventTap(options[i])
+    }
+
+    /** Blacksmith's anvil: upgrade the item while the odds are good, then take it. */
+    internal fun anvil(texts: List<Text>): P {
+        val a = Screens.parseAnvil(texts)!!
+        val go = Strategy.anvilUpgrade(a.chance)
+        Log.info("Anvil: ${a.chance ?: "?"}% success -> ${if (go) "upgrade" else "take"}")
+        return (if (go) a.upgrade else a.take).center
     }
 
     /** Cursed vendor: sign the contract the strategy rates best. */

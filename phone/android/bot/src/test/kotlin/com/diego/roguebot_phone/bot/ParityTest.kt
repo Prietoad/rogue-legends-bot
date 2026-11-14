@@ -64,6 +64,7 @@ class ParityTest {
             },
             "parse_paths" to JSONArray(Screens.parsePaths(texts, img).map { obj("label" to text(it.label), "shop" to it.shop) }),
             "parse_contracts" to JSONArray(Screens.parseContracts(texts).map { obj("button" to text(it.button), "terms" to it.terms) }),
+            "parse_anvil" to nul(Screens.parseAnvil(texts)) { JSONArray(listOf(text(it.take), text(it.upgrade), it.chance ?: JSONObject.NULL)) },
             "parse_hp" to (Screens.parseHp(texts) ?: JSONObject.NULL),
             "event_options" to JSONArray(Screens.eventOptions(img, texts).map(::text)),
             "parse_world_map" to nul(Screens.parseWorldMap(texts)) { m -> JSONObject().apply { m.forEach { (k, v) -> put(k, text(v)) } } },

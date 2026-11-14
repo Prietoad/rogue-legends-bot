@@ -8,7 +8,7 @@ from roguebot import config, labels, navigation, strategy
 from roguebot.build import Build
 from roguebot.navigation import Navigator
 from roguebot.request import RunRequest, build_request
-from roguebot.screens import (DIRT, EMPTY, TREASURE, LevelScreen, parse_contracts, Lobby, Mode, classify_level_screen, event_options,
+from roguebot.screens import (DIRT, EMPTY, TREASURE, LevelScreen, parse_anvil, parse_contracts, Lobby, Mode, classify_level_screen, event_options,
                               miner_tile, miner_tiles, parse_hp, parse_lobby, parse_money, parse_paths, parse_shop,
                               parse_skill_cards, parse_world_map, treasures_left)
 from roguebot.vision import Text, parse_level_number, parse_world_number
@@ -490,3 +490,27 @@ def test_patrol_button_when_ocr_joins_it_with_the_stars_button(ocr):
     _, texts = load(ocr, "lobby_heliora_elite.png")                                      # read apart: unchanged
     assert patrol_button(texts).text == "Patrulla" and abs(patrol_button(texts).center[0] - 812) < 20
     assert patrol_button([]) is None
+
+
+def test_blacksmith_anvil(ocr, tmp_path):
+    """"Yunque del Herrero" (seen 2026-11-14): take the item or gamble on upgrading it; the bot was stuck on it."""
+    labels.set_language("es")
+    p = player(tmp_path, Build("magic"))
+    img, texts = load(ocr, "level_anvil.png")                 # ATQ Pequeño, 70%
+    assert classify_level_screen(img, texts).kind is LevelScreen.ANVIL
+    take, upgrade, chance = parse_anvil(texts)
+    assert chance == 70 and take.center[0] < 720 < upgrade.center[0] and take.center[1] > 2200
+    assert p._anvil(texts) == upgrade.center
+    img, texts = load(ocr, "level_anvil_legendary.png")       # after two upgrades: a legendary skill, 10%
+    take, upgrade, chance = parse_anvil(texts)
+    assert chance == 10 and p._anvil(texts) == take.center
+    img, texts = load(ocr, "level_anvil_received.png")        # the reward banner over the anvil: claim it
+    state = classify_level_screen(img, texts)
+    assert state.kind is LevelScreen.CONTINUE and state.tap[1] > 2300
+
+
+def test_anvil_rule():
+    assert strategy.anvil_upgrade(70) and strategy.anvil_upgrade(40)
+    assert not strategy.anvil_upgrade(10) and not strategy.anvil_upgrade(None)  # unreadable chance: take
+    assert LevelScreen.ANVIL in navigation.ON_BOARD and LevelScreen.ANVIL in navigation.IN_LEVEL
+    assert parse_anvil([Text("Recibes", 353, 2219, 659, 2312), Text("Reforzar", 765, 2219, 1100, 2312)]) is None  # no anvil title

@@ -114,6 +114,7 @@ object Config {
     const val SKILL_PICK_SETTLE_FRAMES = 4    // frames a skill pick may keep changing (cards fly in) before deciding anyway
     val CONTRACT_TEXT_Y = 1380..2260          // cursed vendor: a contract's boon and curse texts, above its "Firmar"
     const val CONTRACT_HALF_WIDTH = 290       // ...and around the button's x
+    const val ANVIL_MIN_CHANCE = 40           // blacksmith's anvil: upgrade while the success chance (%) is at least this
     const val MINER_SIZE = 7                  // "Minero de Tesoros": 7x7 tiles
     val MINER_ORIGIN = P(275, 1105)           // center of its top-left tile
     const val MINER_PITCH = 147

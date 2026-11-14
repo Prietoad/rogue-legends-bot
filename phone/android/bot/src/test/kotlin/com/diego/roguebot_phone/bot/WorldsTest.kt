@@ -2,6 +2,7 @@ package com.diego.roguebot_phone.bot
 
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -279,5 +280,23 @@ class WorldsTest {
         assertEquals(P(924, 1793 + Config.EVENT_ICON_BELOW_LABEL), p.event(Script.BLANK, rest + t("10m/10m", 408, 54, 725, 109)))
         assertEquals(P(511, 1794 + Config.EVENT_ICON_BELOW_LABEL), p.event(Script.BLANK, rest + t("4m/10m", 408, 54, 725, 109)))
         assertNull(p.event(Script.BLANK, listOf(rest[0], t("Firmar", 420, 1765, 600, 1824), t("Salir", 850, 1765, 1000, 1824))))
+    }
+
+    @Test
+    fun blacksmithAnvil() {
+        L.setLanguage("es")
+        assertTrue(Strategy.anvilUpgrade(70) && Strategy.anvilUpgrade(40))
+        assertFalse(Strategy.anvilUpgrade(10) || Strategy.anvilUpgrade(null))  // unreadable chance: take
+        fun anvil(chance: String) = listOf(t("Yunque del Herrero", 362, 156, 1074, 258), t(chance, 713, 2077, 1157, 2169),
+            t("Recibes", 353, 2219, 659, 2312), t("Reforzar", 765, 2219, 1100, 2312))
+        assertEquals(LevelScreen.ANVIL, Screens.classifyLevelScreen(Script.BLANK, anvil("Éxito del 70%!")).kind)
+        assertEquals(70, Screens.parseAnvil(anvil("Éxito del 70%!"))!!.chance)
+        assertEquals(P(932, 2265), player().first.anvil(anvil("Éxito del 70%!")))   // upgrade
+        assertEquals(P(506, 2265), player().first.anvil(anvil("Éxito del 10%!")))   // take
+        assertEquals(P(506, 2265), player().first.anvil(anvil("???")))
+        assertNull(Screens.parseAnvil(anvil("Éxito del 70%!").drop(1)))             // no anvil title
+        val claim = anvil("Éxito del 10%!") + t("Toca en cualquier lugar", 401, 2309, 1036, 2389)
+        assertEquals(LevelScreen.CONTINUE, Screens.classifyLevelScreen(Script.BLANK, claim).kind)  // reward banner over the anvil
+        assertTrue(LevelScreen.ANVIL in ON_BOARD)
     }
 }

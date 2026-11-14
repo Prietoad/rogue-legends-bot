@@ -349,6 +349,16 @@
   "description": "Duplica la cantidad de Shurikens lanzados.",
   "auto": true
  },
+ "congelacion": {
+  "name": "Congelación",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "ice",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Tu tasa de golpe crítico aumenta en +5% por cada acumulaciôn de Escalofrio en el enemigo",
+  "auto": true
+ },
  "contagio": {
   "name": "Contagio",
   "lang": "es",
@@ -2127,6 +2137,16 @@
   "nature": "physical",
   "role": "damage",
   "description": "Every 2 rounds, throw 1 Shuriken.",
+  "auto": true
+ },
+ "shurimonedas": {
+  "name": "Shurimonedas",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "shuriken",
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cada vez que se arroja un Shuriken, ganas 3 Fichas de Tienda",
   "auto": true
  },
  "slowandsteady": {

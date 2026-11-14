@@ -102,6 +102,10 @@ object L {
     )
     val SHOP_HEAL = l("curar", "heal")         // shop stat item "Curar 30%" (starts with); en guessed
     val CURSED_VENDOR = l("vendedor maldito", listOf("cursed vendor", "cursed merchant"))  // two contracts (a boon + a curse each): one must be signed; en guessed
+    val ANVIL = l("yunque del herrero", listOf("blacksmith's anvil", "blacksmith anvil"))  // an item to take or to gamble on upgrading; en guessed
+    val ANVIL_TAKE = l("recibes", listOf("receive", "take"))        // exact; en guessed
+    val ANVIL_UPGRADE = l("reforzar", listOf("reinforce", "upgrade"))  // exact; en guessed
+    val ANVIL_CHANCE = l("exito del", "success")  // "¡Éxito del 70%!" above the upgrade button; en guessed
     val SIGN = l("firmar", "sign")             // exact; a contract's button (also the devil's deal event option)
     val CONTRACT_TERMS = listOf(               // what a contract's text is worth (see Strategy.chooseContract); en guessed
         l("posada", "inn") to 3,               // every campfire becomes an inn: full heal + 2 skill upgrades

@@ -119,6 +119,10 @@ EVENT_PREFER = (                                     # event options taken when 
 )
 SHOP_HEAL = _l("curar", "heal")                      # shop stat item "Curar 30%" (starts with); en guessed
 CURSED_VENDOR = _l("vendedor maldito", ("cursed vendor", "cursed merchant"))  # two contracts (a boon + a curse each): one must be signed; en guessed
+ANVIL = _l("yunque del herrero", ("blacksmith's anvil", "blacksmith anvil"))  # an item to take or to gamble on upgrading; en guessed
+ANVIL_TAKE = _l("recibes", ("receive", "take"))      # exact; en guessed
+ANVIL_UPGRADE = _l("reforzar", ("reinforce", "upgrade"))  # exact; en guessed
+ANVIL_CHANCE = _l("exito del", "success")            # "¡Éxito del 70%!" above the upgrade button; en guessed
 SIGN = _l("firmar", "sign")                          # exact; a contract's button (also the devil's deal event option)
 CONTRACT_TERMS = (                                   # what a contract's text is worth (see strategy.choose_contract); en guessed
     (_l("posada", "inn"), 3),                        # every campfire becomes an inn: full heal + 2 skill upgrades (a run has ~6 campfires)

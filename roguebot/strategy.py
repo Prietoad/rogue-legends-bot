@@ -48,6 +48,13 @@ def choose_event(options: list[str], hp: float | None) -> int | None:
     return None
 
 
+def anvil_upgrade(chance: int | None) -> bool:
+    """Blacksmith's anvil: gamble on the upgrade (True) or take the item. Seen: a small ATK boost -> 70% ->
+    a common skill -> 40% -> a legendary skill -> 10%. The first item is worth little (19 coins in the
+    shop), so the two good odds are taken and the 10% is not. Unreadable chance: take."""
+    return chance is not None and chance >= config.ANVIL_MIN_CHANCE
+
+
 def choose_contract(terms: list[str]) -> int:
     """Cursed vendor: index of the contract to sign (terms = each contract's normalized text). The best
     sum of the known terms; unknown terms count 0, ties go to the first."""

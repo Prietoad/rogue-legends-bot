@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.12.0 (2026-11-14)
+- **Heliora, blacksmith's anvil** ("Yunque del Herrero"): a new screen that offers an item to take ("Recibes") or to gamble on upgrading ("Reforzar", with a success chance). The bot stopped on it. Seen: a small attack boost → 70% → a common skill → 40% → a legendary skill → 10%. The bot upgrades while the chance is 40% or more, then takes the item. What a failed upgrade shows has not been seen yet.
+
 ## 1.11.1 (2026-11-14)
 - Patrol: since the World Map compass moved the lobby buttons, the game's "Patrulla" and "Desafío de Estrellas" labels are sometimes read as one text, and the bot tapped between the two buttons (it opened the star list and the patrol was reported as failed). It now taps the patrol button itself.
 

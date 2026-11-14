@@ -120,6 +120,7 @@ SHOP_ITEM_DX = 130
 SKILL_PICK_SETTLE_FRAMES = 4             # frames a skill pick may keep changing (cards fly in) before deciding anyway
 CONTRACT_TEXT_Y = (1380, 2260)           # cursed vendor: a contract's boon and curse texts, above its "Firmar"
 CONTRACT_HALF_WIDTH = 290                # ...and around the button's x
+ANVIL_MIN_CHANCE = 40                    # blacksmith's anvil: upgrade while the success chance (%) is at least this
 MINER_SIZE = 7                           # "Minero de Tesoros": 7x7 tiles
 MINER_ORIGIN = (275, 1105)               # center of its top-left tile
 MINER_PITCH = 147

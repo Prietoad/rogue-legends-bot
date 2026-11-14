@@ -13,7 +13,7 @@ from roguebot import config, labels, strategy
 from roguebot.build import Build, BuildState, choose, shop_order
 from roguebot.device import Device
 from roguebot.screens import (TREASURE, LevelScreen, LevelState, SkillCard, classify_level_screen, event_options,
-                              event_tap, game_speed, miner_tile, miner_tiles, parse_contracts, parse_fortune_teller, parse_hp,
+                              event_tap, game_speed, miner_tile, miner_tiles, parse_anvil, parse_contracts, parse_fortune_teller, parse_hp,
                               parse_money,
                               parse_paths, parse_shop, parse_skill_cards, skill_reroll, treasures_left)
 from roguebot.skills import Catalog, Skill
@@ -82,6 +82,8 @@ class Player:
                 state = LevelState(state.kind, self._event(img, texts) or state.tap)
             elif state.kind is LevelScreen.MINER:
                 state = LevelState(state.kind, self._miner(img, texts))
+            elif state.kind is LevelScreen.ANVIL:
+                state = LevelState(state.kind, self._anvil(texts))
             elif state.kind is LevelScreen.CONTRACT:
                 state = LevelState(state.kind, self._contract(texts))
             elif state.kind is LevelScreen.SHOP:
@@ -206,6 +208,13 @@ class Player:
         log.info("Event: %s (HP %s) -> %s", " / ".join(o.text for o in options),
                  "?" if hp is None else f"{hp:.0%}", options[i].text)
         return event_tap(options[i])
+
+    def _anvil(self, texts) -> tuple[int, int]:
+        """Blacksmith's anvil: upgrade the item while the odds are good, then take it."""
+        take, upgrade, chance = parse_anvil(texts)
+        go = strategy.anvil_upgrade(chance)
+        log.info("Anvil: %s%% success -> %s", "?" if chance is None else chance, "upgrade" if go else "take")
+        return (upgrade if go else take).center
 
     def _contract(self, texts) -> tuple[int, int]:
         """Cursed vendor: sign the contract the strategy rates best."""

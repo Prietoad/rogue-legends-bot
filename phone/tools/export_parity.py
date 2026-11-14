@@ -84,6 +84,7 @@ def outputs(img, texts, ocr) -> dict:
         "parse_fortune_teller": S.parse_fortune_teller(texts),
         "parse_paths": S.parse_paths(texts, img),
         "parse_contracts": S.parse_contracts(texts),
+        "parse_anvil": S.parse_anvil(texts),
         "parse_hp": S.parse_hp(texts),
         "event_options": S.event_options(img, texts),
         "parse_world_map": S.parse_world_map(texts),

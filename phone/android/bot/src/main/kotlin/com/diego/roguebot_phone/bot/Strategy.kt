@@ -32,6 +32,9 @@ object Strategy {
         return null
     }
 
+    /** Blacksmith's anvil: gamble on the upgrade (true) or take the item. Unreadable chance: take. */
+    fun anvilUpgrade(chance: Int?) = chance != null && chance >= Config.ANVIL_MIN_CHANCE
+
     /** Cursed vendor: index of the contract to sign (terms = each contract's normalized text). The best sum
      *  of the known terms (L.CONTRACT_TERMS); unknown terms count 0, ties go to the first. */
     fun chooseContract(terms: List<String>): Int {
