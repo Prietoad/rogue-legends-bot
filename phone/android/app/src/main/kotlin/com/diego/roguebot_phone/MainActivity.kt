@@ -44,7 +44,7 @@ class MainActivity : FlutterActivity() {
                         val build = BotBuild(call.argument<String>("nature")!!, call.argument<List<String>>("order")!!,
                             call.argument<Int>("supportEvery"))
                         val request = buildRequest(call.argument("mode")!!, call.argument("source")!!, call.argument("level")!!,
-                            call.argument("full")!!, build, call.argument("loop")!!, call.argument("ads")!!)
+                            call.argument("full")!!, build, call.argument("loop")!!, call.argument("ads")!!, call.argument<String>("world"))
                         when {
                             BotService.instance == null -> result.success("err_service")
                             Engine.running -> result.success(null)

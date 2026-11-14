@@ -10,6 +10,7 @@ object Config {
     const val SCREEN_H = 2560
     const val GAME_LOAD_TIMEOUT = 180.0     // seconds from opening the game to its lobby
     const val MAX_SAME_ERROR = 3            // recoveries for one error before the bot gives up
+    val WORLDS = listOf("everdale", "heliora")  // world names on the map; lobby level titles are "N." in the first, "2-N." in the second
 
     // Fixed tap targets (elements without readable text)
     val AVENTURA_TAB = P(720, 2410)
@@ -98,6 +99,28 @@ object Config {
     const val SKILL_CARD_HEIGHT = 330
     const val REROLL_COUNT_BELOW = 110
     val MONEY_REGION = Region(0, 140, 320, 210)
+    const val PATH_LABEL_MIN_Y = 2000         // fork cards ("Camino A"/"Camino B") sit at the bottom of the board
+    const val PATH_CARD_HALF_WIDTH = 200      // a fork card around its label...
+    const val PATH_CARD_HEIGHT = 460          // ...and above it: the picture of where the path leads
+    const val PATH_SHOP_MIN_SCORE = 0.8       // shop wagon template on a fork card: 1.0 on the shop card, 0.2 on the statue card
+    const val PATH_SHOP_COINS = 76            // coins that make the shop path worth it
+    val HP_REGION = Region(380, 30, 760, 130) // in-level HP bar text "7,2m / 10,1m", top bar
+    const val REST_BELOW_HP = 0.6             // rest event: rest below this HP share, else train a skill
+    const val SHOP_HEAL_BELOW_HP = 0.5        // shop: buy "Curar 30%" below this HP share
+    val SHOP_ITEMS_Y = 820..940               // shop stat item labels ("ATQ ↑↑↑", "PS máx. ↑↑", "Curar 30%")
+    val SHOP_ITEM_PRICE_BELOW = 50..160       // an item's price under its label
+    val SHOP_ITEM_ABOVE = 30..190             // its uses left ("3/3") or "AGOTADO" above the label
+    const val SHOP_ITEM_DX = 130
+    const val SKILL_PICK_SETTLE_FRAMES = 4    // frames a skill pick may keep changing (cards fly in) before deciding anyway
+    val CONTRACT_TEXT_Y = 1380..2260          // cursed vendor: a contract's boon and curse texts, above its "Firmar"
+    const val CONTRACT_HALF_WIDTH = 290       // ...and around the button's x
+    const val MINER_SIZE = 7                  // "Minero de Tesoros": 7x7 tiles
+    val MINER_ORIGIN = P(275, 1105)           // center of its top-left tile
+    const val MINER_PITCH = 147
+    const val MINER_TILE_HALF = 50
+    val MINER_DIRT = intArrayOf(80, 122, 171) // an undug tile's mean BGR
+    const val MINER_DIRT_TOLERANCE = 20
+    const val MINER_EMPTY_DARK = 0.7          // share of near-black pixels of a dug tile with nothing in it
     const val DUEL_STAND_AT = 15
     const val SAME_TAP_TOLERANCE = 25
     const val DOUBLE_REWARD_TRIES = 2
@@ -107,6 +130,7 @@ object Config {
 
     // Timing (seconds)
     const val POLL_INTERVAL = 0.3
+    const val WAIT_SCREEN_FRAMES = 150  // frames in a row (~3 min) on the same tapless screen (auto-play, not a fight) -> stop
     const val UNKNOWN_SCREEN_TIMEOUT = 20.0
     const val UI_SETTLE = 0.7
     const val SCROLL_SETTLE = 0.8

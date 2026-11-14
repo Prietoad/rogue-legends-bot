@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.0 (2026-11-14)
+- **Worlds:** new "World" option (Current / Everdale / Heliora). The bot opens the game's World Map (the compass next to the chapter chest) and enters the chosen world before starting a level. "Current" keeps the world the game is in. If the account has no World Map or the world is locked, it plays the current world instead of stopping.
+- **Heliora levels** (the bot used to get stuck on their new screens):
+  - Forks ("Camino A / Camino B"): takes the path to the shop when it has at least 76 coins, otherwise the other path.
+  - Shop: buys the stat boost first ("ATQ ↑↑↑", "PS máx. ↑↑", 3 per visit: three attack boosts raised the attack from 1.5m to 2.0m), and "Curar 30%" when below 50% HP. Then the skills, as before.
+  - The Black Market is a normal shop paid with run coins at half price: the bot now buys there instead of leaving.
+  - Campfire ("Un Momento de Descanso"): trains a skill at 60% HP or more, rests below that. It used to always rest, even at full HP.
+  - Events: takes the free option (No gracias, Rechazar, Rezar, Espiar, Observar) instead of the ones that cost coins or max HP.
+  - Treasure miner minigame ("Minero de Tesoros"): digs on a search pattern and, when it finds a piece of a treasure, digs around it until the treasure is whole (a whole treasure gives a skill).
+  - Cursed vendor ("Vendedor Maldito"): signs the contract whose known terms add up best (campfires turned into inns are worth more than doubled shop prices; half the skills disabled is the worst).
+  - Trained skill result ("NEXT" button): tapped. The bot took its green button for auto-play and waited there for hours.
+- Skill picks: the bot waits until every card is on screen. A pick read while the cards were still flying in showed one card and wasted the reroll.
+- The Spanish "Recompensas x2" button at the level end is recognised (doubled with "Watch ads" on).
+- A screen that looks like auto-play for about 3 minutes with no fight in between now stops the level (and the usual restart recovery runs) instead of waiting forever.
+- Result on Heliora 2-1 with a 28.8m power account: from dying at roll 16–22 to surviving the 30 rolls and reaching the boss. No victory yet.
+
 ## 1.10.0 (2026-11-08)
 - Arena: the bot now fights the opponent highest in the list that is not stronger than you, since higher rows give more arena points. It used to pick the strongest opponent below your power, wherever it was in the list. If every opponent is stronger, nothing changes (free refresh, then the weakest).
 

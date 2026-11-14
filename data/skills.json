@@ -49,6 +49,16 @@
   "description": "Cuando HP <50%, ATQ ↑↑↑+↑",
   "auto": true
  },
+ "altovoltaje": {
+  "name": "Alto Voltaje",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Cada Descarga aumenta tu Daño de Rayo en +8% durante 2 turnos.",
+  "auto": true
+ },
  "anergizantelv": {
   "name": "anergizante Lv.2",
   "lang": "es",
@@ -719,6 +729,26 @@
   "description": "After using your Ultimate, follow up with another Ultimate. Ultimate Charge required to use Ultimate increased by",
   "auto": true
  },
+ "durabilidadenfurecida": {
+  "name": "Durabilidad Enfurecida",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Cuando el HP <40%, Reducción de Daño +30%",
+  "auto": true
+ },
+ "electroparalisis": {
+  "name": "Electroparálisis",
+  "lang": null,
+  "rarity": "common",
+  "damage_type": "lightning",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Infligir Daño de Rayo reduce la tasa de evasiôn, la tasa de combo y la tasa de contraataque del enemigo en -5% durante 2 turnos, acumulândose hasta 5 veces.",
+  "auto": true
+ },
  "elementalstars": {
   "name": "Elemental Stars",
   "lang": "en",
@@ -977,16 +1007,6 @@
   "nature": "physical",
   "role": "support",
   "description": "At the start of combat, gain a Shield equal to 70% of your Max HP, but Max HP ",
-  "auto": true
- },
- "exp": {
-  "name": "EXP",
-  "lang": "en",
-  "rarity": "common",
-  "damage_type": null,
-  "nature": "physical",
-  "role": "support",
-  "description": "Recovery Chance to restore 5% HP every turn.",
   "auto": true
  },
  "experimentoespecial": {
@@ -1587,6 +1607,16 @@
   "nature": "physical",
   "role": "damage",
   "description": "Daño de Barrido , pero ya no aplica Herida.",
+  "auto": true
+ },
+ "maestriadecombolv": {
+  "name": "Maestria de Combo Lv.2",
+  "lang": "es",
+  "rarity": "legendary",
+  "damage_type": null,
+  "nature": "physical",
+  "role": "damage",
+  "description": "Tasa de Combo +30%, gana ATQ +10% con cada Ataque Combo, dura hasta el final de la batalla.",
   "auto": true
  },
  "maestriadefinitiva": {
@@ -2367,6 +2397,16 @@
   "nature": "physical",
   "role": "support",
   "description": "After using your Ultimate, gain a Shield",
+  "auto": true
+ },
+ "unacalidabienvenida": {
+  "name": "Una-Cálida Bienvenida",
+  "lang": "es",
+  "rarity": "common",
+  "damage_type": "fire",
+  "nature": "magic",
+  "role": "damage",
+  "description": "Al inicio del combate, lanza Ola de Fuego 3 veces",
   "auto": true
  },
  "undying": {

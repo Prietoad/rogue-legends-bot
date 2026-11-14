@@ -116,7 +116,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         device = Device(serial, stop=stop, adb=adb)
         ocr = ocr or Ocr()
         catalog = catalog or Catalog()
-        nav = Navigator(device, ocr, dry_run=dry_run, ads=request.ads)
+        nav = Navigator(device, ocr, dry_run=dry_run, ads=request.ads, world=request.world)
         play_level = lambda: Player(device, ocr, request.build, catalog, request.ads).play_level()
 
         def resume_level():  # an interrupted run (its energy is spent): play it out; progress for run()

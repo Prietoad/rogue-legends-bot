@@ -34,6 +34,8 @@ def ser(v):
         return v.value
     if dataclasses.is_dataclass(v):
         return {f.name: ser(getattr(v, f.name)) for f in dataclasses.fields(v)}
+    if isinstance(v, dict):
+        return {str(k): ser(x) for k, x in v.items()}
     if isinstance(v, (list, tuple)):
         return [ser(x) for x in v]
     if hasattr(v, "item"):  # numpy scalars
@@ -80,6 +82,13 @@ def outputs(img, texts, ocr) -> dict:
         "parse_money": S.parse_money(texts),
         "parse_shop": S.parse_shop(texts),
         "parse_fortune_teller": S.parse_fortune_teller(texts),
+        "parse_paths": S.parse_paths(texts, img),
+        "parse_contracts": S.parse_contracts(texts),
+        "parse_hp": S.parse_hp(texts),
+        "event_options": S.event_options(img, texts),
+        "parse_world_map": S.parse_world_map(texts),
+        "miner_tiles": S.miner_tiles(img) if S.find(texts, L.TREASURE_MINER) else None,
+        "treasures_left": S.treasures_left(texts),
         "back_arrow": M.back_arrow(img),
         "in_guild": M.in_guild(texts),
         "vip_cards_icon": M.vip_cards_icon(texts),

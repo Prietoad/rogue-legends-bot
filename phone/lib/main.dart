@@ -9,8 +9,9 @@ import 'i18n.dart';
 
 /// The phone version of the desktop bot's window (roguebot/ui.py): options, Start/Stop, status and log.
 /// The bot itself runs in Kotlin (android/bot, android/app): see Engine.kt.
-const version = '0.5.0';
+const version = '0.6.0';
 const damageTypes = ['ice', 'lightning', 'fire', 'shuriken', 'venom', 'bleed'];
+const worlds = ['everdale', 'heliora'];  // like config.WORLDS on the desktop
 const engine = MethodChannel('roguebot/engine');
 const events = EventChannel('roguebot/events');
 
@@ -31,12 +32,13 @@ class BotApp extends StatelessWidget {
 /// Every option the user sets, saved between sessions (like data/settings.json on the desktop).
 class Options {
   String lang = 'es', mode = 'normal', source = 'latest', level = '1', nature = 'physical', supportEvery = '3';
+  String world = '';  // '' = the world the game is in; else one of [worlds]
   bool full = false, loop = false, ads = false, support = false;
   List<String> order = [...damageTypes];
 
   Map<String, Object> toJson() => {
         'lang': lang, 'mode': mode, 'source': source, 'level': level, 'nature': nature, 'support_every': supportEvery,
-        'full': full, 'loop': loop, 'ads': ads, 'support': support, 'damage_order': order,
+        'full': full, 'loop': loop, 'ads': ads, 'support': support, 'damage_order': order, 'world': world,
       };
 
   /// Last session's choices; anything missing or invalid keeps its default.
@@ -46,6 +48,7 @@ class Options {
     mode = pick<String>('mode', ['normal', 'elite'].contains) ?? mode;
     source = pick<String>('source', ['latest', 'beaten', 'pending', 'stars'].contains) ?? source;
     nature = pick<String>('nature', ['physical', 'magic'].contains) ?? nature;
+    world = pick<String>('world', ['', ...worlds].contains) ?? world;
     level = pick<String>('level', (v) => int.tryParse(v) != null) ?? level;
     supportEvery = pick<String>('support_every', (v) => int.tryParse(v) != null) ?? supportEvery;
     full = pick<bool>('full', (_) => true) ?? full;
@@ -173,6 +176,7 @@ class _BotPageState extends State<BotPage> with WidgetsBindingObserver {
       'full': options.full,
       'loop': options.loop,
       'ads': options.ads,
+      'world': options.world.isEmpty ? null : options.world,
       'nature': options.nature,
       'order': options.order,
       'supportEvery': options.support && every != null && every > 0 ? every : null,
@@ -265,6 +269,15 @@ class _BotPageState extends State<BotPage> with WidgetsBindingObserver {
           const SizedBox(height: 8),
           Text(t('mode'), style: Theme.of(context).textTheme.titleSmall),
           radios([('normal', 'normal'), ('elite', 'elite')], o.mode, (v) => o.mode = v),
+          Text(t('world'), style: Theme.of(context).textTheme.titleSmall),
+          DropdownButton<String>(
+            value: o.world,
+            items: [
+              DropdownMenuItem(value: '', child: Text(t('world_current'))),
+              for (final w in worlds) DropdownMenuItem(value: w, child: Text(w[0].toUpperCase() + w.substring(1))),
+            ],
+            onChanged: editable ? (v) => _set(() => o.world = v ?? '') : null,
+          ),
           Text(t('level'), style: Theme.of(context).textTheme.titleSmall),
           radios([('latest', 'latest'), ('beaten', 'beaten'), ('pending', 'pending'), ('stars', 'stars')], o.source, (v) => o.source = v),
           if (o.source == 'stars')

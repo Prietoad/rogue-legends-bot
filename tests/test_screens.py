@@ -447,16 +447,6 @@ def test_game_update_required(ocr):
     assert not update_required(lobby)
 
 
-def test_black_market_is_left_without_buying(ocr):
-    """Review: the black market label is a guess and its prices may be gems: never treat it as a shop."""
-    from roguebot.screens import parse_shop
-    img, texts = load(ocr, "level_shop.png")
-    texts = texts + [Text("Mercado Negro", 520, 300, 920, 350)]
-    assert parse_shop(texts) is None
-    state = classify_level_screen(img, texts)
-    assert state.kind is LevelScreen.LEAVE
-
-
 def test_labels_are_normalized_once():
     from roguebot import labels as L
     assert L._l("Desafío", ("Élite", "x")).es == ("desafio",)

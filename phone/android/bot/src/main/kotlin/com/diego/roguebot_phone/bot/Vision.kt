@@ -20,10 +20,13 @@ private val COMBINING = Regex("\\p{M}+")
 fun normalize(s: String): String =
     COMBINING.replace(Normalizer.normalize(s, Normalizer.Form.NFKD), "").lowercase().trim()
 
-private val LEVEL_RE = Regex("^\\s*(\\d+)\\s*\\.")
+private val LEVEL_RE = Regex("^\\s*(?:(\\d+)\\s*-\\s*)?(\\d+)\\s*\\.")  // "12. Name"; other worlds: "2-1. Name"
 
-/** "12. Arenas Movedizas II" -> 12. */
-fun parseLevelNumber(s: String): Int? = LEVEL_RE.find(s)?.groupValues?.get(1)?.toInt()
+/** "12. Arenas Movedizas II" -> 12; "2-1. Elysium I" (world 2) -> 1. */
+fun parseLevelNumber(s: String): Int? = LEVEL_RE.find(s)?.groupValues?.get(2)?.toInt()
+
+/** World of a lobby level title: "2-1. Elysium I" -> 2; the first world has no prefix ("12. ..." -> 1). */
+fun parseWorldNumber(s: String): Int? = LEVEL_RE.find(s)?.let { it.groupValues[1].ifEmpty { "1" }.toInt() }
 
 fun String.isDigits(): Boolean = isNotEmpty() && all { it in '0'..'9' }
 

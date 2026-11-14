@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from roguebot import config
 from roguebot.build import Build
 from roguebot.screens import Mode
 
@@ -23,13 +24,15 @@ class RunRequest:
     mumu_folder: str = ""  # MuMu Player installation folder (started and Rogue Legend opened on Start)
     loop: bool = False    # keep running: out of energy -> wait for energy -> (routine ->) levels again
     ads: bool = False     # watch ads (energy, x2 rewards, revive, tickets); only for accounts that skip them
+    world: str | None = None  # the world whose levels are played (config.WORLDS); None = whichever the game is in
 
 
 def build_request(mode: str, source: str, level: str, full: bool = False, build: Build = Build(),
-                  loop: bool = False, mumu_folder: str = "", ads: bool = False) -> RunRequest:
+                  loop: bool = False, mumu_folder: str = "", ads: bool = False, world: str = "") -> RunRequest:
     """Validate the form values. Raises ValueError with a user-facing message.
     Levels always run until out of energy; `loop` then waits for energy and starts again."""
-    common = dict(repeat=True, full=full, build=build, mumu_folder=mumu_folder, loop=loop, ads=ads)
+    common = dict(repeat=True, full=full, build=build, mumu_folder=mumu_folder, loop=loop, ads=ads,
+                  world=world if world in config.WORLDS else None)
     if source in (LATEST, BEATEN, PENDING):
         return RunRequest(Mode(mode), None, last_beaten=source in (BEATEN, PENDING),
                           pending_stars=source == PENDING, **common)

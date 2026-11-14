@@ -304,3 +304,32 @@ def test_log_view_keeps_only_the_last_lines(app, monkeypatch):
         app._append(f"line {i}")
     lines = app.log_view.get("1.0", "end-1c").splitlines()
     assert len(lines) <= 5 and lines[-1] == "line 19"
+
+
+def test_world_option(app, tmp_path, monkeypatch):
+    """Requested 2026-11-14: pick the world whose levels are played (the game's "Mapa Mundial")."""
+    from roguebot import config, settings
+    assert app.world.get() == ""  # default: whichever world the game is in (accounts without worlds)
+    assert list(app.world_picker.cget("values")) == ["Current", "Everdale", "Heliora"]
+    app.set_language("es")
+    assert list(app.world_picker.cget("values"))[0] == "El actual" and TEXTS["es"]["world"] == "Mundo"
+    seen = []
+    monkeypatch.setattr(app, "run", lambda request: seen.append(request) or Report([LevelScreen.VICTORY]))
+    monkeypatch.setattr(app, "settings_path", tmp_path / "settings.json")
+    try:
+        app.world_picker.current(2)
+        app.world_picker.event_generate("<<ComboboxSelected>>")
+        app.root.update()
+        assert app.world.get() == "heliora" == config.WORLDS[1]
+        app._save_options()
+        assert settings.load(tmp_path / "settings.json")["world"] == "heliora"
+        app.world.set("")
+        app._restore_options({"world": "heliora"})
+        app.set_language("en")
+        assert app.world.get() == "heliora" and app.world_picker.get() == "Heliora"
+        app._restore_options({"world": "atlantis"})  # unknown: kept
+        assert app.world.get() == "heliora"
+    finally:
+        app.world.set("")
+        app.set_language("en")
+    assert app.world_picker.get() == "Current"

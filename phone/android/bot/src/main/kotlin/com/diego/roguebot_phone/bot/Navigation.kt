@@ -4,7 +4,8 @@ import kotlin.math.abs
 
 /** Level screens goToLobby plays out instead of failing (a level left running). */
 val ON_BOARD = setOf(LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.SHOP, LevelScreen.EVENT,
-    LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.FORTUNE_TELLER)
+    LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.FORTUNE_TELLER,
+    LevelScreen.PATH_CHOICE, LevelScreen.MINER, LevelScreen.CONTRACT)
 
 /** A level board (not fights or skill picks alone: dojo and raid fights have them too). */
 fun onBoard(img: Frame, texts: List<Text>): Boolean {
@@ -28,6 +29,7 @@ const val MAX_SCROLLS = 15
 const val MAX_LOBBY_ATTEMPTS = 16
 const val MAX_ENERGY_CLAIMS = 15
 const val FEATURE_READS = 3
+const val WORLD_READS = 3  // lobby reads for the level title (it tells the world) before opening the map anyway
 const val VIDEO_COOLDOWN_REREADS = 3
 const val MAX_ENERGY_REOPENS = 2
 const val LEVEL_LOAD_TIMEOUT = 20.0
@@ -48,6 +50,7 @@ open class Navigator(
     val ads: Boolean = false,
     val clock: Clock = SystemClock,
     val debug: DebugSink = DebugSink { _, name -> name },
+    var world: String? = null,  // the world to play (Config.WORLDS), null = whichever the lobby shows
 ) {
     var resumeLevel: (() -> Any)? = null  // plays an interrupted run to its end
 
@@ -299,7 +302,7 @@ open class Navigator(
         return true
     }
 
-    private fun setMode(mode: Mode): Lobby {
+    internal fun setMode(mode: Mode): Lobby {
         var lobby = lobbyUntil { it.mode == mode || it.hasElite }
         if (lobby.mode != mode && !lobby.hasElite) fail("Elite mode is not unlocked on this account", device.screenshot(), ::EliteUnavailable)
         if (lobby.mode != mode) {
@@ -311,12 +314,52 @@ open class Navigator(
                 clock.sleep(Config.POLL_INTERVAL)
             }
         }
+        return setWorld(lobby)
+    }
+
+    /** Switch the lobby to the wanted world through the "Mapa Mundial" compass (the game remembers the
+     *  world per mode, so this runs after the mode is set). A world that can't be entered (no map on this
+     *  account, locked, unknown name) is given up for the session and the current world is played. */
+    internal fun setWorld(lobby0: Lobby): Lobby {
+        val name = world ?: return lobby0
+        var lobby = lobby0
+        val wanted = Config.WORLDS.indexOf(name) + 1
+        if (lobby.world == null) lobby = lobbyUntil(WORLD_READS) { it.world != null }
+        if (lobby.world == wanted) return lobby
+        if (lobby.mapButton == null) lobby = lobbyUntil { it.mapButton != null }
+        val button = lobby.mapButton
+        if (button == null) {
+            if (wanted == 1 && (lobby.world == null || lobby.world == 1)) return lobby  // an account without worlds is in the first one
+            return noWorld("there is no World Map on this account", lobby)
+        }
+        Log.info("Switching world to ${name.replaceFirstChar(Char::uppercase)}")
+        tapText(button)
+        val (img, texts) = captureChange { Screens.parseWorldMap(it) != null }
+        val island = Screens.parseWorldMap(texts)?.get(name)
+        if (island == null) {
+            save(img, "world")
+            return noWorld("it is not on the World Map", goToLobby())
+        }
+        tapText(island)
+        val deadline = clock.now() + Config.CHANGE_TIMEOUT
+        while (Screens.parseWorldMap(capture().second) != null) {  // a locked world leaves the map open
+            if (clock.now() > deadline) return noWorld("it is locked", goToLobby())
+            clock.sleep(Config.POLL_INTERVAL)
+        }
+        lobby = lobbyUntil(WORLD_READS) { it.world == wanted }
+        if (lobby.world != null && lobby.world != wanted) return noWorld("the lobby did not change to it", lobby)
         return lobby
     }
 
-    internal fun lobbyUntil(ok: (Lobby) -> Boolean): Lobby {
+    private fun noWorld(why: String, lobby: Lobby): Lobby {
+        Log.info("Can't switch to the world ${world?.replaceFirstChar(Char::uppercase)}: $why. Playing the current world")
+        world = null
+        return lobby
+    }
+
+    internal fun lobbyUntil(reads: Int = FEATURE_READS, ok: (Lobby) -> Boolean): Lobby {
         var lobby = goToLobby()
-        for (i in 1 until FEATURE_READS) {
+        for (i in 1 until reads) {
             if (ok(lobby)) break
             lobby = goToLobby()
         }

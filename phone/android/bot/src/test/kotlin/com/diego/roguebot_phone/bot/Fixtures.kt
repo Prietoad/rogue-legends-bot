@@ -67,6 +67,7 @@ object Fixtures {
         Templates.closeX = Template(image(File(dir, "close_x.png")))
         Templates.backArrow = Template(image(File(dir, "back_arrow.png")))
         Templates.tutorialHand = Template(image(File(dir, "tutorial_hand.png")))
+        Templates.pathShop = Template(image(File(dir, "path_shop.png")))
     }
 
     /** The desktop bot's OCR models (from the rapidocr Python package, by phone/tools/ocr_models.py). */

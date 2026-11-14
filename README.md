@@ -14,6 +14,9 @@ It plays in Spanish or English.
   - the last beaten level;
   - a level that still misses stars (star rewards include diamonds);
   - any beaten level N from Desafío de Estrellas.
+- **Worlds:** plays the world you pick (Everdale or Heliora), entering it through the game's World Map.
+  In Heliora it chooses fork paths, event options, shop stat boosts, cursed vendor contracts and plays
+  the treasure miner minigame (see `roguebot/strategy.py`).
 - **Build:** picks level skills and shop items by your preferences: physical or magic damage, the
   order of the damage types, and a support skill every N damage skills. Every new skill is saved in
   `data/skills.json` with inferred tags, which you can edit.

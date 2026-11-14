@@ -12,8 +12,8 @@ from roguebot.device import Device
 from roguebot.mode_screens import back_arrow, parse_fight_result
 from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, close_button_any_size,
                               footer_visible, is_loading, is_star_list, lobby_behind, outside_tap_clear,
-                              parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list, popup_close,
-                              resume_prompt, tutorial_hand, update_required)
+                              parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list,
+                              parse_world_map, popup_close, resume_prompt, tutorial_hand, update_required)
 from roguebot.vision import Ocr, Text, find, parse_level_number
 
 log = logging.getLogger(__name__)
@@ -33,11 +33,13 @@ LANGUAGE_ATTEMPTS = 3
 
 IN_LEVEL = (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.FIGHT, LevelScreen.SKILL_PICK, LevelScreen.SHOP,
             LevelScreen.EVENT, LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.VICTORY,
-            LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD, LevelScreen.FORTUNE_TELLER)  # only seen inside a level (not Continue/Leave buttons)
+            LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD, LevelScreen.FORTUNE_TELLER, LevelScreen.PATH_CHOICE,
+            LevelScreen.MINER, LevelScreen.CONTRACT)  # only seen inside a level (not Continue/Leave buttons)
 # A level board found by go_to_lobby, played out instead of failing (the level is lost on a restart). Not
 # fights or skill picks alone: dojo and raid fights have them too.
 ON_BOARD = (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.SHOP, LevelScreen.EVENT,
-            LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.FORTUNE_TELLER)
+            LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.FORTUNE_TELLER,
+            LevelScreen.PATH_CHOICE, LevelScreen.MINER, LevelScreen.CONTRACT)
 
 
 class NavigationError(Exception):
@@ -56,6 +58,9 @@ class EliteUnavailable(LevelUnavailable):
     """Elite mode is not unlocked on this account."""
 
 
+WORLD_READS = 3  # lobby reads for the level title (it tells the world) before opening the map anyway
+
+
 def _same_place(a: Text, b: Text) -> bool:
     return abs(a.center[0] - b.center[0]) < 20 and abs(a.center[1] - b.center[1]) < 20
 
@@ -67,7 +72,8 @@ def _still_there(button: Text, texts: list[Text]) -> bool:
 
 
 class Navigator:
-    def __init__(self, device: Device, ocr: Ocr, dry_run: bool = False, ads: bool = False):
+    def __init__(self, device: Device, ocr: Ocr, dry_run: bool = False, ads: bool = False, world: str | None = None):
+        self.world = world  # the world to play (config.WORLDS), None = whichever the lobby shows
         self.device = device
         self.ocr = ocr
         self.dry_run = dry_run
@@ -348,11 +354,52 @@ class Navigator:
                 if time.monotonic() > deadline:
                     self._fail(f"Mode toggle did not switch to {mode.value}", self.device.screenshot())
                 time.sleep(config.POLL_INTERVAL)
+        return self._set_world(lobby)
+
+    def _set_world(self, lobby: Lobby) -> Lobby:
+        """Switch the lobby to the wanted world through the "Mapa Mundial" compass (the game remembers the
+        world per mode, so this runs after the mode is set). The lobby's level title tells the world it
+        shows. A world that can't be entered (no map on this account, locked, unknown name) is given up
+        for the session and the current world is played."""
+        if self.world is None:
+            return lobby
+        wanted = config.WORLDS.index(self.world) + 1
+        if lobby.world is None:
+            lobby = self._lobby_until(lambda lobby: lobby.world is not None, WORLD_READS)
+        if lobby.world == wanted:
+            return lobby
+        if lobby.map_button is None:
+            lobby = self._lobby_until(lambda lobby: lobby.map_button is not None)
+        if lobby.map_button is None:
+            if wanted == 1 and lobby.world in (None, 1):  # an account without worlds is in the first one
+                return lobby
+            return self._no_world("there is no World Map on this account", lobby)
+        log.info("Switching world to %s", self.world.capitalize())
+        self._tap_text(lobby.map_button)
+        img, texts = self._capture_change(lambda t: parse_world_map(t) is not None)
+        island = (parse_world_map(texts) or {}).get(self.world)
+        if island is None:
+            self._save(img, "world")
+            return self._no_world("it is not on the World Map", self.go_to_lobby())
+        self._tap_text(island)
+        deadline = time.monotonic() + config.CHANGE_TIMEOUT
+        while parse_world_map(self._capture()[1]) is not None:  # a locked world leaves the map open
+            if time.monotonic() > deadline:
+                return self._no_world("it is locked", self.go_to_lobby())
+            time.sleep(config.POLL_INTERVAL)
+        lobby = self._lobby_until(lambda lobby: lobby.world == wanted, WORLD_READS)
+        if lobby.world not in (None, wanted):
+            return self._no_world("the lobby did not change to it", lobby)
         return lobby
 
-    def _lobby_until(self, ok: Callable[[Lobby], bool]) -> Lobby:
+    def _no_world(self, why: str, lobby: Lobby) -> Lobby:
+        log.warning("Can't switch to the world %s: %s. Playing the current world", self.world.capitalize(), why)
+        self.world = None
+        return lobby
+
+    def _lobby_until(self, ok: Callable[[Lobby], bool], reads: int = FEATURE_READS) -> Lobby:
         """OCR can miss a button on one frame: read the lobby again before deciding it is not there."""
-        for _ in range(FEATURE_READS):
+        for _ in range(reads):
             lobby = self.go_to_lobby()
             if ok(lobby):
                 break

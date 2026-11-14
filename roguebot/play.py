@@ -9,18 +9,20 @@ from pathlib import Path
 
 import cv2
 
-from roguebot import config, labels
+from roguebot import config, labels, strategy
 from roguebot.build import Build, BuildState, choose, shop_order
 from roguebot.device import Device
-from roguebot.screens import (LevelScreen, LevelState, SkillCard, classify_level_screen, game_speed,
-                              parse_fortune_teller, parse_shop, parse_skill_cards, skill_reroll)
+from roguebot.screens import (TREASURE, LevelScreen, LevelState, SkillCard, classify_level_screen, event_options,
+                              event_tap, game_speed, miner_tile, miner_tiles, parse_contracts, parse_fortune_teller, parse_hp,
+                              parse_money,
+                              parse_paths, parse_shop, parse_skill_cards, skill_reroll, treasures_left)
 from roguebot.skills import Catalog, Skill
 from roguebot.vision import Ocr, find
 
 log = logging.getLogger(__name__)
 
 DEBUG_DIR = Path("debug")
-MAX_SHOP_STEPS = 8  # rerolls + purchases in one shop visit
+MAX_SHOP_STEPS = 12  # rerolls + purchases in one shop visit
 
 
 class PlayError(Exception):
@@ -45,6 +47,10 @@ class Player:
         self._rerolled = False       # the skill pick on screen is already the rerolled one
         self._doubles = 0            # x2 rewards taps at this level end
         self._last_offer = None      # names of the last skill pick decided (a repeat = the tap did not land)
+        self._seen_offer = None      # cards read on the last skill pick frame (they fly in: decide on a settled frame)
+        self._offer_frames = 0       # frames in a row whose card count differed from the frame before
+        self._miner_done = set()     # treasure miner: tiles of treasures already dug out whole
+        self._miner_left = None      # its "Tesoros Restantes" on the last frame
         self._speed_tapped = False  # tapped x1 -> x2 and waiting to see the label change
         self._speed_locked = False  # x2 is not unlocked on this account
         self._auto_held = False     # held the dice for auto-play and not seen it on yet
@@ -58,6 +64,7 @@ class Player:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
         last_known = time.monotonic()
         last_tap, repeats, first_repeat = None, 0, time.monotonic()
+        waiting, waiting_frames = None, 0  # the screen kind being waited on, and for how many frames
         self._state, self._rerolled, self._doubles, self._last_offer = BuildState(), False, 0, None
         self._fortune_bought, self._fortune_tap = [], None
         while True:
@@ -67,13 +74,23 @@ class Player:
             log.debug("screen: %s", state.kind.value)
 
             if state.kind is LevelScreen.SKILL_PICK:
-                state = LevelState(state.kind, self._pick_skill(texts) or state.tap)
+                settled = self._offer_settled(texts)
+                state = LevelState(state.kind, (self._pick_skill(texts) or state.tap) if settled else None)
+            elif state.kind is LevelScreen.PATH_CHOICE:
+                state = LevelState(state.kind, self._path(img, texts))
+            elif state.kind is LevelScreen.EVENT:
+                state = LevelState(state.kind, self._event(img, texts) or state.tap)
+            elif state.kind is LevelScreen.MINER:
+                state = LevelState(state.kind, self._miner(img, texts))
+            elif state.kind is LevelScreen.CONTRACT:
+                state = LevelState(state.kind, self._contract(texts))
             elif state.kind is LevelScreen.SHOP:
                 self._shop(texts)  # buys what the build wants and the coins allow; then state.tap exits
             elif state.kind is LevelScreen.FORTUNE_TELLER:
                 state = LevelState(state.kind, self._fortune(texts))
             elif state.kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY):
                 self._fortune_bought = []  # back on the board: a later Fortune Teller is a new visit
+                self._miner_done, self._miner_left = set(), None
 
             if state.kind is LevelScreen.DOUBLE_REWARD:
                 self._doubles += 1
@@ -104,6 +121,12 @@ class Player:
                 self.device.tap(*state.tap)
                 return state.kind
 
+            waiting, waiting_frames = state.kind, waiting_frames + 1 if state.kind is waiting else 0
+            if (state.tap is None and state.kind not in (LevelScreen.UNKNOWN, LevelScreen.FIGHT)
+                    and waiting_frames > config.WAIT_SCREEN_FRAMES):
+                # Auto-play never lasts this long without a fight or an event in between.
+                self._fail(f"Waiting on {state.kind.value} for too long", img)
+
             if state.kind is LevelScreen.UNKNOWN:
                 if time.monotonic() - last_known > config.UNKNOWN_SCREEN_TIMEOUT:
                     self._fail("Stuck on an unknown screen", img)
@@ -132,6 +155,17 @@ class Player:
     def _skill(self, card: SkillCard) -> Skill:
         return self.catalog.lookup(card.name, card.description, card.rarity, labels.active_language())
 
+    def _offer_settled(self, texts) -> bool:
+        """The skill cards fly in one by one: a frame taken meanwhile once showed a single card and the
+        reroll was wasted on it. True once two frames in a row show the same number of cards (or after
+        SKILL_PICK_SETTLE_FRAMES changing frames). Not their names: OCR reads those a bit differently each frame."""
+        cards = len(parse_skill_cards(texts))
+        if cards and cards != self._seen_offer and self._offer_frames < config.SKILL_PICK_SETTLE_FRAMES:
+            self._seen_offer, self._offer_frames = cards, self._offer_frames + 1
+            return False
+        self._seen_offer, self._offer_frames = None, 0
+        return True
+
     def _pick_skill(self, texts) -> tuple[int, int] | None:
         """Tap point of the card the build wants, or of the reroll button. None if no card was read."""
         cards = parse_skill_cards(texts)
@@ -153,13 +187,63 @@ class Player:
                  skills[i].role)
         return config.SCREEN_SIZE[0] // 2, cards[i].tag.center[1] + config.SKILL_TAP_BELOW_RARITY
 
+    def _path(self, img, texts) -> tuple[int, int]:
+        """Board fork: the path the strategy wants (the shop while the coins are worth it)."""
+        paths = parse_paths(texts, img)
+        coins = parse_money(texts)
+        i = strategy.choose_path([p.shop for p in paths], coins)
+        log.info("Fork: %s (coins %s) -> %s", " / ".join(f"{p.label.text}{' = shop' if p.shop else ''}" for p in paths),
+                 coins, paths[i].label.text)
+        return paths[i].label.center
+
+    def _event(self, img, texts) -> tuple[int, int] | None:
+        """Tile event: the option the strategy wants, or None when it has no rule for this event."""
+        options = event_options(img, texts)
+        hp = parse_hp(texts)
+        i = strategy.choose_event([o.norm for o in options], hp)
+        if i is None:
+            return None
+        log.info("Event: %s (HP %s) -> %s", " / ".join(o.text for o in options),
+                 "?" if hp is None else f"{hp:.0%}", options[i].text)
+        return event_tap(options[i])
+
+    def _contract(self, texts) -> tuple[int, int]:
+        """Cursed vendor: sign the contract the strategy rates best."""
+        contracts = parse_contracts(texts)
+        i = strategy.choose_contract([c.terms for c in contracts])
+        log.info("Cursed vendor: %s -> signing %d", " | ".join(c.terms for c in contracts), i + 1)
+        return contracts[i].button.center
+
+    def _miner(self, img, texts) -> tuple[int, int] | None:
+        """Treasure miner: the tile to dig. A drop of "Tesoros Restantes" means the treasure pieces on
+        screen are dug out whole: they are not followed any more."""
+        tiles, left = miner_tiles(img), treasures_left(texts)
+        if left is not None and self._miner_left is not None and left < self._miner_left:
+            self._miner_done = {i for i, tile in enumerate(tiles) if tile == TREASURE}
+        self._miner_left = left if left is not None else self._miner_left
+        i = strategy.miner_dig(tiles, self._miner_done)
+        return None if i is None else miner_tile(*divmod(i, config.MINER_SIZE))
+
     def _shop(self, texts) -> None:
-        """Free reroll if nothing is wanted, then buy in the build's order whatever the coins allow."""
+        """Stat items first (heal when hurt, then the cheap stat boost), a free reroll if no skill is
+        wanted, then skills in the build's order whatever the coins allow."""
         rerolled, tapped = False, set()
+        item_buy = None  # (kind, coins before) of the stat item just tapped
         for _ in range(MAX_SHOP_STEPS):
             shop = parse_shop(texts)
             if shop is None or shop.money is None:
                 return
+            if item_buy and shop.money >= item_buy[1]:  # the coins did not drop: sold out or a missed tap; no more items
+                tapped.add("items")
+            item = None if "items" in tapped else strategy.shop_item(
+                {k: int(t.norm) for k, t in shop.items.items()}, shop.money, parse_hp(texts))
+            if item:
+                log.info("Shop: buying %s for %s (coins %d)", item, shop.items[item].norm, shop.money)
+                self.device.tap(*shop.items[item].center)
+                item_buy = item, shop.money
+                texts = self.ocr.read(self.device.screenshot())
+                continue
+            item_buy = None
             cards = [c for c in shop.cards if not c.sold and c.cost is not None and c.name not in tapped]
             skills = [self._skill(c) for c in cards]
             order = shop_order(skills, self.build, self._state,

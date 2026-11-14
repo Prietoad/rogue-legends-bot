@@ -53,6 +53,8 @@ START_NORMAL = _l("inicio", "start")                 # exact; also the elite dia
 START_ELITE = _l("listo", "ready")                   # exact
 LOADING = _l("cargando")
 POPUP_CLOSE = _l("para cerrar", "to close")          # "Toca (en cualquier lugar) para cerrar" / "Tap anywhere to close"
+WORLD_MAP_BUTTON = _l("mundial", ("world map", "world"))  # lobby "Mapa / Mundial" compass, left of the chapter chest; en guessed
+WORLD_MAP_TITLE = _l("mapa mundial", "world map")    # the map screen: one island per world (name + progress %); en guessed
 LOBBY_TAB = _l("aventura", "adventure")              # exact; footer tab label, dimmed under lobby popups
 MODES_BUTTON = _l("modos", "modes")                  # exact; lobby bottom-right (OCR often garbles it)
 
@@ -74,13 +76,13 @@ CONTINUE = _l("continuar", "continue")               # exact
 CONFIRM = _l("confirmar", "confirm")                 # exact; Dungeon Dive end screen button (English guessed)
 DEFEAT = _l("derrota", "defeat")                     # English inferred from "VICTORY!", not seen yet
 VICTORY = _l("victoria", "victory")
-DOUBLE_REWARD = _l(en="x2 rewards")                  # ad button, bottom-right of the end screen (some runs)
+DOUBLE_REWARD = _l(("recompensas x2", "recompensasx2"), "x2 rewards")  # ad button, bottom-right of the end screen (some runs)
 
 # In level
 SKILL_PROMPT = _l("selecciona una habilidad", "select a skill")
 EXACT_BUTTONS = _l(                                  # buttons that just advance the game, matched exactly
-    ("girar", "girar!", "reclamar"),                 # wheels (exact: their bubble says "One spin! ...")
-    ("spin", "spin!", "claim"),                      # + dice duel won: CLAIM (not "Challenge Again")
+    ("girar", "girar!", "reclamar", "next"),         # wheels (exact: their bubble says "One spin! ...")
+    ("spin", "spin!", "claim", "next"),              # + dice duel won: CLAIM (not "Challenge Again"); "NEXT" (not translated): a trained skill's result
 )
 CONTINUE_BUTTONS = (                                 # buttons that just advance the game (substring)
     _l("toca en cualquier lugar", "tap anywhere"),   # reward popups: "...para reclamar", "...to open!"
@@ -99,12 +101,37 @@ QUICK_PATROL_TEXT = _l("reclama de inmediato", "immediately claim")  # quick pat
 REMAINING = _l("cantidad restante", "remaining")       # quick patrol: "Cantidad restante: 0" under each option
 FREE = _l("gratis", "free")                          # exact; shop reroll price when free
 SOLD_OUT = _l(("agotado", "vendido"), ("sold out", "soldout"))  # bought shop card (Spanish guessed)
-BLACK_MARKET = _l("mercado negro", "black market")   # rare shop variant (not seen yet, guessed)
 LEAVE = _l("salir", ("exit", "leave", "walk away"))  # exact
 FORTUNE_TELLER = _l("adivino", "fortune teller")             # balls that may give a skill, paid with run orbs
 FIGHT_ROUND = _l("ronda", "round")                   # "Ronda 3/30" / "Round 4/30"
 REVIVE_PROMPT = _l("revivir ahora", "revive")        # "¡Revivir ahora!" on death, 10 s countdown (English guessed)
 REVIVE_FREE = _l("gratis", "free")                   # exact; yellow video button (the green one costs 60 gems)
+PATH_OPTION = _l("camino", "path")                   # board fork cards "Camino A" / "Camino B" (Heliora); en guessed
+PATH_SHOP = _l(("shop", "market"), ("shop", "market"))  # exact; the sign drawn on a fork card when the path leads to a shop ("SHOP", "BLACK / MARKET")
+EVENT_REST = _l("descansar", "rest")                 # "Un Momento de Descanso": restores 48% HP; en guessed
+EVENT_TRAIN = _l("entrenar", "train")                # ...or upgrades 1 skill; en guessed
+EVENT_PREFER = (                                     # event options taken when offered, first match wins (en guessed)
+    _l("no, gracias", "no, thanks"),                 # magic taxi: a free +15% heal (the taxi costs 75 coins)
+    _l("rechazar", ("decline", "refuse")),           # slime chef: 75 coins for a random reward; the shop uses them better
+    _l("rezar", "pray"),                             # statue of the gods: a free benefit (the offering forgets a skill)
+    _l("espiar", "peek"),                            # dark fissure: a free common skill (the mythic one costs 50% max HP)
+    _l("observar", "observe"),                       # two monsters fight: a free common skill (the legendary one costs 25% max HP)
+)
+SHOP_HEAL = _l("curar", "heal")                      # shop stat item "Curar 30%" (starts with); en guessed
+CURSED_VENDOR = _l("vendedor maldito", ("cursed vendor", "cursed merchant"))  # two contracts (a boon + a curse each): one must be signed; en guessed
+SIGN = _l("firmar", "sign")                          # exact; a contract's button (also the devil's deal event option)
+CONTRACT_TERMS = (                                   # what a contract's text is worth (see strategy.choose_contract); en guessed
+    (_l("posada", "inn"), 3),                        # every campfire becomes an inn: full heal + 2 skill upgrades (a run has ~6 campfires)
+    (_l("se renuevan", "refresh"), 1),               # the skill pick reroll comes back at every pick
+    (_l("actuan primero", "act first"), -1),         # enemies always act first
+    (_l("se duplican", "double"), -2),               # shop prices double
+    (_l("casillas de buff", "buff tiles"), 2),       # every debuff tile becomes a buff tile for the rest of the run
+    (_l("se eliminan todas las fogatas", "campfires are removed"), -2),
+    (_l("casillas enemigas", "enemy tiles"), 1),     # half the enemy tiles removed, for EXP and shop coins
+    (_l("quedan desactivadas", "are disabled"), -3),  # half the skills disabled for the next 5 fights (the elites)
+)
+TREASURE_MINER = _l("minero de tesoros", "treasure miner")  # minigame: dig a 7x7 grid for treasures (skills); en guessed
+TREASURES_LEFT = _l("tesoros restantes", "treasures left")  # "Tesoros Restantes: 5"; en guessed
 LEVEL_MODIFIERS = _l("modificadores de nivel", "level modifiers")  # elite level intro panel (+ Continue)
 
 # Full routine. Spanish variants marked (?) are the user's names or guesses, not seen on screen yet.

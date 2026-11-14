@@ -1,7 +1,7 @@
 """Screen recognition: turns OCR output into typed screen states. No input is sent from here."""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
@@ -10,7 +10,7 @@ import numpy as np
 
 from roguebot import config, labels as L
 from roguebot.skills import RARITY_NAMES
-from roguebot.vision import Ocr, Text, find, match_template, matches, parse_level_number
+from roguebot.vision import Ocr, Text, find, match_template, matches, parse_level_number, parse_world_number
 
 
 class Mode(Enum):
@@ -30,6 +30,12 @@ class Lobby:
     stars_button: Text | None    # "Desafio de Estrellas" (None: not unlocked on this account)
     energy: int | None           # top bar "12/32" -> 12
     has_elite: bool = True       # the elite skull toggle shows (not unlocked on new accounts)
+    map_button: Text | None = None  # "Mapa Mundial" compass (None: no worlds on this account)
+
+    @property
+    def world(self) -> int | None:
+        """World of the shown level (1 = Everdale, 2 = Heliora: "2-1. Elysium I"); None if the title was not read."""
+        return parse_world_number(self.level_title) if self.level_title else None
 
 
 @dataclass(frozen=True)
@@ -58,7 +64,18 @@ def parse_lobby(texts: list[Text]) -> Lobby | None:
     if not start:
         return None
     title = next((t.text for t in texts if parse_level_number(t.text) is not None), None)
-    return Lobby(mode, title, start, find(texts, L.STARS_BUTTON), parse_energy(texts), has_elite)
+    stars = find(texts, L.STARS_BUTTON)
+    if stars and matches(stars, L.PATROL):  # OCR joined "Patrulla" and "de Estrellas": the button is its right half
+        stars = Text(stars.text, (stars.x1 + stars.x2) // 2, stars.y1, stars.x2, stars.y2)
+    return Lobby(mode, title, start, stars, parse_energy(texts), has_elite, find(texts, L.WORLD_MAP_BUTTON))
+
+
+def parse_world_map(texts: list[Text]) -> dict[str, Text] | None:
+    """The "Mapa Mundial" screen: each known world's name label (tapping it enters that world), or None
+    on another screen. A world still locked or not in the game yet is simply not tapped by name."""
+    if not find(texts, L.WORLD_MAP_TITLE) or find(texts, L.PATROL):
+        return None
+    return {w: t for w in config.WORLDS if (t := find(texts, w, exact=True))}
 
 
 def is_star_list(texts: list[Text]) -> bool:
@@ -160,6 +177,7 @@ def is_loading(texts: list[Text]) -> bool:
 
 _CLOSE_X = cv2.imread(str(Path(__file__).parent / "templates" / "close_x.png"))
 _TUTORIAL_HAND = cv2.imread(str(Path(__file__).parent / "templates" / "tutorial_hand.png"))
+_PATH_SHOP = cv2.imread(str(Path(__file__).parent / "templates" / "path_shop.png"))
 
 
 def close_button(img: np.ndarray) -> tuple[int, int] | None:
@@ -239,6 +257,9 @@ class LevelScreen(Enum):
     FORTUNE_TELLER = "fortune_teller"  # "Adivino": 100/70/40% balls paid with orbs; tap = its back arrow
     CONTINUE = "continue"        # screen whose only action is one button (see labels.CONTINUE_BUTTONS)
     DICE_DUEL = "dice_duel"      # "¡Batalla de Dados!" 21-style minigame
+    PATH_CHOICE = "path_choice"  # board fork (Heliora): "Camino A" / "Camino B" cards showing where each path leads
+    CONTRACT = "contract"        # "Vendedor Maldito": sign one of two contracts (the Player picks which)
+    MINER = "miner"              # "Minero de Tesoros" minigame: dig tiles (the Player picks which)
     FLIP_CARDS = "flip_cards"    # "Excavar en Busca de Tesoro" memory minigame; flip face-down cards in order
     UNKNOWN = "unknown"          # transitions/animations, or a screen not handled yet
 
@@ -313,8 +334,8 @@ def _in_range(v: int, r: tuple[int, int]) -> bool:
 def _option_enabled(img: np.ndarray, label: Text) -> bool:
     """A used-up option ("Read" after failing it) turns its icon grey."""
     x, y = label.center[0], label.center[1] + config.EVENT_ICON_BELOW_LABEL
-    roi = cv2.cvtColor(img[y - 120:y + 120, x - 120:x + 120], cv2.COLOR_BGR2HSV)
-    return roi[..., 1].mean() > config.EVENT_DISABLED_MAX_SATURATION
+    roi = img[max(0, y - 120):y + 120, max(0, x - 120):x + 120]  # (a label at the screen edge: a lobby icon, not an option)
+    return roi.size > 0 and cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)[..., 1].mean() > config.EVENT_DISABLED_MAX_SATURATION
 
 
 def _event_option(img: np.ndarray, texts: list[Text]) -> tuple[int, int] | None:
@@ -322,15 +343,120 @@ def _event_option(img: np.ndarray, texts: list[Text]) -> tuple[int, int] | None:
 
     Takes "Salir" (leave) when offered, else the leftmost option that is not greyed out.
     """
-    has_title = any(_in_range(t.center[1], config.EVENT_TITLE_Y)
-                    and abs(t.center[0] - config.SCREEN_SIZE[0] // 2) < config.EVENT_TITLE_CENTER_TOLERANCE
-                    for t in texts)
-    labels = [t for t in texts if _in_range(t.center[1], config.EVENT_LABEL_Y)]
-    if not (has_title and labels):
+    labels = event_options(img, texts)
+    if not labels:
         return None
-    labels = [t for t in labels if _option_enabled(img, t)] or labels
-    label = next((t for t in labels if matches(t, L.LEAVE, exact=True)), min(labels, key=lambda t: t.center[0]))
+    return event_tap(next((t for t in labels if matches(t, L.LEAVE, exact=True)), labels[0]))
+
+
+def event_tap(label: Text) -> tuple[int, int]:
+    """An event option is taken by its icon, below its label."""
     return label.center[0], label.center[1] + config.EVENT_ICON_BELOW_LABEL
+
+
+_PATH_RE = re.compile(r"^(.+) ([a-d])$")
+
+
+@dataclass(frozen=True)
+class PathOption:
+    label: Text                  # "Camino A": tapping it takes the path
+    shop: bool                   # the card's picture is a shop
+
+
+def _shop_card(img: np.ndarray, label: Text) -> bool:
+    """The shop wagon is drawn on the fork card above this label (the phone's OCR does not read its sign)."""
+    x, y = label.center
+    card = img[max(0, y - config.PATH_CARD_HEIGHT):y, max(0, x - config.PATH_CARD_HALF_WIDTH):x + config.PATH_CARD_HALF_WIDTH]
+    return (card.shape[0] >= _PATH_SHOP.shape[0] and card.shape[1] >= _PATH_SHOP.shape[1]
+            and match_template(card, _PATH_SHOP, config.PATH_SHOP_MIN_SCORE) is not None)
+
+
+def parse_paths(texts: list[Text], img: np.ndarray | None = None) -> list[PathOption]:
+    """A board fork: its cards ("Camino A", "Camino B") left to right, each showing where the path
+    leads; empty when the board shows no fork. A shop card is known by its picture (given the frame) or
+    by the sign on it ("SHOP", "BLACK / MARKET")."""
+    labels = sorted((t for t in texts if (m := _PATH_RE.match(t.norm)) and m.group(1) in L.PATH_OPTION.variants
+                     and t.center[1] > config.PATH_LABEL_MIN_Y), key=lambda t: t.center[0])
+    if len(labels) < 2:
+        return []
+    return [PathOption(p, any(matches(t, L.PATH_SHOP, exact=True)
+                              and abs(t.center[0] - p.center[0]) < config.PATH_CARD_HALF_WIDTH
+                              and 0 < p.center[1] - t.center[1] < config.PATH_CARD_HEIGHT for t in texts)
+                       or (img is not None and _shop_card(img, p)))
+            for p in labels]
+
+
+@dataclass(frozen=True)
+class Contract:
+    button: Text                 # its "Firmar"
+    terms: str                   # its boon and curse, normalized, lines joined
+
+
+def parse_contracts(texts: list[Text]) -> list[Contract]:
+    """"Vendedor Maldito": the contracts on offer, left to right; empty on any other screen."""
+    if not find(texts, L.CURSED_VENDOR):
+        return []
+    buttons = sorted((t for t in texts if matches(t, L.SIGN, exact=True)), key=lambda t: t.center[0])
+    return [Contract(b, " ".join(t.norm for t in sorted(texts, key=lambda t: (t.center[1], t.center[0]))
+                                 if _in_range(t.center[1], config.CONTRACT_TEXT_Y)
+                                 and abs(t.center[0] - b.center[0]) < config.CONTRACT_HALF_WIDTH))
+            for b in buttons] if len(buttons) > 1 else []
+
+
+DIRT, EMPTY, TREASURE = "dirt", "empty", "treasure"
+
+
+def miner_tile(row: int, col: int) -> tuple[int, int]:
+    x, y = config.MINER_ORIGIN
+    return x + col * config.MINER_PITCH, y + row * config.MINER_PITCH
+
+
+def miner_tiles(img: np.ndarray) -> list[str]:
+    """"Minero de Tesoros" grid, row by row: DIRT (not dug), EMPTY (dug, nothing) or TREASURE (a piece of
+    one, or a whole dug-out one)."""
+    tiles, h = [], config.MINER_TILE_HALF
+    for i in range(config.MINER_SIZE ** 2):
+        x, y = miner_tile(*divmod(i, config.MINER_SIZE))
+        roi = img[y - h:y + h, x - h:x + h].reshape(-1, 3).astype(int)
+        if (roi.max(1) < 60).mean() > config.MINER_EMPTY_DARK:
+            tiles.append(EMPTY)
+        elif np.abs(roi.mean(0) - config.MINER_DIRT).max() < config.MINER_DIRT_TOLERANCE:
+            tiles.append(DIRT)
+        else:
+            tiles.append(TREASURE)
+    return tiles
+
+
+def treasures_left(texts: list[Text]) -> int | None:
+    """N of "Tesoros Restantes: N" (OCR may split the number off)."""
+    label = find(texts, L.TREASURES_LEFT)
+    if not label:
+        return None
+    if m := re.search(r"(\d+)$", label.norm):
+        return int(m.group(1))
+    return next((int(t.norm) for t in texts if t.norm.isdigit() and abs(t.center[1] - label.center[1]) < 40
+                 and 0 < t.x1 - label.x2 < 120), None)
+
+
+def parse_hp(texts: list[Text]) -> float | None:
+    """The hero's HP share in a level, from the top bar "7,2m / 10,1m" -> 0.71."""
+    from roguebot.mode_screens import parse_power  # mode_screens imports nothing from here
+    x1, y1, x2, y2 = config.HP_REGION
+    for t in texts:
+        if x1 <= t.center[0] <= x2 and y1 <= t.center[1] <= y2 and t.norm.count("/") == 1:
+            now, top = (parse_power(v) for v in t.norm.split("/"))
+            if now is not None and top:
+                return min(1.0, now / top)
+    return None
+
+
+def event_options(img: np.ndarray, texts: list[Text]) -> list[Text]:
+    """A tile event's option labels that can be taken (not greyed out), left to right; [] if not an event."""
+    if not any(_in_range(t.center[1], config.EVENT_TITLE_Y)
+               and abs(t.center[0] - config.SCREEN_SIZE[0] // 2) < config.EVENT_TITLE_CENTER_TOLERANCE for t in texts):
+        return []
+    labels = [t for t in texts if _in_range(t.center[1], config.EVENT_LABEL_Y)]
+    return sorted([t for t in labels if _option_enabled(img, t)] or labels, key=lambda t: t.center[0])
 
 
 def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
@@ -355,6 +481,12 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
             first = min(tags, key=lambda t: t.center[1])
             return LevelState(LevelScreen.SKILL_PICK, (config.SCREEN_SIZE[0] // 2,
                                                        first.center[1] + config.SKILL_TAP_BELOW_RARITY))
+    contracts = parse_contracts(texts)
+    if contracts:
+        return LevelState(LevelScreen.CONTRACT, contracts[0].button.center)
+    paths = parse_paths(texts)
+    if paths:
+        return LevelState(LevelScreen.PATH_CHOICE, paths[0].label.center)
     if proceed and find(texts, L.LEVEL_MODIFIERS, exact=True):  # elite level intro: modifiers + Continue
         return LevelState(LevelScreen.CONTINUE, proceed.center)
     button = find(texts, L.EXACT_BUTTONS, exact=True)
@@ -373,15 +505,15 @@ def classify_level_screen(img: np.ndarray, texts: list[Text]) -> LevelState:
     if find(texts, L.FORTUNE_TELLER):
         return LevelState(LevelScreen.FORTUNE_TELLER, config.FORTUNE_TELLER_BACK)
     leave = find(texts, L.LEAVE, exact=True)
-    if leave and find(texts, L.BLACK_MARKET):  # never seen: its prices may be gems, so just leave
-        return LevelState(LevelScreen.LEAVE, leave.center)
-    if leave and find(texts, L.SHOP_REROLL):  # shop: "Salir" is the button itself
+    if leave and find(texts, L.SHOP_REROLL):  # shop or black market (same screen, run coins, half price): "Salir" is the button itself
         return LevelState(LevelScreen.SHOP, leave.center)
     event_option = _event_option(img, texts)
     if event_option:
         return LevelState(LevelScreen.EVENT, event_option)
     if leave:  # e.g. "Meditación completa" -> "Salir"
         return LevelState(LevelScreen.LEAVE, leave.center)
+    if find(texts, L.TREASURE_MINER) and find(texts, L.TREASURES_LEFT):  # out of pickaxes it shows "Salir" (above)
+        return LevelState(LevelScreen.MINER)
     # Revive popup (over a fight). Checked late: skill/shop cards can mention "Revive" too.
     if find(texts, L.REVIVE_PROMPT):
         free = find(texts, L.REVIVE_FREE, exact=True)
@@ -467,7 +599,8 @@ def parse_skill_cards(texts: list[Text]) -> list[SkillCard]:
         bottom = tags[i + 1].center[1] - 30 if i + 1 < len(tags) else tag.center[1] + config.SKILL_CARD_HEIGHT
         band = [t for t in texts if top <= t.center[1] < bottom and t is not tag]
         words = sorted((t for t in band if t.x1 >= config.SKILL_TEXT_MIN_X and t.center[0] < config.SHOP_PRICE_MIN_X
-                        and re.search(r"[a-z]{2}", t.norm)),  # skip OCR junk glyphs
+                        and re.search(r"[a-z]{2}", t.norm)  # skip OCR junk glyphs
+                        and t.norm != "exp"),  # "EXP" floats over a level-up pick after a fight
                        key=lambda t: (t.center[1], t.center[0]))
         lo, hi = config.SKILL_NAME_BELOW_TAG
         if not words or not lo <= words[0].center[1] - tag.center[1] <= hi:
@@ -509,15 +642,38 @@ class Shop:
     cards: list[SkillCard]
     free_reroll: Text | None     # the reroll button while it says FREE (afterwards it costs coins)
     exit: Text
+    items: dict[str, Text] = field(default_factory=dict)  # stat items on sale: BOOST / HEAL -> price button
+
+
+BOOST, HEAL = "boost", "heal"  # shop stat items: a stat up for the run ("ATQ ↑↑↑", "PS máx. ↑↑", 3 uses) / "Curar 30%"
+_USES_LEFT_RE = re.compile(r"^(\d)\s*/\s*\d$")
+
+
+def _shop_items(texts: list[Text]) -> dict[str, Text]:
+    """The shop's stat items (above the skill cards): label, price below it; above it the uses left
+    ("3/3") or "AGOTADO" once used up (then it is left out)."""
+    items = {}
+    for name in texts:
+        if not _in_range(name.center[1], config.SHOP_ITEMS_Y):
+            continue
+        kind = HEAL if name.norm.startswith(L.SHOP_HEAL.variants) else BOOST  # OCR may drop the arrows ("ATQ")
+        near = [t for t in texts if abs(t.center[0] - name.center[0]) < config.SHOP_ITEM_DX]
+        above = [t for t in near if _in_range(name.center[1] - t.center[1], config.SHOP_ITEM_ABOVE)]
+        price = next((t for t in near if t.norm.isdigit()
+                      and _in_range(t.center[1] - name.center[1], config.SHOP_ITEM_PRICE_BELOW)), None)
+        used_up = any(matches(t, L.SOLD_OUT) or ((m := _USES_LEFT_RE.match(t.norm)) and m.group(1) == "0") for t in above)
+        if price and not used_up:
+            items[kind] = price
+    return items
 
 
 def parse_shop(texts: list[Text]) -> Shop | None:
     leave = find(texts, L.LEAVE, exact=True)
     reroll = find(texts, L.SHOP_REROLL)
-    if not (leave and reroll) or find(texts, L.BLACK_MARKET):
+    if not (leave and reroll):
         return None
     free = reroll if reroll and any(matches(t, L.FREE, exact=True) for t in _below(reroll, texts)) else None
-    return Shop(parse_money(texts), parse_skill_cards(texts), free, leave)
+    return Shop(parse_money(texts), parse_skill_cards(texts), free, leave, _shop_items(texts))
 
 
 @dataclass(frozen=True)

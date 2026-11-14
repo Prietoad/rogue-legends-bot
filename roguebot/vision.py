@@ -15,7 +15,7 @@ from roguebot import config
 
 log = logging.getLogger(__name__)
 
-_LEVEL_RE = re.compile(r"^\s*(\d+)\s*\.")
+_LEVEL_RE = re.compile(r"^\s*(?:(\d+)\s*-\s*)?(\d+)\s*\.")  # "12. Name"; other worlds: "2-1. Name"
 
 
 @dataclass(frozen=True)
@@ -42,9 +42,15 @@ def normalize(s: str) -> str:
 
 
 def parse_level_number(s: str) -> int | None:
-    """'12. Arenas Movedizas II' -> 12."""
+    """'12. Arenas Movedizas II' -> 12; '2-1. Elysium I' (world 2) -> 1."""
     m = _LEVEL_RE.match(s)
-    return int(m.group(1)) if m else None
+    return int(m.group(2)) if m else None
+
+
+def parse_world_number(s: str) -> int | None:
+    """World of a lobby level title: '2-1. Elysium I' -> 2; the first world has no prefix ('12. ...' -> 1)."""
+    m = _LEVEL_RE.match(s)
+    return int(m.group(1) or 1) if m else None
 
 
 def matches(t: Text, label, exact: bool = False) -> bool:

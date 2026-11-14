@@ -83,6 +83,7 @@ object Engine {
         Templates.closeX = load("close_x.png")
         Templates.backArrow = load("back_arrow.png")
         Templates.tutorialHand = load("tutorial_hand.png")
+        Templates.pathShop = load("path_shop.png")
     }
 
     /** The phone's copy of the skill database, seeded from the desktop bot's data/skills.json. */

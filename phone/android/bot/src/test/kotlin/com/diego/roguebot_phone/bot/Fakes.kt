@@ -46,7 +46,7 @@ class FakeOcr(private val regions: (Frame, Region) -> List<Text> = { _, _ -> emp
 
 /** A Navigator whose captures follow a script; go_to_lobby only counts (unless real = true). */
 class ScriptNav(device: Device, val script: Script, ocr: Ocr = FakeOcr(), clock: Clock = FakeClock(), ads: Boolean = false,
-                private val real: Boolean = false) : Navigator(device, ocr, ads = ads, clock = clock) {
+                private val real: Boolean = false, world: String? = null) : Navigator(device, ocr, ads = ads, clock = clock, world = world) {
     var lobbyVisits = 0
     var lobbyError: NavigationError? = null
 

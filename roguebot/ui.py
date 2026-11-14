@@ -9,7 +9,7 @@ from tkinter import filedialog, ttk
 from pathlib import Path
 from typing import Callable
 
-from roguebot import __version__, emulator, settings
+from roguebot import __version__, config, emulator, settings
 from roguebot.build import Build
 from roguebot.i18n import UI_LANGUAGES, tr
 from roguebot.report import Report, render
@@ -101,6 +101,15 @@ class App:
         self._text(ttk.Label(frame), "mode").grid(row=2, column=0, sticky="w")
         self._text(ttk.Radiobutton(frame, variable=self.mode, value=Mode.NORMAL.value), "normal").grid(row=2, column=1, sticky="w")
         self._text(ttk.Radiobutton(frame, variable=self.mode, value=Mode.ELITE.value), "elite").grid(row=2, column=2, sticky="w")
+
+        world = ttk.Frame(frame)
+        world.grid(row=2, column=3, sticky="w", padx=(16, 0))
+        self._text(ttk.Label(world), "world").pack(side="left", padx=(0, 6))
+        self.world = tk.StringVar(value="")  # "" = the world the game is in; else one of config.WORLDS
+        self.world_picker = ttk.Combobox(world, state="readonly", width=12)
+        self.world_picker.pack(side="left")
+        self.world_picker.bind("<<ComboboxSelected>>",
+                               lambda _: self.world.set(("", *config.WORLDS)[self.world_picker.current()]))
 
         self.source = tk.StringVar(value=LATEST)
         self._text(ttk.Label(frame), "level").grid(row=3, column=0, sticky="w")
@@ -199,7 +208,8 @@ class App:
 
     def options(self) -> dict:
         """Every user choice, as saved between sessions."""
-        values = {"lang": self.lang, "mode": self.mode.get(), "source": self.source.get(), "level": self.level.get(),
+        values = {"lang": self.lang, "mode": self.mode.get(), "world": self.world.get(),
+                  "source": self.source.get(), "level": self.level.get(),
                   "full": self.full.get(), "loop": self.loop.get(), "ads": self.ads.get(),
                   "nature": self.nature.get(), "damage_order": list(self.damage_order),
                   "support": self.support.get(), "support_every": self.support_every.get()}
@@ -211,6 +221,7 @@ class App:
         """Last session's choices; anything missing or invalid keeps its default."""
         for var, key, choices in ((self.mode, "mode", {m.value for m in Mode}),
                                   (self.source, "source", {LATEST, BEATEN, PENDING, STARS}),
+                                  (self.world, "world", {"", *config.WORLDS}),
                                   (self.nature, "nature", {PHYSICAL, MAGIC})):
             if saved.get(key) in choices:
                 var.set(saved[key])
@@ -249,6 +260,8 @@ class App:
             widget.configure(text=tr(lang, key))
         sel = self.order_list.curselection()
         self._refresh_order(sel[0] if sel else None)
+        self.world_picker.configure(values=[tr(lang, "world_current"), *(w.capitalize() for w in config.WORLDS)])
+        self.world_picker.current(("", *config.WORLDS).index(self.world.get()))
         self._check_folder()
         self._show_status()
 
@@ -298,7 +311,7 @@ class App:
         try:
             request = build_request(self.mode.get(), self.source.get(), self.level.get(),
                                     self.full.get(), self.build(), self.loop.get(), self.mumu_folder.get(),
-                                    self.ads.get())
+                                    self.ads.get(), self.world.get())
         except ValueError as e:
             self._set_status(str(e), "red")
             return

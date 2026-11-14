@@ -38,6 +38,14 @@ void main() {
     expect(bad.order, damageTypes);
   });
 
+  test('the world option is saved, and an unknown world keeps the default', () {
+    final o = Options()..restore({'world': 'heliora'});
+    expect(o.world, 'heliora');
+    expect(o.toJson()['world'], 'heliora');
+    expect((Options()..restore({'world': 'atlantis'})).world, '');  // '' = the world the game is in
+    expect(worlds, ['everdale', 'heliora']);
+  });
+
   test('options survive a save and restore', () {
     final o = Options()
       ..full = true

@@ -9,6 +9,7 @@ object Templates {
     lateinit var closeX: Template
     lateinit var backArrow: Template
     lateinit var tutorialHand: Template
+    lateinit var pathShop: Template
 }
 
 fun startLabel(mode: Mode): Label = if (mode == Mode.NORMAL) L.START_NORMAL else L.START_ELITE
@@ -20,7 +21,11 @@ data class Lobby(
     val starsButton: Text?,
     val energy: Int?,
     val hasElite: Boolean = true,
-)
+    val mapButton: Text? = null,  // "Mapa Mundial" compass (null: no worlds on this account)
+) {
+    /** World of the shown level (1 = Everdale, 2 = Heliora: "2-1. Elysium I"); null if the title was not read. */
+    val world: Int? get() = levelTitle?.let(::parseWorldNumber)
+}
 
 data class Card(val number: Int, val header: Text, val button: Text?, val stars: Int = 3)
 
@@ -36,7 +41,19 @@ object Screens {
         }
         val start = find(texts, startLabel(mode), exact = true) ?: return null
         val title = texts.firstOrNull { parseLevelNumber(it.text) != null }?.text
-        return Lobby(mode, title, start, find(texts, L.STARS_BUTTON), parseEnergy(texts), hasElite)
+        var stars = find(texts, L.STARS_BUTTON)
+        if (stars != null && matches(stars, L.PATROL)) {  // OCR joined "Patrulla" and "de Estrellas": the button is its right half
+            stars = Text(stars.text, (stars.x1 + stars.x2) / 2, stars.y1, stars.x2, stars.y2)
+        }
+        return Lobby(mode, title, start, stars, parseEnergy(texts), hasElite, find(texts, L.WORLD_MAP_BUTTON))
+    }
+
+    /** The "Mapa Mundial" screen: each known world's name label (tapping it enters that world), or null. */
+    fun parseWorldMap(texts: List<Text>): Map<String, Text>? {
+        if (find(texts, L.WORLD_MAP_TITLE) == null || find(texts, L.PATROL) != null) return null
+        val worlds = LinkedHashMap<String, Text>()
+        for (w in Config.WORLDS) texts.firstOrNull { matches(it, w, exact = true) }?.let { worlds[w] = it }
+        return worlds
     }
 
     fun isStarList(texts: List<Text>): Boolean =
@@ -190,15 +207,105 @@ object Screens {
         return n > 0 && sum / n > Config.EVENT_DISABLED_MAX_SATURATION
     }
 
-    private fun eventOption(img: Frame, texts: List<Text>): P? {
+    /** A tile event's option labels that can be taken (not greyed out), left to right; empty if not an event. */
+    fun eventOptions(img: Frame, texts: List<Text>): List<Text> {
         val hasTitle = texts.any {
             it.center.y in Config.EVENT_TITLE_Y && kotlin.math.abs(it.center.x - Config.SCREEN_W / 2) < Config.EVENT_TITLE_CENTER_TOLERANCE
         }
-        var labels = texts.filter { it.center.y in Config.EVENT_LABEL_Y }
-        if (!hasTitle || labels.isEmpty()) return null
-        labels = labels.filter { optionEnabled(img, it) }.ifEmpty { labels }
-        val label = labels.firstOrNull { matches(it, L.LEAVE, exact = true) } ?: labels.minBy { it.center.x }
-        return P(label.center.x, label.center.y + Config.EVENT_ICON_BELOW_LABEL)
+        if (!hasTitle) return emptyList()
+        val labels = texts.filter { it.center.y in Config.EVENT_LABEL_Y }
+        return labels.filter { optionEnabled(img, it) }.ifEmpty { labels }.sortedBy { it.center.x }
+    }
+
+    /** An event option is taken by its icon, below its label. */
+    fun eventTap(label: Text) = P(label.center.x, label.center.y + Config.EVENT_ICON_BELOW_LABEL)
+
+    private fun eventOption(img: Frame, texts: List<Text>): P? {
+        val labels = eventOptions(img, texts)
+        if (labels.isEmpty()) return null
+        return eventTap(labels.firstOrNull { matches(it, L.LEAVE, exact = true) } ?: labels[0])
+    }
+
+    data class PathOption(val label: Text, val shop: Boolean)
+
+    private val PATH_RE = Regex("^(.+) ([a-d])$")
+
+    /** The shop wagon is drawn on the fork card above this label (the phone's OCR does not read its sign). */
+    private fun shopCard(img: Frame, label: Text): Boolean {
+        val c = label.center
+        val card = img.crop(Region(c.x - Config.PATH_CARD_HALF_WIDTH, c.y - Config.PATH_CARD_HEIGHT, c.x + Config.PATH_CARD_HALF_WIDTH, c.y))
+        val t = Templates.pathShop
+        return card.width >= t.width && card.height >= t.height && matchTemplate(card, t, Config.PATH_SHOP_MIN_SCORE) != null
+    }
+
+    /** A board fork: its cards ("Camino A", "Camino B") left to right, each showing where the path leads;
+     *  empty when the board shows no fork. A shop card is known by its picture (given the frame) or by the
+     *  sign on it ("SHOP", "BLACK / MARKET"). */
+    fun parsePaths(texts: List<Text>, img: Frame? = null): List<PathOption> {
+        val labels = texts.filter { t ->
+            val m = PATH_RE.find(t.norm)
+            m != null && m.groupValues[1] in L.PATH_OPTION.variants && t.center.y > Config.PATH_LABEL_MIN_Y
+        }.sortedBy { it.center.x }
+        if (labels.size < 2) return emptyList()
+        return labels.map { p ->
+            PathOption(p, texts.any { matches(it, L.PATH_SHOP, exact = true) &&
+                kotlin.math.abs(it.center.x - p.center.x) < Config.PATH_CARD_HALF_WIDTH &&
+                p.center.y - it.center.y in 1 until Config.PATH_CARD_HEIGHT } || (img != null && shopCard(img, p)))
+        }
+    }
+
+    data class Contract(val button: Text, val terms: String)
+
+    /** "Vendedor Maldito": the contracts on offer, left to right; empty on any other screen. */
+    fun parseContracts(texts: List<Text>): List<Contract> {
+        if (find(texts, L.CURSED_VENDOR) == null) return emptyList()
+        val buttons = texts.filter { matches(it, L.SIGN, exact = true) }.sortedBy { it.center.x }
+        if (buttons.size < 2) return emptyList()
+        val ordered = texts.sortedWith(compareBy({ it.center.y }, { it.center.x }))
+        return buttons.map { b ->
+            Contract(b, ordered.filter { it.center.y in Config.CONTRACT_TEXT_Y && kotlin.math.abs(it.center.x - b.center.x) < Config.CONTRACT_HALF_WIDTH }
+                .joinToString(" ") { it.norm })
+        }
+    }
+
+    const val DIRT = "dirt"
+    const val EMPTY = "empty"
+    const val TREASURE = "treasure"
+
+    fun minerTile(row: Int, col: Int) = P(Config.MINER_ORIGIN.x + col * Config.MINER_PITCH, Config.MINER_ORIGIN.y + row * Config.MINER_PITCH)
+
+    /** "Minero de Tesoros" grid, row by row: DIRT (not dug), EMPTY (dug, nothing) or TREASURE. */
+    fun minerTiles(img: Frame): List<String> {
+        val h = Config.MINER_TILE_HALF
+        return (0 until Config.MINER_SIZE * Config.MINER_SIZE).map { i ->
+            val c = minerTile(i / Config.MINER_SIZE, i % Config.MINER_SIZE)
+            val dark = img.fraction(c.x - h, c.y - h, c.x + h, c.y + h) { r, g, b -> maxOf(r, g, b) < 60 }
+            val m = img.mean(c.x - h, c.y - h, c.x + h, c.y + h)
+            val d = Config.MINER_DIRT
+            when {
+                dark > Config.MINER_EMPTY_DARK -> EMPTY
+                maxOf(kotlin.math.abs(m[2] - d[0]), kotlin.math.abs(m[1] - d[1]), kotlin.math.abs(m[0] - d[2])) < Config.MINER_DIRT_TOLERANCE -> DIRT
+                else -> TREASURE
+            }
+        }
+    }
+
+    /** N of "Tesoros Restantes: N" (OCR may split the number off). */
+    fun treasuresLeft(texts: List<Text>): Int? {
+        val label = find(texts, L.TREASURES_LEFT) ?: return null
+        TRAILING_DIGITS.find(label.norm)?.let { return it.groupValues[1].toInt() }
+        return texts.firstOrNull { it.norm.isDigits() && kotlin.math.abs(it.center.y - label.center.y) < 40 && it.x1 - label.x2 in 1 until 120 }?.norm?.toInt()
+    }
+
+    /** The hero's HP share in a level, from the top bar "7,2m / 10,1m" -> 0.71. */
+    fun parseHp(texts: List<Text>): Double? {
+        val r = Config.HP_REGION
+        for (t in texts) {
+            if (t.center.x !in r.x1..r.x2 || t.center.y !in r.y1..r.y2 || t.norm.count { it == '/' } != 1) continue
+            val (now, top) = t.norm.split("/").map(ModeScreens::parsePower)
+            if (now != null && top != null && top != 0L) return minOf(1.0, now.toDouble() / top.toDouble())
+        }
+        return null
     }
 
     fun classifyLevelScreen(img: Frame, texts: List<Text>): LevelState {
@@ -217,6 +324,8 @@ object Screens {
                 return LevelState(LevelScreen.SKILL_PICK, P(Config.SCREEN_W / 2, first.center.y + Config.SKILL_TAP_BELOW_RARITY))
             }
         }
+        parseContracts(texts).firstOrNull()?.let { return LevelState(LevelScreen.CONTRACT, it.button.center) }
+        parsePaths(texts).firstOrNull()?.let { return LevelState(LevelScreen.PATH_CHOICE, it.label.center) }
         if (proceed != null && find(texts, L.LEVEL_MODIFIERS, exact = true) != null) return LevelState(LevelScreen.CONTINUE, proceed.center)
         find(texts, L.EXACT_BUTTONS, exact = true)?.let { return LevelState(LevelScreen.CONTINUE, it.center) }
         for (label in L.CONTINUE_BUTTONS) find(texts, label)?.let { return LevelState(LevelScreen.CONTINUE, it.center) }
@@ -226,10 +335,10 @@ object Screens {
         }
         if (find(texts, L.FORTUNE_TELLER) != null) return LevelState(LevelScreen.FORTUNE_TELLER, Config.FORTUNE_TELLER_BACK)
         val leave = find(texts, L.LEAVE, exact = true)
-        if (leave != null && find(texts, L.BLACK_MARKET) != null) return LevelState(LevelScreen.LEAVE, leave.center)
         if (leave != null && find(texts, L.SHOP_REROLL) != null) return LevelState(LevelScreen.SHOP, leave.center)
         eventOption(img, texts)?.let { return LevelState(LevelScreen.EVENT, it) }
         if (leave != null) return LevelState(LevelScreen.LEAVE, leave.center)
+        if (find(texts, L.TREASURE_MINER) != null && find(texts, L.TREASURES_LEFT) != null) return LevelState(LevelScreen.MINER)  // out of pickaxes it shows "Salir" (above)
         if (find(texts, L.REVIVE_PROMPT) != null) {
             val free = find(texts, L.REVIVE_FREE, exact = true)
             if (free != null && yellowButton(img, free.center)) return LevelState(LevelScreen.REVIVE, free.center)
@@ -287,7 +396,8 @@ object Screens {
             val top = tag.center.y - 30
             val bottom = if (i + 1 < tags.size) tags[i + 1].center.y - 30 else tag.center.y + Config.SKILL_CARD_HEIGHT
             val band = texts.filter { it.center.y >= top && it.center.y < bottom && it !== tag }
-            val words = band.filter { it.x1 >= Config.SKILL_TEXT_MIN_X && it.center.x < Config.SHOP_PRICE_MIN_X && TWO_LETTERS.containsMatchIn(it.norm) }
+            val words = band.filter { it.x1 >= Config.SKILL_TEXT_MIN_X && it.center.x < Config.SHOP_PRICE_MIN_X && TWO_LETTERS.containsMatchIn(it.norm) &&
+                it.norm != "exp" }  // "EXP" floats over a level-up pick after a fight
                 .sortedWith(compareBy({ it.center.y }, { it.center.x }))
             if (words.isEmpty() || words[0].center.y - tag.center.y !in Config.SKILL_NAME_BELOW_TAG) continue
             val prices = band.filter { it.center.x >= Config.SHOP_PRICE_MIN_X && it.norm.isDigits() }
@@ -314,14 +424,37 @@ object Screens {
         return texts.firstOrNull { it.norm.isDigits() && it.center.x in r.x1..r.x2 && it.center.y in r.y1..r.y2 }?.norm?.toInt()
     }
 
-    data class Shop(val money: Int?, val cards: List<SkillCard>, val freeReroll: Text?, val exit: Text)
+    /** items = stat items on sale: BOOST / HEAL -> price button. */
+    data class Shop(val money: Int?, val cards: List<SkillCard>, val freeReroll: Text?, val exit: Text,
+                    val items: Map<String, Text> = emptyMap())
 
+    const val BOOST = "boost"  // a stat up for the run ("ATQ ↑↑↑", "PS máx. ↑↑", 3 uses)
+    const val HEAL = "heal"    // "Curar 30%"
+    private val USES_LEFT_RE = Regex("^(\\d)\\s*/\\s*\\d$")
+
+    /** The shop's stat items (above the skill cards): label, price below it; above it the uses left
+     *  ("3/3") or "AGOTADO" once used up (then it is left out). */
+    private fun shopItems(texts: List<Text>): Map<String, Text> {
+        val items = LinkedHashMap<String, Text>()
+        for (name in texts) {
+            if (name.center.y !in Config.SHOP_ITEMS_Y) continue
+            val kind = if (L.SHOP_HEAL.variants.any { name.norm.startsWith(it) }) HEAL else BOOST  // OCR may drop the arrows ("ATQ")
+            val near = texts.filter { kotlin.math.abs(it.center.x - name.center.x) < Config.SHOP_ITEM_DX }
+            val above = near.filter { name.center.y - it.center.y in Config.SHOP_ITEM_ABOVE }
+            val price = near.firstOrNull { it.norm.isDigits() && it.center.y - name.center.y in Config.SHOP_ITEM_PRICE_BELOW }
+            val usedUp = above.any { matches(it, L.SOLD_OUT) || USES_LEFT_RE.find(it.norm)?.groupValues?.get(1) == "0" }
+            if (price != null && !usedUp) items[kind] = price
+        }
+        return items
+    }
+
+    /** The shop or the black market (same screen, run coins, half price). */
     fun parseShop(texts: List<Text>): Shop? {
         val leave = find(texts, L.LEAVE, exact = true)
         val reroll = find(texts, L.SHOP_REROLL)
-        if (leave == null || reroll == null || find(texts, L.BLACK_MARKET) != null) return null
+        if (leave == null || reroll == null) return null
         val free = if (below(reroll, texts).any { matches(it, L.FREE, exact = true) }) reroll else null
-        return Shop(parseMoney(texts), parseSkillCards(texts), free, leave)
+        return Shop(parseMoney(texts), parseSkillCards(texts), free, leave, shopItems(texts))
     }
 
     /** "Adivino": orbs left and each ball's buy button by its chance (100, 70, 40). */
@@ -343,7 +476,7 @@ object Screens {
 enum class LevelScreen(val value: String) {
     VICTORY("victory"), DEFEAT("defeat"), DOUBLE_REWARD("double_reward"), REVIVE("revive"), SKILL_PICK("skill_pick"),
     BOARD_READY("board_ready"), AUTO_PLAY("auto_play"), FIGHT("fight"), EVENT("event"), SHOP("shop"), LEAVE("leave"),
-    FORTUNE_TELLER("fortune_teller"),
+    FORTUNE_TELLER("fortune_teller"), PATH_CHOICE("path_choice"), MINER("miner"), CONTRACT("contract"),
     CONTINUE("continue"), DICE_DUEL("dice_duel"), FLIP_CARDS("flip_cards"), UNKNOWN("unknown")
 }
 

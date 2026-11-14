@@ -27,7 +27,7 @@ class ParityTest {
         val out = linkedMapOf<String, Any>(
             "parse_lobby" to nul(Screens.parseLobby(texts)) {
                 obj("mode" to it.mode.value, "level_title" to it.levelTitle, "start_button" to text(it.startButton),
-                    "stars_button" to text(it.starsButton), "energy" to it.energy, "has_elite" to it.hasElite)
+                    "stars_button" to text(it.starsButton), "energy" to it.energy, "has_elite" to it.hasElite, "map_button" to text(it.mapButton))
             },
             "is_star_list" to Screens.isStarList(texts),
             "parse_energy" to (Screens.parseEnergy(texts) ?: JSONObject.NULL),
@@ -56,11 +56,19 @@ class ParityTest {
             "skill_reroll" to text(Screens.skillReroll(texts)),
             "parse_money" to (Screens.parseMoney(texts) ?: JSONObject.NULL),
             "parse_shop" to nul(Screens.parseShop(texts)) {
-                obj("money" to it.money, "cards" to JSONArray(it.cards.map(::card)), "free_reroll" to text(it.freeReroll), "exit" to text(it.exit))
+                obj("money" to it.money, "cards" to JSONArray(it.cards.map(::card)), "free_reroll" to text(it.freeReroll), "exit" to text(it.exit),
+                    "items" to JSONObject().apply { it.items.forEach { (k, v) -> put(k, text(v)) } })
             },
             "parse_fortune_teller" to nul(Screens.parseFortuneTeller(texts)) {
                 obj("orbs" to it.orbs, "balls" to JSONObject().apply { it.balls.forEach { (k, v) -> put(k.toString(), p(v)) } })
             },
+            "parse_paths" to JSONArray(Screens.parsePaths(texts, img).map { obj("label" to text(it.label), "shop" to it.shop) }),
+            "parse_contracts" to JSONArray(Screens.parseContracts(texts).map { obj("button" to text(it.button), "terms" to it.terms) }),
+            "parse_hp" to (Screens.parseHp(texts) ?: JSONObject.NULL),
+            "event_options" to JSONArray(Screens.eventOptions(img, texts).map(::text)),
+            "parse_world_map" to nul(Screens.parseWorldMap(texts)) { m -> JSONObject().apply { m.forEach { (k, v) -> put(k, text(v)) } } },
+            "miner_tiles" to (if (find(texts, L.TREASURE_MINER) != null) JSONArray(Screens.minerTiles(img)) else JSONObject.NULL),
+            "treasures_left" to (Screens.treasuresLeft(texts) ?: JSONObject.NULL),
             "back_arrow" to p(ModeScreens.backArrow(img)),
             "in_guild" to ModeScreens.inGuild(texts),
             "vip_cards_icon" to text(ModeScreens.vipCardsIcon(texts)),

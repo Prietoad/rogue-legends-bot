@@ -42,6 +42,8 @@ object L {
     val START_ELITE = l("listo", "ready")
     val LOADING = l("cargando")
     val POPUP_CLOSE = l("para cerrar", "to close")
+    val WORLD_MAP_BUTTON = l("mundial", listOf("world map", "world"))  // lobby "Mapa / Mundial" compass; en guessed
+    val WORLD_MAP_TITLE = l("mapa mundial", "world map")               // the map screen: one island per world; en guessed
     val LOBBY_TAB = l("aventura", "adventure")  // exact; footer tab label, dimmed under lobby popups
     val MODES_BUTTON = l("modos", "modes")      // exact; lobby bottom-right (OCR often garbles it)
 
@@ -62,11 +64,11 @@ object L {
     val CONFIRM = l("confirmar", "confirm")  // Dungeon Dive end screen button (English guessed)
     val DEFEAT = l("derrota", "defeat")
     val VICTORY = l("victoria", "victory")
-    val DOUBLE_REWARD = l(en = "x2 rewards")
+    val DOUBLE_REWARD = l(listOf("recompensas x2", "recompensasx2"), "x2 rewards")
 
     // In level
     val SKILL_PROMPT = l("selecciona una habilidad", "select a skill")
-    val EXACT_BUTTONS = l(listOf("girar", "girar!", "reclamar"), listOf("spin", "spin!", "claim"))
+    val EXACT_BUTTONS = l(listOf("girar", "girar!", "reclamar", "next"), listOf("spin", "spin!", "claim", "next"))  // "NEXT" (not translated): a trained skill's result
     val CONTINUE_BUTTONS = listOf(l("toca en cualquier lugar", "tap anywhere"), l("toca para continuar", "tap to continue"))
     val DUEL_ROLL = l("tirar", "roll")
     val DUEL_STAND = l("resistir", "stand")
@@ -81,13 +83,38 @@ object L {
     val REMAINING = l("cantidad restante", "remaining")
     val FREE = l("gratis", "free")
     val SOLD_OUT = l(listOf("agotado", "vendido"), listOf("sold out", "soldout"))
-    val BLACK_MARKET = l("mercado negro", "black market")
     val LEAVE = l("salir", listOf("exit", "leave", "walk away"))
     val FORTUNE_TELLER = l("adivino", "fortune teller")
     val FIGHT_ROUND = l("ronda", "round")
     val REVIVE_PROMPT = l("revivir ahora", "revive")
     val REVIVE_FREE = l("gratis", "free")
     val LEVEL_MODIFIERS = l("modificadores de nivel", "level modifiers")
+    val PATH_OPTION = l("camino", "path")  // board fork cards "Camino A" / "Camino B" (Heliora); en guessed
+    val PATH_SHOP = l(listOf("shop", "market"), listOf("shop", "market"))  // exact; the sign drawn on a fork card that leads to a shop
+    val EVENT_REST = l("descansar", "rest")    // "Un Momento de Descanso": restores 48% HP; en guessed
+    val EVENT_TRAIN = l("entrenar", "train")   // ...or upgrades 1 skill; en guessed
+    val EVENT_PREFER = listOf(                 // event options taken when offered, first match wins (en guessed)
+        l("no, gracias", "no, thanks"),              // magic taxi: a free +15% heal (the taxi costs 75 coins)
+        l("rechazar", listOf("decline", "refuse")),  // slime chef: 75 coins for a random reward; the shop uses them better
+        l("rezar", "pray"),                          // statue of the gods: a free benefit (the offering forgets a skill)
+        l("espiar", "peek"),                         // dark fissure: a free common skill (the mythic one costs 50% max HP)
+        l("observar", "observe"),                    // two monsters fight: a free common skill (the legendary one costs 25% max HP)
+    )
+    val SHOP_HEAL = l("curar", "heal")         // shop stat item "Curar 30%" (starts with); en guessed
+    val CURSED_VENDOR = l("vendedor maldito", listOf("cursed vendor", "cursed merchant"))  // two contracts (a boon + a curse each): one must be signed; en guessed
+    val SIGN = l("firmar", "sign")             // exact; a contract's button (also the devil's deal event option)
+    val CONTRACT_TERMS = listOf(               // what a contract's text is worth (see Strategy.chooseContract); en guessed
+        l("posada", "inn") to 3,               // every campfire becomes an inn: full heal + 2 skill upgrades
+        l("se renuevan", "refresh") to 1,      // the skill pick reroll comes back at every pick
+        l("actuan primero", "act first") to -1,  // enemies always act first
+        l("se duplican", "double") to -2,      // shop prices double
+        l("casillas de buff", "buff tiles") to 2,  // every debuff tile becomes a buff tile for the rest of the run
+        l("se eliminan todas las fogatas", "campfires are removed") to -2,
+        l("casillas enemigas", "enemy tiles") to 1,  // half the enemy tiles removed, for EXP and shop coins
+        l("quedan desactivadas", "are disabled") to -3,  // half the skills disabled for the next 5 fights (the elites)
+    )
+    val TREASURE_MINER = l("minero de tesoros", "treasure miner")  // minigame: dig a 7x7 grid for treasures (skills); en guessed
+    val TREASURES_LEFT = l("tesoros restantes", "treasures left")  // "Tesoros Restantes: 5"; en guessed
 
     // Full routine
     val GUILD_BUTTON = l("gremio", listOf("guild", "guiid"))

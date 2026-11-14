@@ -17,6 +17,7 @@ data class RunRequest(
     val pendingStars: Boolean = false,
     val loop: Boolean = false,        // keep running: out of energy -> wait for energy -> (routine ->) levels again
     val ads: Boolean = false,
+    val world: String? = null,        // the world whose levels are played (Config.WORLDS); null = whichever the game is in
 )
 
 const val LATEST = "latest"
@@ -27,15 +28,16 @@ const val PENDING = "pending"
 /** Validate the form values. Throws IllegalArgumentException("bad_level") (an i18n key).
  * Levels always run until out of energy; `loop` then waits for energy and starts again. */
 fun buildRequest(mode: String, source: String, level: String, full: Boolean = false,
-                 build: Build = Build(), loop: Boolean = false, ads: Boolean = false): RunRequest {
+                 build: Build = Build(), loop: Boolean = false, ads: Boolean = false, world: String? = null): RunRequest {
+    val w = world?.takeIf { it in Config.WORLDS }
     val m = Mode.values().first { it.value == mode }
     if (source == LATEST || source == BEATEN || source == PENDING) {
         return RunRequest(m, null, true, full, build, lastBeaten = source == BEATEN || source == PENDING,
-            pendingStars = source == PENDING, loop = loop, ads = ads)
+            pendingStars = source == PENDING, loop = loop, ads = ads, world = w)
     }
     val n = level.trim().toIntOrNull()
     if (n == null || n < 1 || !level.trim().isDigits()) throw IllegalArgumentException("bad_level")
-    return RunRequest(m, n, true, full, build, loop = loop, ads = ads)
+    return RunRequest(m, n, true, full, build, loop = loop, ads = ads, world = w)
 }
 
 data class Report(
@@ -160,7 +162,7 @@ class Runner(
     /** One try: the game in front, then the requested work. `state` keeps results across tries. */
     private fun attempt(state: State): Report {
         var request = state.request
-        val nav = Navigator(device, ocr, dryRun, request.ads, clock, debug)
+        val nav = Navigator(device, ocr, dryRun, request.ads, clock, debug, request.world)
         val playLevel = { Player(device, ocr, request.build, catalog, request.ads, clock, debug).playLevel() }
         nav.resumeLevel = { playLevel().also { state.resumed++ } }
         var opened = false
