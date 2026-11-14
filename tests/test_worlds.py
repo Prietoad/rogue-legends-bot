@@ -478,3 +478,15 @@ def test_auto_play_that_never_ends_stops_the_level(monkeypatch, tmp_path):
         _play(monkeypatch, [(LevelScreen.AUTO_PLAY, None)] * (config.WAIT_SCREEN_FRAMES + 5))
     fights = [(LevelScreen.AUTO_PLAY, None), (LevelScreen.FIGHT, None)] * 100 + [(LevelScreen.FIGHT, None)] * 300
     _play(monkeypatch, fights + [(LevelScreen.VICTORY, (720, 2220))])  # fights and auto-play in turns, a long fight: fine
+
+
+def test_patrol_button_when_ocr_joins_it_with_the_stars_button(ocr):
+    """Seen live 2026-11-14: "Patrulla de Estrellas" read as one text; its middle opened the star list."""
+    from roguebot.mode_screens import patrol_button
+    _, texts = load(ocr, "lobby_heliora_normal.png")
+    joined = patrol_button(texts)
+    assert joined.text == "Patrulla de Estrellas" and abs(joined.center[0] - 825) < 30   # on the patrol bag
+    assert abs(parse_lobby(texts).stars_button.center[0] - 1000) < 30                    # the star on its right
+    _, texts = load(ocr, "lobby_heliora_elite.png")                                      # read apart: unchanged
+    assert patrol_button(texts).text == "Patrulla" and abs(patrol_button(texts).center[0] - 812) < 20
+    assert patrol_button([]) is None

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.11.1 (2026-11-14)
+- Patrol: since the World Map compass moved the lobby buttons, the game's "Patrulla" and "Desafío de Estrellas" labels are sometimes read as one text, and the bot tapped between the two buttons (it opened the star list and the patrol was reported as failed). It now taps the patrol button itself.
+
 ## 1.11.0 (2026-11-14)
 - **Worlds:** new "World" option (Current / Everdale / Heliora). The bot opens the game's World Map (the compass next to the chapter chest) and enters the chosen world before starting a level. "Current" keeps the world the game is in. If the account has no World Map or the world is locked, it plays the current world instead of stopping.
 - **Heliora levels** (the bot used to get stuck on their new screens):

@@ -90,6 +90,7 @@ def outputs(img, texts, ocr) -> dict:
         "miner_tiles": S.miner_tiles(img) if S.find(texts, L.TREASURE_MINER) else None,
         "treasures_left": S.treasures_left(texts),
         "back_arrow": M.back_arrow(img),
+        "patrol_button": M.patrol_button(texts),
         "in_guild": M.in_guild(texts),
         "vip_cards_icon": M.vip_cards_icon(texts),
         "vip_claim_all": M.vip_claim_all(texts),

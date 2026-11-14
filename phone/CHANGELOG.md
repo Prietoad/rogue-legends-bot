@@ -1,7 +1,7 @@
 # Changelog (phone app)
 
 ## 0.6.0 (2026-11-14)
-- Same changes as the desktop bot 1.11.0: the "World" option (Everdale / Heliora, through the game's World Map) and the Heliora level screens (forks, shop stat boosts, Black Market, campfire rest/train by HP, free event options, treasure miner, cursed vendor, "NEXT" after training a skill), skill picks that wait for every card, the Spanish "Recompensas x2" button. Not tried on a phone yet.
+- Same changes as the desktop bot 1.11.0: the "World" option (Everdale / Heliora, through the game's World Map) and the Heliora level screens (forks, shop stat boosts, Black Market, campfire rest/train by HP, free event options, treasure miner, cursed vendor, "NEXT" after training a skill), skill picks that wait for every card, the Spanish "Recompensas x2" button. Also the patrol fix of 1.11.1 (the tap landed between Patrulla and Desafío de Estrellas). Not tried on a phone yet.
 
 ## 0.5.0 (2026-11-08)
 - Same change as the desktop bot 1.10.0: in the arena the bot fights the opponent highest in the list that is not stronger (higher rows give more arena points).

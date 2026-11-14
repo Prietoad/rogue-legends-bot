@@ -32,6 +32,16 @@ def parse_power(s: str) -> int | None:
     return round(float(m.group(1).replace(",", ".")) * _SCALE[m.group(2)])
 
 
+def patrol_button(texts: list[Text]) -> Text | None:
+    """The lobby's "Patrulla" button. Since the World Map compass moved the lobby buttons, OCR can join it
+    with its neighbour ("Patrulla de Estrellas"): the button is then the left half of that text (its
+    middle is between both buttons, and once opened the star list)."""
+    button = find(texts, L.PATROL)
+    if button and matches(button, L.STARS_BUTTON):
+        button = Text(button.text, button.x1, button.y1, (button.x1 + button.x2) // 2, button.y2)
+    return button
+
+
 def in_guild(texts: list[Text]) -> bool:
     """The lobby shows the "Gremio"/"Guild" book button only to guild members."""
     return find(texts, L.GUILD_BUTTON, exact=True) is not None

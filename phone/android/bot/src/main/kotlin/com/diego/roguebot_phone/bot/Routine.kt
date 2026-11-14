@@ -264,7 +264,7 @@ open class Routine(
 
     open fun patrol(): String {
         val texts = lobbyTexts()
-        val button = find(texts, L.PATROL) ?: fail("Patrol button not found in the lobby")
+        val button = ModeScreens.patrolButton(texts) ?: fail("Patrol button not found in the lobby")
         tap(button)
         var popup = waitFor("patrol popup") { _, t -> claimOr(t, ModeScreens::parsePatrol) }
         patrolWait = popup.elapsed?.let { maxOf(0, Config.PATROL_CLAIM_AFTER - it).toDouble() }

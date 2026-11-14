@@ -19,6 +19,13 @@ object ModeScreens {
         return Math.rint(v).toLong()  // Python's round(): halves to even
     }
 
+    /** The lobby's "Patrulla" button. OCR can join it with its neighbour ("Patrulla de Estrellas"): the button
+     *  is then the left half of that text (its middle once opened the star list). */
+    fun patrolButton(texts: List<Text>): Text? {
+        val b = find(texts, L.PATROL) ?: return null
+        return if (matches(b, L.STARS_BUTTON)) Text(b.text, b.x1, b.y1, (b.x1 + b.x2) / 2, b.y2) else b
+    }
+
     fun inGuild(texts: List<Text>): Boolean = find(texts, L.GUILD_BUTTON, exact = true) != null
 
     fun vipCardsIcon(texts: List<Text>): Text? =

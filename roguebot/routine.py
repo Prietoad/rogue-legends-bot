@@ -9,7 +9,7 @@ from typing import Callable
 from roguebot import config, labels as L
 from roguebot.build import Build, BuildState, shop_order
 from roguebot.device import Device
-from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, free_donation, parse_patrol, parse_quick_patrol, guild_hall, guild_hall_donate, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
+from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, free_donation, parse_patrol, parse_quick_patrol, patrol_button, guild_hall, guild_hall_donate, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
                                    parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
                                    parse_skill_choice, parse_tower, pick_opponent, vip_cards_icon, vip_claim_all)
 from roguebot.navigation import NavigationError, Navigator, _still_there
@@ -261,7 +261,7 @@ class Routine:
         at 8 h), then every quick patrol with uses left: the free video, then energy (only with enough
         energy). Never gems, never the VIP card offer below."""
         texts = self._lobby_texts()
-        button = find(texts, L.PATROL)
+        button = patrol_button(texts)
         if not button:
             self._fail("Patrol button not found in the lobby")
         self._tap(button)

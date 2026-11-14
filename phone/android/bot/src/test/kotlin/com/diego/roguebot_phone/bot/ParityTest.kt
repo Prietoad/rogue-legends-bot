@@ -70,6 +70,7 @@ class ParityTest {
             "miner_tiles" to (if (find(texts, L.TREASURE_MINER) != null) JSONArray(Screens.minerTiles(img)) else JSONObject.NULL),
             "treasures_left" to (Screens.treasuresLeft(texts) ?: JSONObject.NULL),
             "back_arrow" to p(ModeScreens.backArrow(img)),
+            "patrol_button" to text(ModeScreens.patrolButton(texts)),
             "in_guild" to ModeScreens.inGuild(texts),
             "vip_cards_icon" to text(ModeScreens.vipCardsIcon(texts)),
             "vip_claim_all" to text(ModeScreens.vipClaimAll(texts)),
