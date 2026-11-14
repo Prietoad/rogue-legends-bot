@@ -8,6 +8,7 @@ from pathlib import Path
 import cv2
 
 from roguebot import config, labels, world2
+from roguebot.luxury_pass import is_luxury_pass, LuxuryPassBlocked
 from roguebot.device import Device
 from roguebot.mode_screens import back_arrow, guild_screen, parse_fight_result, quick_patrol_close, quick_patrol_open
 from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, close_button_any_size,
@@ -33,7 +34,7 @@ START_RETAPS = 2
 LANGUAGE_ATTEMPTS = 3
 
 
-IN_LEVEL = (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.FIGHT, LevelScreen.SKILL_PICK, LevelScreen.SHOP,
+IN_LEVEL = (LevelScreen.LUXURY_PASS, LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY, LevelScreen.FIGHT, LevelScreen.SKILL_PICK, LevelScreen.SHOP,
             LevelScreen.EVENT, LevelScreen.DICE_DUEL, LevelScreen.FLIP_CARDS, LevelScreen.REVIVE, LevelScreen.VICTORY,
             LevelScreen.DEFEAT, LevelScreen.DOUBLE_REWARD, LevelScreen.FORTUNE_TELLER, LevelScreen.MONK)  # only seen inside a level (not Continue/Leave buttons)
 # A level board found by go_to_lobby, played out instead of failing (the level is lost on a restart). Not
@@ -210,6 +211,9 @@ class Navigator:
     def level_in_progress(self) -> bool:
         """A level is on screen: the bot was stopped or restarted mid-level while the game kept running
         (go_to_lobby can't leave a level board). The guild map is not a level."""
+        from roguebot.play import level_abandoned
+        if level_abandoned():
+            return False  # recovery must leave the watchdog-ended level, never start another Player
         img, texts = self._capture()
         if guild_screen(texts) or lobby_behind(texts):
             return False
@@ -293,10 +297,17 @@ class Navigator:
     # --- steps --------------------------------------------------------------------------
 
     def go_to_lobby(self) -> Lobby:
+        from roguebot.play import level_abandoned
         hand_taps = 0
         unknown = 0  # frames in a row on a popup over the lobby that nothing below recognized
         for _ in range(MAX_LOBBY_ATTEMPTS + config.TUTORIAL_MAX_STEPS):
             img, texts = self._capture()
+            if is_luxury_pass(img, texts):
+                DEBUG_DIR.mkdir(exist_ok=True)
+                cv2.imwrite(str(DEBUG_DIR / "luxury_pass_blocked.png"), img)
+                (DEBUG_DIR / "luxury_pass_blocked.txt").write_text(
+                    "\n".join(t.text for t in texts), encoding="utf-8")
+                raise LuxuryPassBlocked("Luxury Pass blocks lobby recovery; no speculative input")
             hand = tutorial_hand(img) if hand_taps < config.TUTORIAL_MAX_STEPS else None
             if hand:  # a forced tutorial blocks every other tap: follow it, then back out of what it opened
                 log.info("Following the tutorial hand")
@@ -308,6 +319,10 @@ class Navigator:
                 raise EmulatorError("err_game_update")
             resume = resume_prompt(texts)
             if resume:  # an interrupted run: its energy is spent, so play it out instead of abandoning it
+                if level_abandoned():
+                    abandon = find(texts, labels.ABANDON_ADVENTURE, exact=True)
+                    self._tap_text(abandon) if abandon else self.device.back()
+                    continue
                 if self.resume_level is None:
                     self._fail("An interrupted level is waiting to be resumed", img)
                 log.info("Resuming the interrupted level")
@@ -376,16 +391,15 @@ class Navigator:
             elif guild_screen(texts):  # map or personal vault: back arrow, never played as a level
                 log.info("Leaving the guild")
                 self.device.tap(*(back_arrow(img) or config.LIST_BACK))
+            elif (level_abandoned() and not lobby_behind(texts)
+                  and classify_level_screen(img, texts).kind in IN_LEVEL):
+                # Include FIGHT here without treating ordinary dojo/raid fights as farm boards.
+                log.warning("Leaving a level the watchdog ended")
+                point = world2.safe_exit_point(texts) or back_arrow(img)
+                self.device.tap(*point) if point else self.device.back()
             elif self.resume_level and self._on_board(img, texts):  # a level is still running (go_to_lobby can't leave it)
-                from roguebot.play import level_abandoned
-                if level_abandoned():
-                    # The watchdog already ended this level. Playing it again restarts the hang.
-                    log.warning("Leaving a level the watchdog ended")
-                    point = back_arrow(img)
-                    self.device.tap(*point) if point else self.device.back()
-                else:
-                    log.info("A level is on screen: playing it out")
-                    self.resume_level()
+                log.info("A level is on screen: playing it out")
+                self.resume_level()
             elif is_star_list(texts):
                 log.info("In star challenge list, going back")
                 self.device.tap(*config.LIST_BACK)

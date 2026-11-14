@@ -175,6 +175,7 @@ RAID_ATTEMPTS = _l("intentos diarios", "daily attempts left")  # "Daily Attempts
 LEARN_SKILLS = _l("aprender habilidades", "learn skills")  # raid skill pick: "Learn Skills (0/2)"; not just "aprender" (the prompt has it)
 UPDATE_REQUIRED = _l("nueva actualizacion", "new update")  # game start: "Nueva Actualización" + ACTUALIZAR (Google Play); en (?)
 RESUME_ADVENTURE = _l(("continuar la aventura", "aventura en curso"), ("continue adventure", "ongoing adventure"))  # buttons: Abandonar / Confirmar
+ABANDON_ADVENTURE = _l(("abandonar",), ("abandon",))
 OK = _l(("ok", "aceptar", "confirmar"), ("ok", "okay", "confirm"))  # exact; fight results. Floor 10 is "Okay".
 TAP_TO_CONTINUE = CONTINUE_BUTTONS[1]                  # tower / mines / pets result
 TAP_TO_CLAIM = CONTINUE_BUTTONS[0]                     # reward popups ("Tap anywhere to claim")

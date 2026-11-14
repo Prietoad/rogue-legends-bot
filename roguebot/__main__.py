@@ -17,6 +17,7 @@ from roguebot.device import Device, Stopped
 from roguebot.emulator import PERMANENT_ERRORS, Emulator, EmulatorError
 from roguebot.navigation import LevelUnavailable, StarsUnavailable, NavigationError, Navigator
 from roguebot.play import Player, PlayError
+from roguebot.luxury_pass import LuxuryPassBlocked
 from roguebot.report import Report
 from roguebot.request import RunRequest
 from roguebot.routine import Routine
@@ -241,6 +242,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None,
                 raise
             except Exception as e:
                 if dry_run or isinstance(e, (NoEnergyError, LevelUnavailable)) or (
+                        isinstance(e, LuxuryPassBlocked) or
                         isinstance(e, EmulatorError) and e.key in PERMANENT_ERRORS):
                     raise
                 done = len(state["results"]) + len(state["parts"]) + state.get("resumed", 0)

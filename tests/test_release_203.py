@@ -36,25 +36,24 @@ def test_vendor_new_lines_score_and_the_header_is_not_unknown():
     assert not vendor_needs_shot(decision)
     assert "cursed vendor" not in decision.inputs["right_text"]
     assert "golden road" in decision.inputs["right_text"]
-    # The mild curse still wins when the blessing on that card was not read.
-    late = decide_vendor("0 Lose 5% Max HP after each battle", "0 0 Shop prices are doubled.", 29)
-    assert late.choice == "right"
-    assert not late.inputs["unknown"]
+    # 2.0.7: missing blessings leave both cards unranked, with deterministic left fallback.
+    incomplete = decide_vendor("0 Lose 5% Max HP after each battle", "0 0 Shop prices are doubled.", 29)
+    assert incomplete.choice == "left"
+    assert incomplete.inputs["left"] is incomplete.inputs["right"] is None
+    assert vendor_needs_shot(incomplete)
     assert clean_vendor_text("0 Shop prices are doubled") == "shop prices are doubled"
-    _score, unknown = score_vendor_card("Shop prices are doubled", None)
-    assert not unknown
+    score, unknown = score_vendor_card("Shop prices are doubled", None)
+    assert score is None and unknown
 
 
-def test_vendor_unknown_tie_is_a_logged_coin_flip(caplog):
-    import logging
-    with caplog.at_level(logging.INFO, logger="roguebot.world2"):
-        decision = decide_vendor("A curse nobody has written down today",
-                                 "Another curse nobody has written down", None,
-                                 rng=random.Random(0))
-    assert decision.choice in ("left", "right")
-    assert decision.inputs["coin_flip"]
-    assert "COIN FLIP (temporary): options" in caplog.text
-    assert "-> picked" in caplog.text
+def test_vendor_unknown_tie_is_deterministic_and_unranked(caplog):
+    decision = decide_vendor("A curse nobody has written down today",
+                             "Another curse nobody has written down", None,
+                             rng=random.Random(0))
+    assert decision.choice == "left"
+    assert not decision.inputs["coin_flip"]
+    assert vendor_needs_shot(decision)
+    assert "COIN FLIP" not in caplog.text
 
 
 def test_vendor_choice_taps_the_matching_sign_even_with_junk():

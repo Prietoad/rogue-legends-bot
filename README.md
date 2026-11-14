@@ -55,3 +55,10 @@ See `CLAUDE.md` for how it works inside: architecture, game knowledge, and every
 ## Known issues
 
 World 2 lobby titles (`2-1. Elysium I`) farm the same chapter-local level the Star Challenge list shows (`1. Elysium I`). Path forks and World 2 events follow the 2.0.5 rules: a two-option event is tapped on the button under its name, shops are bought with tokens (never gems or gold), and the roll counter is remembered when an event hides it. Elysium, Atlantis and Ancient Waterway path choices are unchanged. Elysium's late shop requires enough tokens for a skill. An event the bot cannot read is saved under `debug/unknown_events/` after the screen settles. It taps a recognized leave option when one is on screen. Otherwise it flips a coin among real buttons that do not spend gems, gold, or diamonds (logged as `COIN FLIP (temporary)`). Reward popups, victory, fights, dice battles, skill picks, path forks, map toasts, and the chest popup are not treated as unknown events. A screen that does not change for 90s is left, and after 5 minutes the level ends so the next one starts. The bot does not close MuMu Player when a run hits an error; the traceback is in `debug/bot.log`.
+
+
+## Public release 2.0.8
+
+This distribution contains source and default skill data. It does not include personal settings, account logs, OCR transcripts, or new account-run screenshots. The public Luxury Pass fixture is generic full-screen offer artwork without account details. Exact account-run fixture tests remain private; the public suite explicitly skips those checks.
+
+Configure MuMu and your preferred run mode on first launch. Runtime settings and debug output stay local and should not be committed. The 2.0.8 fix keeps normal season banners from blocking startup; popup dismissal still requires the verified layout and never taps a purchase.

@@ -534,15 +534,29 @@ def dive(tickets):
             Text("Desafío", 620, 2390, 820, 2440)]
 
 
-def test_dive_plays_a_level_per_ticket_win_or_lose(monkeypatch):
+def test_dive_plays_a_level_per_ticket_win_or_lose(monkeypatch, ocr):
     labels.set_language("es")
     from roguebot.screens import LevelScreen
     results = iter([LevelScreen.DEFEAT, LevelScreen.VICTORY])
-    r = make([dive(2), LOADING, dive(1), LOADING, dive(0)])
+    from pathlib import Path
+    from conftest import fixture_image
+    from roguebot.mode_screens import parse_dive
+    from roguebot.vision import Text
+    fixture = Path(__file__).parent / "fixtures"
+    main = fixture_image(fixture / "dive.png")
+    one = ocr.read(main)
+    two = [Text("2/2", t.x1, t.y1, t.x2, t.y2) if t.norm == "1/2" else t for t in one]
+    zero_img = fixture_image(fixture / "dive_no_tickets.png")
+    intro = fixture_image(fixture / "dive_modifiers.png")
+    frames = iter([(main, two), (intro, ocr.read(intro)), (main, one),
+                   (intro, ocr.read(intro)), (zero_img, ocr.read(zero_img))])
+    r = make([])
+    r._capture = lambda: next(frames)
     r.play_level = lambda: next(results)
     monkeypatch.setattr(r, "_open_mode", lambda label: True)
     assert r.dive() == routine.DONE
-    assert r.device.taps == [(720, 2415), (720, 2415)]  # 2 tickets, 2 runs; at 0 the button is not tapped
+    assert r.device.taps == [parse_dive(one).challenge.center] * 2
+    assert r.device.backs == 1
 
 
 ES_MENU = ES_LOBBY + [Text("Correo", 336, 449, 461, 498), Text("Recompensas", 320, 1040, 480, 1070),

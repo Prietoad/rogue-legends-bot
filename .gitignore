@@ -6,3 +6,12 @@ captures/
 data/settings.json
 build/
 dist/
+
+# Local account and runtime data
+debug/
+logs/
+data/settings.json
+.env
+.env.*
+*.log
+*.zip

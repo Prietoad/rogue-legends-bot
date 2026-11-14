@@ -1,0 +1,33 @@
+name: Build Windows exe
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["logs/**", "specs/**", "**.md"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt pyinstaller
+      - name: Build
+        shell: pwsh
+        run: .\build.ps1
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = python -c "import roguebot; print(roguebot.__version__)"
+          "version=$v" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RogueLegendBot-${{ steps.ver.outputs.version }}
+          path: dist/RogueLegendBot.exe
+          retention-days: 30

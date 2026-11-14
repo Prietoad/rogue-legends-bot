@@ -21,6 +21,7 @@ from roguebot.screens import (LevelScreen, LevelState, SkillCard, campfire_non_h
 from roguebot.skills import Catalog, Skill, infer_tags, skill_key, skill_name_rejected
 from roguebot.vision import Ocr, find
 from roguebot import world2
+from roguebot.luxury_pass import is_luxury_pass, dismissal_tap, LuxuryPassBlocked
 
 log = logging.getLogger(__name__)
 
@@ -188,6 +189,7 @@ class Player:
         self._event_snap = None
         self._event_since: float | None = None
         self._skill_wait: float | None = None
+        self._luxury_attempted = False
 
     def play_level(self) -> LevelScreen:
         """Play until the level ends; returns LevelScreen.VICTORY or LevelScreen.DEFEAT."""
@@ -220,9 +222,14 @@ class Player:
         while True:
             img = self.device.screenshot()
             texts = self.ocr.read(img)
+            if self._handle_luxury_pass(img, texts):
+                # The very next action is a fresh screenshot, classified in this loop.
+                continue
             if self._real_frame(img) and world2.card_screen(texts):
                 img = wait_until_settled(self.device.screenshot, img)
                 texts = self.ocr.read(img)
+                if self._handle_luxury_pass(img, texts):
+                    continue
             texts = self._reread_hp(img, texts)
             self._rolls.observe(texts)
             world2.LAST = None
@@ -406,6 +413,23 @@ class Player:
             else:
                 last_tap, repeats = None, 0  # screen changed on its own: the last tap worked
                 time.sleep(config.POLL_INTERVAL)
+
+    def _handle_luxury_pass(self, img, texts) -> bool:
+        if not is_luxury_pass(img, texts):
+            # Only a recognized play state proves that a popup appearance ended.
+            state = classify_level_screen(img, texts) if self._luxury_attempted else None
+            if state and state.kind not in (LevelScreen.UNKNOWN, LevelScreen.LUXURY_PASS):
+                self._luxury_attempted = False
+            return False
+        tap = dismissal_tap(img, texts)
+        if tap is None or self._luxury_attempted:
+            self._save_unknown(img, texts, "luxury pass blocked")
+            raise LuxuryPassBlocked("Luxury Pass unchanged or outside-tap guards failed; "
+                                    "automation stopped (debug/unknown_events)")
+        self._luxury_attempted = True  # set before I/O; never reset by play_level retries
+        log.info("Luxury Pass: one guarded outside tap, then read a fresh screen")
+        self.device.tap(*tap)
+        return True
 
     def _real_frame(self, img) -> bool:
         return img is not None and getattr(img, "ndim", 0) == 3 and img.shape[0] >= 400

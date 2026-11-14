@@ -20,7 +20,7 @@ from roguebot.vision import Text, find, normalize
 
 log = logging.getLogger(__name__)
 
-LATE_ROLLS = 5          # Elysium "shop if almost out of rolls", and when removing campfires barely matters
+LATE_ROLLS = 5          # Elysium "shop if almost out of rolls"
 LAST_SHOP_ROLLS = 5     # Atlantis: this few rolls left and the shop will not come around again
 HAUNT_EMBRACE_UNTIL = 10  # rolls used
 VISTA_GAZE_UNTIL = 5
@@ -30,60 +30,49 @@ MINER_SIZE = 7
 MINER_PICKAXES = 9
 UNK, DUG, GEM = 0, 1, 2
 
-# Blessing scores are positive. Curse scores are the penalty subtracted from the blessing.
-# Tuned to the two picks from playtesting:
-#   early: black-market / EXP-halved beats elites -25% / campfires-removed
-#   3 rolls left: remove-half-enemies / campfires-removed beats rerolls / enemies-act-first
-# Campfires-removed is heavy, and nearly free once few rolls are left (no campfire would be reached).
+# Approved 2.0.7 benefit ranks and curse penalties; independent of rolls remaining.
 VENDOR_LINES = (
-    {"id": "rerolls", "kind": "blessing", "score": 80,
-     "phrases": ("skill rerolls refresh on every skill selection", "skill rerolls refresh")},
-    {"id": "remove_half", "kind": "blessing", "score": 90,
-     "phrases": ("remove half of the enemy tiles", "remove half of the enemy")},
-    {"id": "tokens_500", "kind": "blessing", "score": 70,
+    {"id": "rerolls", "kind": "blessing", "score": 4000,
+     "phrases": ("skill rerolls refresh on every skill selection",)},
+    {"id": "remove_half", "kind": "blessing", "score": 7000,
+     "phrases": ("remove half the enemy tiles", "remove half of the enemy tiles")},
+    {"id": "tokens_500", "kind": "blessing", "score": 1000,
      "phrases": ("gain 500 shop tokens", "500 shop tokens")},
-    {"id": "black_market", "kind": "blessing", "score": 40,
-     "phrases": ("all shops become black markets", "shops become black markets", "black markets")},
-    {"id": "elites", "kind": "blessing", "score": 75,
-     "phrases": ("elites/bosses -25% hp", "elites -25% hp", "bosses -25% hp")},
-    {"id": "first_shop", "kind": "blessing", "score": 35,
+    {"id": "black_market", "kind": "blessing", "score": 3000,
+     "phrases": ("all shops become black markets", "shops become black markets")},
+    {"id": "first_shop", "kind": "blessing", "score": 2000,
      "phrases": ("your first shop purchase is free", "first shop purchase is free",
                  "first shop free", "first shop is free")},
-    {"id": "enemies_first", "kind": "curse", "score": 15,
-     "phrases": ("enemies will always act first", "always act first")},
-    {"id": "campfires", "kind": "curse", "score": 100, "late_score": 10,
+    {"id": "enemies_first", "kind": "curse", "score": 8000,
+     "phrases": ("enemies always act first", "enemies will always act first")},
+    {"id": "campfires", "kind": "curse", "score": 9000,
      "phrases": ("all campfires are removed", "campfires are removed", "campfires removed")},
-    {"id": "exp_halved", "kind": "curse", "score": 30,
+    {"id": "exp_halved", "kind": "curse", "score": 2000,
      "phrases": ("exp gain is halved", "exp halved", "experience halved", "exp is halved")},
-    {"id": "skills_disabled", "kind": "curse", "score": 90,
-     "phrases": ("half of your skills are disabled", "for the next 5 battle encounters",
-                 "half of skills disabled", "skills disabled for")},
-    {"id": "debuff_to_buff", "kind": "blessing", "score": 80,
-     "phrases": ("all debuff tiles are replaced with buff tiles", "debuff tiles are replaced with buff")},
-    {"id": "elites_start", "kind": "blessing", "score": 75,
-     "phrases": ("elite enemies and bosses start combat with 25% less hp",
-                 "start combat with 25% less hp", "bosses start combat with 25% less hp")},
-    # Same shape as campfires-removed: almost free once few rolls are left, otherwise never taken.
-    {"id": "lose_max_hp", "kind": "curse", "score": 100, "late_score": 10,
-     "phrases": ("lose 5% max hp after each battle", "max hp after each battle", "5% max hp after each")},
-    {"id": "trip", "kind": "curse", "score": 40,
-     "phrases": ("chance to trip and take damage instead of basic attacking",
-                 "trip and take damage instead of basic attacking", "instead of basic attacking")},
-    # 2.0.3 playtest. The golden road is a strong blessing. Doubled shop prices is the
-    # mildest curse: take that card over any heavier curse.
-    {"id": "golden_road", "kind": "blessing", "score": 95,
-     "phrases": ("create a golden road of mega buff tiles", "golden road of mega buff", "mega buff tiles")},
-    {"id": "shop_prices", "kind": "curse", "score": 5,
-     "phrases": ("shop prices are doubled", "prices are doubled")},
-    # Read on the 2.0.3 night. Weights are not set yet (Brian, 2.0.4): a match is logged
-    # and still counts as unknown, so the temporary coin flip stays until Game scores them.
-    {"id": "inn", "kind": "blessing", "score": None,
-     "phrases": ("every campfire becomes an inn", "becomes an inn")},
-    {"id": "pets_disabled", "kind": "curse", "score": None,
-     "phrases": ("pets are disabled for the first 3 rounds", "your pets are disabled")},
-    {"id": "mythic_trash", "kind": "curse", "score": None,
-     "phrases": ("next mythic skill you learn becomes trash", "becomes trash")},
-    {"id": "revives_disabled", "kind": "curse", "score": None,
+    {"id": "skills_disabled", "kind": "curse", "score": 6000,
+     "phrases": ("half the skills are disabled", "half of your skills are disabled",
+                 "half of skills disabled")},
+    {"id": "debuff_to_buff", "kind": "blessing", "score": 8000,
+     "phrases": ("replace all debuff tiles with buff tiles", "all debuff tiles are replaced with buff tiles")},
+    {"id": "elites_start", "kind": "blessing", "score": 5000,
+     "phrases": ("elites/bosses -25% hp",
+                 "elite enemies and bosses start with 25% less hp",
+                 "elite enemies and bosses start combat with 25% less hp")},
+    {"id": "lose_max_hp", "kind": "curse", "score": 7000,
+     "phrases": ("lose 5% max hp after each battle",)},
+    {"id": "trip", "kind": "curse", "score": 9500,
+     "phrases": ("chance to trip instead of basic attacking", "chance to trip and take damage instead of basic attacking")},
+    {"id": "golden_road", "kind": "blessing", "score": 9000,
+     "phrases": ("create a golden road of mega-buff tiles", "create a golden road of mega buff tiles")},
+    {"id": "shop_prices", "kind": "curse", "score": 1000,
+     "phrases": ("shop prices are doubled",)},
+    {"id": "inn", "kind": "blessing", "score": 6000,
+     "phrases": ("every campfire becomes an inn",)},
+    {"id": "pets_disabled", "kind": "curse", "score": 3000,
+     "phrases": ("pets are disabled for the first three rounds", "pets are disabled for the first 3 rounds")},
+    {"id": "mythic_trash", "kind": "curse", "score": 4000,
+     "phrases": ("the next mythic skill learned becomes trash", "next mythic skill you learn becomes trash")},
+    {"id": "revives_disabled", "kind": "curse", "score": 5000,
      "phrases": ("revives are disabled",)},
 )
 
@@ -378,48 +367,64 @@ def clean_vendor_text(text: str) -> str:
     return "\n".join(lines)
 
 
-def _best_rule(blob: str, kind: str) -> dict | None:
-    found = []
-    for rule in VENDOR_LINES:
-        if rule["kind"] != kind or rule.get("score") is None:
-            continue  # unweighted lines stay unknown so the coin flip is unchanged
-        hit = max((len(p) for p in rule["phrases"] if _line_has(blob, p)), default=0)
-        if hit:
-            found.append((hit, rule))
-    return max(found)[1] if found else None
+def vendor_interaction(benefit_id: str, curse_id: str) -> int:
+    if (benefit_id, curse_id) == ("inn", "campfires"):
+        return -6000
+    # TODO: all other interactions remain zero until evidence-backed ranks are approved.
+    return 0
 
 
-def score_vendor_card(text: str, rolls_left: int | None) -> tuple[int, list[str]]:
-    """Blessing minus curse. Unknown clauses score 0 and are returned for the debug log.
+@dataclass(frozen=True)
+class VendorBundle:
+    benefit_id: str
+    curse_id: str
+    benefit_rank: int
+    curse_penalty: int
+    adjustment: int
 
-    Campfires-removed uses its small late penalty when rolls_left <= LATE_ROLLS.
-    An unknown clause does not block the tap: it adds nothing, and the known side still wins.
-    """
-    text = clean_vendor_text(text)
-    blessing = _best_rule(text, "blessing")
-    curse = _best_rule(text, "curse")
-    penalty = 0
-    if curse:
-        late = curse.get("late_score")
-        if late is not None and rolls_left is not None and rolls_left <= LATE_ROLLS:
-            penalty = late
-        else:
-            penalty = curse["score"]
-    score = (blessing["score"] if blessing else 0) - penalty
-    unknown = []
-    for clause in re.split(r"[\n.|]+", text):
-        c = clause.strip()
-        if len(normalize(c)) < 8:
-            continue
-        if _best_rule(c, "blessing") or _best_rule(c, "curse"):
-            continue
-        unknown.append(c)
-    return score, unknown
+    @property
+    def score(self) -> int:
+        return self.benefit_rank - self.curse_penalty + self.adjustment
+
+    @property
+    def order(self) -> tuple:
+        return (-self.score, -self.benefit_rank, self.curse_penalty,
+                self.benefit_id, self.curse_id)
 
 
-def _side_parsed(text: str) -> bool:
-    text = clean_vendor_text(text)
-    return _best_rule(text, "blessing") is not None or _best_rule(text, "curse") is not None
+def parse_vendor_bundle(text: str) -> tuple[VendorBundle | None, list[str]]:
+    """Require both complete effects. Unmatched words never inherit a partial score."""
+    remaining = clean_vendor_text(text).replace("\n", " ")
+    found = {"blessing": [], "curse": []}
+    # Longer phrases first, so a short alias cannot hide an unread clause.
+    phrases = sorted(((phrase, rule) for rule in VENDOR_LINES for phrase in rule["phrases"]),
+                     key=lambda item: len(item[0]), reverse=True)
+    for phrase, rule in phrases:
+        pattern = r"(?<!\w)" + re.escape(phrase) + r"(?!\w)"
+        if re.search(pattern, remaining):
+            if rule not in found[rule["kind"]]:
+                found[rule["kind"]].append(rule)
+            remaining = re.sub(pattern, " ", remaining)
+    # Recorded descriptions of these same effects; no unrecognized clause is discarded.
+    for suffix in ("for the rest of the run", "on the board and gain exp and shop tokens",
+                   "on the board", "in every battle", "for the next 5 battle encounters",
+                   "(full heal + upgrade 2 skills)", "your", "the", "50%"):
+        remaining = re.sub(r"(?<!\w)" + re.escape(suffix) + r"(?!\w)", " ", remaining)
+    remaining = remaining.strip(" .,;|")
+    unknown = [remaining] if remaining.strip() else []
+    for kind in found:
+        if len(found[kind]) != 1:
+            unknown.append(f"expected one {kind}, read {len(found[kind])}")
+    if unknown:
+        return None, unknown
+    benefit, curse = found["blessing"][0], found["curse"][0]
+    return VendorBundle(benefit["id"], curse["id"], benefit["score"], curse["score"],
+                        vendor_interaction(benefit["id"], curse["id"])), []
+
+
+def score_vendor_card(text: str, rolls_left: int | None) -> tuple[int | None, list[str]]:
+    bundle, unknown = parse_vendor_bundle(text)
+    return (bundle.score if bundle else None), unknown
 
 
 def coin_flip_temporary(options: list[str], rng=None, pick: str | None = None) -> str | None:
@@ -440,23 +445,21 @@ def coin_flip_temporary(options: list[str], rng=None, pick: str | None = None) -
 
 
 def decide_vendor(left: str, right: str, rolls_left: int | None, rng=None) -> Decision:
-    ls, lu = score_vendor_card(left, rolls_left)
-    rs, ru = score_vendor_card(right, rolls_left)
-    unknown = lu + ru
-    parsed = (_side_parsed(left), _side_parsed(right))
-    # Known weights tied, and at least one line is not in the table: flip so the screen
-    # cannot sit there. A tie of two fully known cards stays on the left, as before.
-    if ls == rs and (unknown or not all(parsed)):
-        choice = coin_flip_temporary(["left", "right"], rng)
-        reason = "COIN FLIP (temporary); known weights tied on unknown lines"
+    bundles = [parse_vendor_bundle(text) for text in (left, right)]
+    lb, rb = bundles[0][0], bundles[1][0]
+    if lb and rb:
+        choice = "left" if lb.order <= rb.order else "right"
+        reason = f"left {lb.score} vs right {rb.score}; approved bundle order"
     else:
-        choice = "left" if ls >= rs else "right"
-        reason = f"left {ls} vs right {rs}"
+        # Deterministic fallback: use the fully recognized side; otherwise the left sign.
+        choice = "right" if rb and not lb else "left"
+        reason = "unranked incomplete bundle; deterministic fallback"
     return Decision("cursed_vendor", choice, reason,
-                    {"left": ls, "right": rs, "rolls_left": rolls_left, "unknown": unknown,
-                     "left_parsed": parsed[0], "right_parsed": parsed[1],
+                    {"left": lb.score if lb else None, "right": rb.score if rb else None,
+                     "rolls_left": rolls_left, "unknown": bundles[0][1] + bundles[1][1],
+                     "left_parsed": lb is not None, "right_parsed": rb is not None,
                      "left_text": clean_vendor_text(left), "right_text": clean_vendor_text(right),
-                     "coin_flip": choice is not None and ls == rs and bool(unknown or not all(parsed))})
+                     "coin_flip": False})
 
 
 def vendor_needs_shot(decision: Decision | None) -> bool:
@@ -1186,9 +1189,12 @@ def is_battle(texts: list[Text]) -> bool:
     Not a skill named Round Bolt. "Rourdombo!" is the Combo banner OCR, and the bars
     under it ("25.1m(2.5m)(5.4m)") are not an event title.
     """
+    # Event copy and pet HP bars can resemble combat. A visible statue owns this frame.
+    if match_event(texts) == "statue":
+        return False
     if any(_BATTLE_RE.search(t.norm) or re.search(r"\bwave\s*\d+\s*/\s*\d+", t.norm) for t in texts):
         return True
-    if any(("combo" in t.norm or "dombo" in t.norm) and len(t.norm) <= 16 for t in texts):
+    if any(t.norm.strip("!¡ ") in ("combo", "rourdombo") for t in texts):
         return True
     blob = " ".join(t.norm for t in texts)
     # Reward and victory screens mention gold like "1.2m". Those are not enemy bars.
@@ -2051,7 +2057,13 @@ def skip_unknown_save(texts: list[Text]) -> bool:
 
 
 def safe_exit_point(texts: list[Text]) -> tuple[int, int] | None:
-    """Get Out, Walk Away, Leave, or NEXT. Never the description under the icon."""
+    """Get Out, Walk Away, Leave, NEXT, or a statue's free Pray option."""
+    if match_event(texts) == "statue":
+        pray = _buttons(texts, {"pray": ("pray",)}).get("pray")
+        if pray is not None:
+            point = choice_tap(pray, texts)
+            if not tap_forbidden(point):
+                return point
     leave = safe_leave_label(texts)
     if leave is not None:
         point = choice_tap(leave, texts)

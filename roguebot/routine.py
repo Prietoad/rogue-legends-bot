@@ -15,7 +15,7 @@ from roguebot import config, labels as L
 from roguebot.build import Build, BuildState, offer_is_unfavorable, shop_order
 from roguebot.device import Device
 from roguebot.mode_screens import (FightResult, DojoScreen, dojo_unavailable, back_arrow, daily_claim, fight_in_progress, fight_skip, free_donation, parse_patrol, parse_quick_patrol, guild_hall, guild_hall_donate, guild_screen, guild_vault, in_guild, is_guild_map, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
-                                   parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
+                                   parse_dive, dive_confirmation, dive_spending_prompt, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
                                    parse_skill_choice, parse_tower, personal_vault_claim, pick_opponent,
                                    quick_patrol_close, quick_patrol_open, vip_cards_icon, vip_claim_all,
                                    web_back_to_shop, web_claim_now, web_collected, web_daily_claim, web_free_spin,
@@ -246,33 +246,92 @@ class Routine:
         return self._claim_or(texts, lambda t: parse_dojo(img, t, self.ocr))
 
     def dive(self) -> str:
-        """Dungeon Dive: a 3-depth level board, played like a normal level (build, auto-play) while there
-        are tickets, whatever the result."""
+        """Spend only verified Dive tickets, one attempt at a time; never refill or watch ads."""
         if not self._open_mode(L.DIVE):
-            log.info("Dungeon Dive: closed for now")
             return SKIPPED
-        for _ in range(config.MAX_MODE_ACTIONS):
-            screen = self._wait_for(self._dive_screen, "dungeon dive screen")
-            if screen.tickets < 1:
-                log.info("Dungeon Dive: no tickets left")
+        previous = None
+        for _ in range(3):  # daily capacity is exactly two tickets
+            img, texts = self._dive_main_frame()
+            screen = parse_dive(texts, img)
+            if screen is None or screen.tickets is None or screen.reason:
+                return self._dive_exit(img, texts, screen.reason if screen else "unrecognized Dive main screen")
+            if previous is not None and screen.tickets != previous - 1:
+                return self._dive_exit(img, texts, "ticket count did not decrease by exactly one")
+            if screen.tickets == 0:
+                return self._dive_exit(img, texts)
+            previous = screen.tickets
+            self._tap(screen.challenge)  # one tap; never generic _press retries over a prompt
+            if not self._dive_start():
                 return DONE
-            log.info("Dungeon Dive: challenge (%d tickets)", screen.tickets)
-            self._press(screen.challenge)
             log.info("Dungeon Dive finished: %s", self.play_level().value)
-        self._fail("Dungeon Dive did not run out of tickets")
+        return DONE
+
+    def _dive_main_frame(self):
+        deadline = time.monotonic() + SCREEN_TIMEOUT
+        dismissed = False
+        while True:
+            img, texts = self._capture()
+            state = classify_level_screen(img, texts) if img is not None else None
+            if (state and state.kind in (LevelScreen.VICTORY, LevelScreen.DEFEAT)
+                    and state.tap and not dismissed):
+                self.device.tap(*state.tap)
+                dismissed = True
+                continue
+            if is_loading(texts) and time.monotonic() < deadline:
+                time.sleep(config.POLL_INTERVAL)
+                continue
+            return img, texts
+
+    def _dive_exit(self, img, texts, reason="") -> str:
+        if reason:
+            log.warning("Dungeon Dive: safe exit: %s", reason)
+            DEBUG_DIR.mkdir(exist_ok=True)
+            stem = DEBUG_DIR / f"dive_guard_{time.strftime('%Y%m%d_%H%M%S')}"
+            if img is not None:
+                cv2.imwrite(str(stem.with_suffix(".png")), img)
+            stem.with_suffix(".txt").write_text(reason + "\n" + "\n".join(t.text for t in texts),
+                                                  encoding="utf-8")
+        self.device.back()  # back out of the mode/prompt; never a price or refill control
+        return DONE
+
+    def _dive_start(self) -> bool:
+        deadline = time.monotonic() + SCREEN_TIMEOUT
+        confirmed = False
+        while True:
+            img, texts = self._capture()
+            # The only accepted prompt is an explicit ticket-only confirmation.
+            confirm = dive_confirmation(texts)
+            if img is None or getattr(img, "shape", None) != (2560, 1440, 3):
+                self._dive_exit(img, texts, "unreadable screenshot after Challenge")
+                return False
+            if confirm is not None and not confirmed:
+                self._tap(confirm)
+                confirmed = True
+            elif dive_spending_prompt(texts):
+                self._dive_exit(img, texts, "spending/refill/ad prompt after Challenge")
+                return False
+            elif is_loading(texts) or parse_dive(texts, img) is not None:
+                pass  # transient/stale main frame: no repeated Challenge tap
+            elif img is not None:
+                state = classify_level_screen(img, texts)
+                # Hand off only after a legitimate board/intro/skill screen appears.
+                # Currency or other prompt text must never reach Player's generic actions.
+                intro = find(texts, L.LEVEL_MODIFIERS, exact=True) and find(texts, L.CONTINUE, exact=True)
+                if intro or state.kind in (LevelScreen.BOARD_READY, LevelScreen.AUTO_PLAY,
+                                            LevelScreen.SKILL_PICK):
+                    return True  # Player reads a fresh screenshot and keeps its build/reroll behavior
+                self._dive_exit(img, texts, "unexpected or spending prompt after Challenge")
+                return False
+            else:
+                self._dive_exit(img, texts, "unreadable screen after Challenge")
+                return False
+            if time.monotonic() >= deadline:
+                self._dive_exit(img, texts, "Dive did not start after one Challenge tap")
+                return False
+            time.sleep(config.POLL_INTERVAL)
 
     def _dive_screen(self, img, texts: list[Text]):
-        """The dive screen, after a victory/defeat that is still up has been dismissed."""
-        screen = self._claim_or(texts, parse_dive)
-        if screen:
-            return screen
-        if img is None:
-            return None
-        state = classify_level_screen(img, texts)
-        if state.kind in (LevelScreen.VICTORY, LevelScreen.DEFEAT) and state.tap:
-            log.info("Dungeon Dive: dismissing %s", state.kind.value)
-            self.device.tap(*state.tap)
-        return None
+        return parse_dive(texts, img)
 
     def daily(self) -> str:
         """Lobby ≡ menu → Daily Rewards → the web store.

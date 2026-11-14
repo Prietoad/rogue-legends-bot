@@ -136,7 +136,7 @@ def test_bandits_taps_the_dice_until_escaped_and_not_the_attempts_line():
     assert all("attempt" not in name.lower() for name in labels)
 
 
-def test_vendor_reads_the_blessing_half_and_keeps_unknown_lines_a_coin_flip():
+def test_vendor_reads_both_halves_with_approved_207_ranks():
     left_sign = _t("Sign", 428, 2364, 160)
     right_sign = _t("Sign", 1008, 2362, 160)
     texts = [
@@ -156,21 +156,18 @@ def test_vendor_reads_the_blessing_half_and_keeps_unknown_lines_a_coin_flip():
     assert "exp gain is halved" in bodies[1].lower()
     assert "this will" not in bodies[0].lower() and "this will" not in bodies[1].lower()
     decision = decide_vendor(bodies[0], bodies[1], 20, rng=random.Random(0))
-    # Inn is recognized and still unweighted, so it does not add a score. EXP halved does.
-    assert decision.inputs["right"] == -30
-    assert decision.inputs["left"] > decision.inputs["right"]
-    assert any("inn" in line or "campfire" in line for line in decision.inputs["unknown"])
-    # Two fully unknown lines still coin-flip. Weights were not added for them.
-    unknown = decide_vendor("Your pets are disabled for the first 3 rounds in every battle.",
-                            "The next Mythic skill you learn becomes Trash.", None, rng=random.Random(1))
-    assert unknown.inputs["coin_flip"]
-    score, _lines = score_vendor_card("EXP gain is halved.", 20)
-    assert score == -30
-    score, _lines = score_vendor_card("Your first shop purchase is free.", 20)
-    assert score == 35
-    score, _lines = score_vendor_card(
-        "For the next 5 battle encounters, half of your skills are disabled.", 20)
-    assert score == -90
+    # 2.0.7 approves inn=6000, EXP penalty=2000; left=7000-1000 wins.
+    assert decision.inputs["right"] == 4000
+    assert decision.inputs["left"] == 6000
+    assert not decision.inputs["unknown"]
+    incomplete = decide_vendor("Your pets are disabled for the first 3 rounds in every battle.",
+                               "The next Mythic skill you learn becomes Trash.", None, rng=random.Random(1))
+    assert incomplete.choice == "left" and not incomplete.inputs["coin_flip"]
+    assert incomplete.inputs["left"] is incomplete.inputs["right"] is None
+    for line in ("EXP gain is halved.", "Your first shop purchase is free.",
+                 "For the next 5 battle encounters, half of your skills are disabled."):
+        score, unknown = score_vendor_card(line, 20)
+        assert score is None and unknown  # never score a half-read bundle
 
 
 def test_vendor_fixture_ocr_includes_the_blessing(ocr):

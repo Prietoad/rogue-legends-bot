@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.8
+- Fix Luxury Pass detection falsely blocking normal season-banner lobbies at startup.
+- Keep verified offer dismissal guarded and prevent purchases.
+
+## 2.0.7
+- Deterministic Cursed Vendor benefit/curse scoring.
+- Guarded Luxury Pass dismissal and safer Dungeon Dive ticket handling.
+
+## 2.0.6
+- Distinguish Enhanced Combo statue offerings from combat banners.
+
+
 ## 2.0.5 (2026-11-12)
 - Treasure Miner uses confirmed digs for its nine-pickaxe budget, validates all grid edges, ignores dimmed icons, retries stale tile reads, and backs out of a missing Leave instead of digging into a reward popup.
 - Poison picks, token shops and rerolls use Game's combo/venom ranking. Catalog-backed statue protection includes Corrosion, Poison Strike, Deep Venom, owned Combo Mastery and Special Experiment with pets. Ninja Dodge and Heal Shuriken remain non-core.

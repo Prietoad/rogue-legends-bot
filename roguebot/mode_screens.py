@@ -573,19 +573,68 @@ def parse_dojo(img: np.ndarray, texts: list[Text], ocr: Ocr) -> DojoScreen | Non
 @dataclass(frozen=True)
 class DiveScreen:
     challenge: Text
-    tickets: int                 # top bar "1/2"; at 0 the Challenge button stays but does nothing
+    tickets: int | None
+    cost: int | None = None
+    reason: str = ""
 
 
-def parse_dive(texts: list[Text]) -> DiveScreen | None:
-    """Dungeon Dive main screen ("Ruinas Olvidadas 12": the title changes with the stage)."""
+_DIVE_TICKET = cv2.imread(str(Path(__file__).parent / "templates" / "dive_ticket.png"))
+
+
+def dive_spending_prompt(texts: list[Text]) -> bool:
+    return any(re.search(r"[$€£¥]|\b(?:gems?|gold|diamonds?|cash|purchase|buy|refill|shop|"
+                         r"subscription|subscribe|watch|video|ads?|recharge|recarga|comprar|"
+                         r"tienda|vip|money|dollars?|paid|premium)\b", t.norm) for t in texts)
+
+
+def parse_dive(texts: list[Text], img=None) -> DiveScreen | None:
+    """Recognize the recorded Dive title/controls, retaining unreadable states for safe exit."""
     button = _bottom_challenge(texts)
-    if not (button and find(texts, L.DIVE_REWARDS, exact=True)) or find(texts, L.TOWER_TITLE):
+    title = any(190 <= t.center[1] <= 350 and
+                re.fullmatch(r"ruinas olvidadas \d+|dungeon dive|descenso a la mazmorra",
+                             t.norm) for t in texts)
+    if not (title and button and find(texts, L.DIVE_REWARDS, exact=True)) or find(texts, L.TOWER_TITLE):
         return None
-    for t in texts:
-        m = _RATIO_RE.match(t.norm)
-        if m and t.center[1] < config.TOP_BAR_MAX_Y:
-            return DiveScreen(button, int(m.group(1)))
-    return None
+    counters = [t for t in texts if 760 <= t.center[0] <= 950 and t.center[1] < 115]
+    ratios = [_RATIO_RE.fullmatch(t.norm) for t in counters]
+    valid = [m for m in ratios if m]
+    tickets = None
+    if len(counters) == len(valid) == 1 and valid[0][2] == "2" and valid[0][1] in ("0", "1", "2"):
+        tickets = int(valid[0][1])
+    # The numeral is not enough: require the actual Dungeon Dive ticket icon beside it.
+    costs = [t for t in texts if 500 <= t.center[0] <= 950 and 2440 <= t.center[1] <= 2530]
+    cost = None
+    if (img is not None and getattr(img, "shape", None) == (2560, 1440, 3)
+            and len(costs) == 1 and costs[0].norm == "1" and _DIVE_TICKET is not None):
+        roi = img[2440:2525, 630:765]
+        score = cv2.minMaxLoc(cv2.matchTemplate(roi, _DIVE_TICKET, cv2.TM_CCOEFF_NORMED))[1]
+        if score >= .97:
+            cost = 1
+    reason = "unreadable or contradictory tickets" if tickets is None else ""
+    if dive_spending_prompt(texts) or find(texts, L.CONFIRM, exact=True):
+        reason = "unexpected prompt over Dive main screen"
+    if tickets and cost != 1:
+        reason = "Challenge cost is not exactly one recognized Dungeon Dive ticket"
+    return DiveScreen(button, tickets, cost, reason)
+
+
+def dive_confirmation(texts: list[Text]) -> Text | None:
+    """A deliberately narrow allowlist; every additional/unknown charge blocks confirmation.
+
+    No captured confirmation exists yet. These explicit ticket-only forms are offline-tested;
+    new layouts must be evidenced before widening this grammar.
+    """
+    confirm = [t for t in texts if matches(t, L.CONFIRM, exact=True) or t.norm == "ok"]
+    if len(confirm) != 1:
+        return None
+    body = [t.norm for t in texts if t not in confirm and t.norm not in
+            ("cancel", "cancelar", "dungeon dive", "descenso a la mazmorra")]
+    if len(body) != 1:
+        return None
+    if not re.fullmatch(r"(?:spend|use) (?:exactly )?1 dungeon dive ticket\??|"
+                        r"(?:usar|gastar) (?:exactamente )?1 boleto de descenso a la mazmorra\??", body[0]):
+        return None
+    return confirm[0]
 
 
 def menu_entry(texts: list[Text], label: L.Label) -> Text | None:

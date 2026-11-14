@@ -270,24 +270,24 @@ def test_classify_makes_tea_and_leaves_the_campfire_alone():
     assert camped.tap[0] == train.center[0]
 
 
-def test_cursed_vendor_v4_early_picks_the_right_card():
+def test_cursed_vendor_v4_fixture_uses_approved_207_weights():
     """Early run, the user's pick was the right Sign.
 
     Left: debuff tiles become buffs, and lose 5% max HP after each battle.
     Right: elites start at 25% less HP, and a 50% chance to trip.
-    The max-HP curse is heavy while more than 5 rolls remain, and cheap once they do not.
+    2.0.7 supersedes the old roll-dependent penalties: left 1000 beats right -4500.
     """
     left = ("All debuff tiles are replaced with buff tiles for the rest of the run. "
             "Lose 5% Max HP after each battle")
     right = ("Elite enemies and bosses start combat with 25% less HP. "
              "50% chance to trip and take damage instead of Basic Attacking")
     early = decide_vendor(left, right, 20)
-    assert early.choice == "right"
+    assert early.choice == "left"
     assert early.inputs["left_parsed"] and early.inputs["right_parsed"]
     assert not vendor_needs_shot(early)
     late = decide_vendor(left, right, 5)
-    assert late.choice == "left"  # the max-HP curse is cheap with 5 rolls left
-    assert decide_vendor(left, right, None).choice == "right"  # rolls unreadable: treat the curse as heavy
+    assert late.choice == "left"  # 2.0.7 weights do not change with rolls left
+    assert decide_vendor(left, right, None).choice == "left"  # same approved weights
     blank = decide_vendor("", "", None)
     assert not blank.inputs["left_parsed"] and vendor_needs_shot(blank)
 
@@ -306,7 +306,7 @@ def test_vendor_reads_the_lines_above_each_sign():
     assert "debuff" in left.lower() and "max hp" in left.lower()
     assert "25%" in right and "trip" in right.lower()
     assert "Sign" not in left and "Sign" not in right
-    assert decide_vendor(left, right, 20).choice == "right"
+    assert decide_vendor(left, right, 20).choice == "left"
 
 
 def test_locked_box_looks_around_when_a_key_or_gems_are_required():
