@@ -54,7 +54,8 @@ See `CLAUDE.md` for how it works inside: architecture, game knowledge, and every
 
 ## Known issues
 
-No known issues at this time, I've ran this version for 6 hours with no errors, all VIP routine work well. 
+- Dungeon Dive isn't starting as intended during VIP Routine
+- Next big release will have an Expedition mode (work in progress)
 
 Next release, need to add a Guild Wars check and action. 
 
