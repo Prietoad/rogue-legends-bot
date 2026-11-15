@@ -250,6 +250,12 @@ class TowerScreen:
     tickets: int
 
 
+def tower_cleared(texts: list[Text]) -> bool:
+    """A whole tower beaten: "Felicidades por completar Torre de los Héroes N" and a reward chest to tap
+    (config.TOWER_CHEST). The screen has no back arrow and no button: nothing else leaves it."""
+    return bool(find(texts, L.TOWER_TITLE) and find(texts, L.TOWER_CLEARED))
+
+
 def parse_tower(texts: list[Text]) -> TowerScreen | None:
     """Tower main screen: tickets are the top-bar counter "13/10" (it can exceed the max)."""
     button = _bottom_challenge(texts)

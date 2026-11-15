@@ -337,6 +337,18 @@ class RoutineTest {
     }
 
     @Test
+    fun towerKeepsClimbingPastFortyFloors() {
+        // Seen live 2026-11-16: each cleared tower's chest gives the tickets back, so the tower outran the 40-action limit.
+        val congrats = listOf(t("Tower of Heroes 15", 560, 435, 880, 480), t("Congratulations on clearing", 480, 685, 960, 720))
+        val one = listOf(tower(19), LOADING) + (1..9).flatMap { listOf(towerWin(), LOADING) } +
+            listOf(towerWin(nextFloor = false), congrats, congrats + CLAIM)
+        val frames = (1..6).flatMap { one } + listOf(tower(19), LOADING, DEFEAT)
+        val r = noOpenMode(script = Script.texts(*frames.toTypedArray()))
+        assertEquals(Parts.DONE, r.tower())
+        assertEquals(6, device.taps.count { it == Config.TOWER_CHEST })
+    }
+
+    @Test
     fun pressTapsAgainWhenTheTapDidNotRegister() {
         val r = make(*(List(40) { tower(2) } + listOf(LOADING)).toTypedArray())  // still there for 2 rounds, then gone
         r.press(t("Challenge", 620, 2395, 820, 2440))

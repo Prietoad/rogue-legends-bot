@@ -6,7 +6,7 @@ import cv2
 import pytest
 
 from roguebot import labels
-from roguebot.mode_screens import (back_arrow, daily_claim, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed,
+from roguebot.mode_screens import (back_arrow, tower_cleared, daily_claim, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed,
                                    mode_entry, parse_arena, parse_arena_opponents, parse_dive, parse_dojo,
                                    parse_dungeon_popup, parse_fight_result, parse_raid, parse_skill_choice,
                                    parse_tower, pick_opponent)
@@ -232,7 +232,19 @@ def test_tower_cleared_screen(ocr):
     """After the 10th floor: "Congrats", tap the chest to claim (there is no back arrow on this screen)."""
     _, texts = load(ocr, "en_tower_cleared.png")
     assert find(texts, labels.TOWER_CLEARED) is not None
-    assert parse_tower(texts) is None
+    assert parse_tower(texts) is None and tower_cleared(texts)
+
+
+def test_tower_cleared_screen_in_spanish(ocr):
+    """Seen live 2026-11-16: "Felicidades por completar Torre de los Héroes 133 / Reclama tu", chest, 19/10 tickets."""
+    img, texts = load(ocr, "tower_cleared.png")
+    assert tower_cleared(texts) and parse_tower(texts) is None and back_arrow(img) is None
+
+
+@pytest.mark.parametrize("name", ["tower_4_tickets.png", "en_tower.png", "arena_promotion_popup.png", "tower_victory.png"])
+def test_other_screens_are_not_a_cleared_tower(ocr, name):
+    _, texts = load(ocr, name)
+    assert not tower_cleared(texts)
 
 
 def test_arena_closed_around_the_daily_reset(ocr):

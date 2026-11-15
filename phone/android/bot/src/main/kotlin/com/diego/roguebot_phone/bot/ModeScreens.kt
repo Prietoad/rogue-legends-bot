@@ -157,6 +157,9 @@ object ModeScreens {
 
     data class TowerScreen(val challenge: Text, val tickets: Int)
 
+    /** A whole tower beaten: the "Felicidades" screen with a reward chest (Config.TOWER_CHEST); no arrow, no button. */
+    fun towerCleared(texts: List<Text>): Boolean = find(texts, L.TOWER_TITLE) != null && find(texts, L.TOWER_CLEARED) != null
+
     fun parseTower(texts: List<Text>): TowerScreen? {
         val button = bottomChallenge(texts)
         if (find(texts, L.TOWER_TITLE) == null || button == null) return null

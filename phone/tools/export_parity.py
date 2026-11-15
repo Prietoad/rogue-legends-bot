@@ -101,6 +101,7 @@ def outputs(img, texts, ocr) -> dict:
         "parse_patrol": M.parse_patrol(texts),
         "parse_quick_patrol": M.parse_quick_patrol(img, texts),
         "is_modes_list": M.is_modes_list(texts),
+        "tower_cleared": M.tower_cleared(texts),
         "parse_arena": M.parse_arena(img, texts, ocr),
         "parse_arena_opponents": M.parse_arena_opponents(texts, img, ocr),
         "parse_tower": M.parse_tower(texts),

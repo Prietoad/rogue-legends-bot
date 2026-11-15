@@ -231,7 +231,7 @@ open class Navigator(
                 return@repeat
             }
             Screens.parseLobby(texts)?.let { return it }
-            val closeText = Screens.popupClose(texts)
+            val closeText = Screens.popupClose(texts) ?: find(texts, L.TAP_TO_CLAIM)  // or a reward banner (the tower chest's)
             val closeX by lazy { Screens.closeButton(c.first) }  // template matching: only when needed
             val back by lazy { ModeScreens.backArrow(c.first) }
             val end by lazy { endButton(c.first, texts) }
@@ -245,6 +245,7 @@ open class Navigator(
                 resumeLevel != null && onBoard(c.first, texts) -> { Log.info("A level is on screen: playing it out"); resumeLevel!!() }
                 Screens.isStarList(texts) -> { Log.info("In star challenge list, going back"); device.tap(Config.LIST_BACK) }
                 back != null -> { Log.info("In a menu, going back"); device.tap(back!!) }
+                ModeScreens.towerCleared(texts) -> { Log.info("Tower cleared: opening the reward chest"); device.tap(Config.TOWER_CHEST) }
                 Screens.footerVisible(c.first) -> { Log.info("Not in Aventura lobby, tapping footer tab"); device.tap(Config.AVENTURA_TAB) }
                 // A popup we don't know (new seasonal events): improvise after a few frames (its "para cerrar" may blink).
                 Screens.lobbyBehind(texts) -> {

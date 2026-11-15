@@ -1,5 +1,8 @@
 # Changelog (phone app)
 
+## 0.8.1 (2026-11-16)
+- Same fixes as the desktop bot 1.13.2: the tower no longer stops after 40 floors, and the beaten tower's chest screen is opened when the bot has to leave it. Not tried on a phone yet.
+
 ## 0.8.0 (2026-11-15)
 - Same change as the desktop bot 1.13.0: new mode choice "Alternar" (one level in normal, the next in elite, and so on). Not tried on a phone yet.
 

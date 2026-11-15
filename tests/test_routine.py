@@ -627,3 +627,28 @@ def test_a_failed_part_left_stuck_restarts_and_resumes_at_the_next_part(monkeypa
     r.nav.go_to_lobby = lambda: None  # after the restart
     results = r.run_parts(progress)
     assert [p for p, _ in results] == list(routine.PARTS)
+
+
+def test_tower_keeps_climbing_past_forty_floors(monkeypatch):
+    """Seen live 2026-11-16: every floor won and each cleared tower's chest gives the tickets back (19/10),
+    so the tower outran the 40-action limit: "Tower did not finish" right on the chest screen."""
+    floors = [tower(19), LOADING] + [tower_win(), LOADING] * 9 + [tower_win(next_floor=False), CONGRATS, CONGRATS + CLAIM]
+    r = make(floors * 6 + [tower(19), LOADING, DEFEAT])
+    monkeypatch.setattr(r, "_open_mode", lambda label: None)
+    assert r.tower() == routine.DONE
+    assert r.device.taps.count(routine.config.TOWER_CHEST) == 6  # 60 floors, 6 chests
+
+
+def test_back_to_modes_opens_the_cleared_tower_chest(monkeypatch):
+    """The chest screen has no back arrow: a tower part that failed on it left the routine stuck there."""
+    monkeypatch.setattr(routine, "close_button", lambda img: None)
+    monkeypatch.setattr(routine, "back_arrow", lambda img: (120, 2447) if r._frame is TOWER else None)
+    r = make([])
+    frames = iter([CONGRATS, CONGRATS + CLAIM, TOWER, MODES_TOP])
+
+    def capture():
+        r._frame = next(frames)
+        return None, r._frame
+    r._capture = capture
+    assert r._back_to_modes()
+    assert r.device.taps == [routine.config.TOWER_CHEST, (720, 2322), (120, 2447)]  # chest, claim, ←

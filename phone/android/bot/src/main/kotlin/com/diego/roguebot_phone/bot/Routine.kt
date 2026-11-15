@@ -123,7 +123,7 @@ open class Routine(
     open fun tower(): String {
         openMode(L.TOWER)
         var tickets = 0
-        repeat(Config.MAX_MODE_ACTIONS) {
+        while (true) {  // no action limit: each cleared tower's chest gives tickets back
             if (tickets < 1) {  // read the tower screen (at the start, or after "Confirmar")
                 val screen = waitFor("tower screen") { _, texts -> claimOr(texts, ::towerOrChest) }
                 tickets = screen.tickets
@@ -139,7 +139,6 @@ open class Routine(
             tickets = if (result.nextFloor != null) tickets - 1 else 0  // 0: back on the tower screen
             if (tickets > 0) Log.info("Tower: next floor ($tickets tickets)")
         }
-        fail("Tower did not finish")
     }
 
     open fun dungeon(label: Label): String {
@@ -406,7 +405,7 @@ open class Routine(
         repeat(MAX_BACK_STEPS) {
             val (img, texts) = capture()
             if (ModeScreens.isModesList(texts)) return true
-            val closeText = Screens.popupClose(texts)
+            val closeText = Screens.popupClose(texts) ?: find(texts, L.TAP_TO_CLAIM)  // or a reward banner (the tower chest's)
             when {
                 closeText != null -> tap(closeText)
                 else -> {
@@ -415,6 +414,7 @@ open class Routine(
                     when {
                         closeX != null -> device.tap(closeX)
                         back != null -> device.tap(back)
+                        ModeScreens.towerCleared(texts) -> device.tap(Config.TOWER_CHEST)  // no arrow: the chest is the way out
                         else -> clock.sleep(Config.UI_SETTLE)
                     }
                 }
@@ -484,7 +484,7 @@ open class Routine(
     }
 
     private fun towerOrChest(texts: List<Text>): ModeScreens.TowerScreen? {
-        if (find(texts, L.TOWER_CLEARED) != null) {
+        if (ModeScreens.towerCleared(texts)) {
             Log.info("Tower cleared: opening the reward chest")
             device.tap(Config.TOWER_CHEST)
             return null

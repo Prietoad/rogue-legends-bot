@@ -9,7 +9,7 @@ from typing import Callable
 from roguebot import config, labels as L
 from roguebot.build import Build, BuildState, shop_order
 from roguebot.device import Device
-from roguebot.mode_screens import (FightResult, back_arrow, daily_claim, free_donation, parse_patrol, parse_quick_patrol, patrol_button, guild_hall, guild_hall_donate, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
+from roguebot.mode_screens import (FightResult, back_arrow, tower_cleared, daily_claim, free_donation, parse_patrol, parse_quick_patrol, patrol_button, guild_hall, guild_hall_donate, in_guild, is_modes_list, mail_claim_all, menu_entry, mode_closed, mode_entry, parse_arena, parse_arena_opponents,
                                    parse_dive, parse_dojo, parse_dungeon_popup, parse_fight_result, parse_raid,
                                    parse_skill_choice, parse_tower, pick_opponent, vip_cards_icon, vip_claim_all)
 from roguebot.navigation import NavigationError, Navigator, _still_there
@@ -129,7 +129,7 @@ class Routine:
         never tapped for the last ticket (it could offer tickets for gems)."""
         self._open_mode(L.TOWER)
         tickets = 0
-        for _ in range(config.MAX_MODE_ACTIONS):
+        while True:  # no action limit: each cleared tower's chest gives tickets back, so a strong account climbs on
             if tickets < 1:  # read the tower screen (at the start, or after "Confirmar")
                 screen = self._wait_for(lambda img, texts: self._claim_or(texts, self._tower_or_chest), "tower screen")
                 tickets = screen.tickets
@@ -144,7 +144,6 @@ class Routine:
             tickets = tickets - 1 if result.next_floor else 0  # 0: back on the tower screen
             if tickets:
                 log.info("Tower: next floor (%d tickets)", tickets)
-        self._fail("Tower did not finish")
 
     def dungeon(self, label: L.Label) -> str:
         """Crystal Mines / Pet Kingdom: challenge the shown (highest) difficulty; after a defeat,
@@ -396,12 +395,15 @@ class Routine:
             if is_modes_list(texts):
                 return True
             close_text, close_x, back = popup_close(texts), close_button(img), back_arrow(img)
+            close_text = close_text or find(texts, L.TAP_TO_CLAIM)  # a reward banner (the tower chest's)
             if close_text:
                 self._tap(close_text)
             elif close_x:
                 self.device.tap(*close_x)
             elif back:
                 self.device.tap(*back)
+            elif tower_cleared(texts):  # no arrow on this screen: its chest is the only way out
+                self.device.tap(*config.TOWER_CHEST)
             else:  # loading or an animation: wait, never guess
                 time.sleep(config.UI_SETTLE)
         log.info("Could not get back to the modes list")
@@ -464,7 +466,7 @@ class Routine:
 
     def _tower_or_chest(self, texts: list[Text]):
         """Tower screen, or (after clearing a whole tower) open the "Congrats" reward chest."""
-        if find(texts, L.TOWER_CLEARED):
+        if tower_cleared(texts):
             log.info("Tower cleared: opening the reward chest")
             self.device.tap(*config.TOWER_CHEST)
             return None

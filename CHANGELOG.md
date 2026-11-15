@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.13.2 (2026-11-16)
+- Tower: the bot stopped the tower with "Tower did not finish" after 40 floors, right on the reward chest of a beaten tower. An account that wins every floor gets its tickets back from each chest, so it can climb far more than 40 floors. The tower now goes on until the first defeat or until no tickets are left, however many floors that takes.
+- The beaten tower's chest screen ("Felicidades por completar Torre de los Héroes N") has no back arrow. When a part failed there, the bot could not leave it and restarted the emulator. It now opens the chest from there too.
+
 ## 1.13.1 (2026-11-16)
 - The new "Alternar" mode choice of 1.13.0 was not drawn in the window (it had no room next to Normal and Élite). It now shows, with the World picker to its right.
 

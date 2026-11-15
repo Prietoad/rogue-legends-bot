@@ -83,6 +83,7 @@ class ParityTest {
                 obj("video" to text(it.video), "energy" to text(it.energy), "energy_cost" to it.energyCost)
             },
             "is_modes_list" to ModeScreens.isModesList(texts),
+            "tower_cleared" to ModeScreens.towerCleared(texts),
             "parse_arena" to nul(ModeScreens.parseArena(img, texts, ocr)) { obj("challenge" to text(it.challenge), "tickets" to it.tickets) },
             "parse_arena_opponents" to nul(ModeScreens.parseArenaOpponents(texts, img, ocr)) {
                 obj("own_power" to it.ownPower, "opponents" to JSONArray(it.opponents.map { o -> obj("power" to o.power, "challenge" to text(o.challenge)) }),

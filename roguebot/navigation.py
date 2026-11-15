@@ -9,7 +9,7 @@ import cv2
 
 from roguebot import config, labels
 from roguebot.device import Device
-from roguebot.mode_screens import back_arrow, parse_fight_result
+from roguebot.mode_screens import back_arrow, parse_fight_result, tower_cleared
 from roguebot.screens import (Card, LevelScreen, Lobby, Mode, classify_level_screen, close_button, close_button_any_size,
                               footer_visible, is_loading, is_star_list, lobby_behind, outside_tap_clear,
                               parse_elite_dialog, parse_energy, parse_energy_popup, parse_lobby, parse_star_list,
@@ -253,6 +253,7 @@ class Navigator:
                 return lobby
             # Never tap blindly: popups can hold purchase buttons.
             close_text, close_x = popup_close(texts), close_button(img)
+            close_text = close_text or find(texts, labels.TAP_TO_CLAIM)  # a reward banner (the tower chest's)
             end = self._end_button(img, texts)
             if is_loading(texts):
                 time.sleep(config.UI_SETTLE)
@@ -275,6 +276,9 @@ class Navigator:
                 # Before the footer check: on mode screens the footer tab spot is their Challenge button.
                 log.info("In a menu, going back")
                 self.device.tap(*back)
+            elif tower_cleared(texts):  # no arrow and no button on this screen: its chest is the only way out
+                log.info("Tower cleared: opening the reward chest")
+                self.device.tap(*config.TOWER_CHEST)
             elif footer_visible(img):
                 log.info("Not in Aventura lobby, tapping footer tab")
                 self.device.tap(*config.AVENTURA_TAB)

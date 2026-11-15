@@ -658,7 +658,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.13.1"
+    assert roguebot.__version__ == "1.13.2"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -1049,3 +1049,29 @@ def test_build_request_alternate_starts_in_normal():
     assert build_request(ALTERNATE, "latest", "") == RunRequest(Mode.NORMAL, None, repeat=True, alternate=True)
     assert build_request(ALTERNATE, "stars", "7") == RunRequest(Mode.NORMAL, 7, repeat=True, alternate=True)
     assert not build_request("elite", "latest", "").alternate
+
+
+def test_go_to_lobby_opens_the_cleared_tower_chest(monkeypatch):
+    """The tower's "Felicidades" chest screen has no arrow and no button (2026-11-16: "Could not reach the
+    Aventura lobby" there, then a MuMu restart)."""
+    import numpy as np
+    from roguebot import navigation
+    monkeypatch.setattr(navigation.time, "sleep", lambda s: None)
+    monkeypatch.setattr(navigation, "footer_visible", lambda img: False)
+    monkeypatch.setattr(navigation, "close_button", lambda img: None)
+    monkeypatch.setattr(navigation, "tutorial_hand", lambda img: None)
+    tower = [Text("Torre de los Héroes 134", 560, 245, 880, 290), Text("Desafío", 620, 2395, 820, 2440)]
+    monkeypatch.setattr(navigation, "back_arrow", lambda img: (120, 2447) if nav.frame is tower else None)
+    lobby = [Text("Patrulla", 650, 1900, 790, 1945), Text("APAGADO", 880, 2060, 990, 2095),
+             Text("INICIO", 600, 2070, 716, 2115), Text("de Estrellas", 840, 1910, 960, 1945)]
+    chest = [Text("Torre de los Héroes 133", 375, 421, 1063, 494), Text("Felicidades", 549, 535, 889, 612),
+             Text("Felicidades por completar", 470, 678, 969, 729)]
+    frames = iter([chest, tower, lobby])
+    nav = Navigator(_TapLog(), None)
+
+    def capture():
+        nav.frame = next(frames)
+        return np.zeros((2560, 1440, 3), np.uint8), nav.frame
+    nav._capture = capture
+    nav.go_to_lobby()
+    assert nav.device.taps == [config.TOWER_CHEST, (120, 2447)]
