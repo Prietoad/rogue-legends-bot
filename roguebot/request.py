@@ -10,6 +10,7 @@ LATEST = "latest"
 STARS = "stars"
 BEATEN = "beaten"
 PENDING = "pending"  # beaten levels that still miss stars, then the last beaten one
+ALTERNATE = "alternate"  # mode choice: one level in normal, the next in elite, and so on
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ class RunRequest:
     loop: bool = False    # keep running: out of energy -> wait for energy -> (routine ->) levels again
     ads: bool = False     # watch ads (energy, x2 rewards, revive, tickets); only for accounts that skip them
     world: str | None = None  # the world whose levels are played (config.WORLDS); None = whichever the game is in
+    alternate: bool = False  # after each level switch between normal and elite (`mode` = the one to play next)
 
 
 def build_request(mode: str, source: str, level: str, full: bool = False, build: Build = Build(),
@@ -32,10 +34,11 @@ def build_request(mode: str, source: str, level: str, full: bool = False, build:
     """Validate the form values. Raises ValueError with a user-facing message.
     Levels always run until out of energy; `loop` then waits for energy and starts again."""
     common = dict(repeat=True, full=full, build=build, mumu_folder=mumu_folder, loop=loop, ads=ads,
-                  world=world if world in config.WORLDS else None)
+                  world=world if world in config.WORLDS else None, alternate=mode == ALTERNATE)
+    mode = Mode.NORMAL if mode == ALTERNATE else Mode(mode)
     if source in (LATEST, BEATEN, PENDING):
-        return RunRequest(Mode(mode), None, last_beaten=source in (BEATEN, PENDING),
+        return RunRequest(mode, None, last_beaten=source in (BEATEN, PENDING),
                           pending_stars=source == PENDING, **common)
     if not level.strip().isdigit() or int(level) < 1:
         raise ValueError("bad_level")  # i18n key
-    return RunRequest(Mode(mode), int(level), **common)
+    return RunRequest(mode, int(level), **common)

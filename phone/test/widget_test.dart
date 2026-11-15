@@ -35,6 +35,8 @@ void main() {
     expect(o.toJson().containsKey('repeat'), false);  // only keep running + full routine
     expect(o.order.first, 'fire');
     final bad = Options()..restore({'damage_order': ['fire']});
+    expect((Options()..restore({'mode': 'alternate'})).mode, 'alternate');  // normal, elite, normal...
+    expect([tr('es', 'alternate'), tr('en', 'alternate')], ['Alternar', 'Alternate']);
     expect(bad.order, damageTypes);
   });
 

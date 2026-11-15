@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.13.0 (2026-11-15)
+- **New mode choice "Alternar" (Alternate)**, next to Normal and Élite: the bot plays the chosen level (last unlocked, last beaten, missing stars or a level number) once in normal, then once in elite, then normal again, and so on, until it runs out of energy. Each mode keeps its own level: with "Last unlocked", a win in normal repeats that normal level, and elite does the same with its own. If elite is not unlocked on the account, every level is played in normal.
+
 ## 1.12.0 (2026-11-14)
 - **Heliora, blacksmith's anvil** ("Yunque del Herrero"): a new screen that offers an item to take ("Recibes") or to gamble on upgrading ("Reforzar", with a success chance). The bot stopped on it. Seen: a small attack boost → 70% → a common skill → 40% → a legendary skill → 10%. The bot upgrades while the chance is 40% or more, then takes the item. What a failed upgrade shows has not been seen yet.
 

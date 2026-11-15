@@ -14,12 +14,12 @@ from typing import Callable
 from roguebot import config, settings
 from roguebot.device import Device, Stopped
 from roguebot.emulator import PERMANENT_ERRORS, Emulator, EmulatorError
-from roguebot.navigation import LevelUnavailable, StarsUnavailable, NavigationError, Navigator
+from roguebot.navigation import EliteUnavailable, LevelUnavailable, StarsUnavailable, NavigationError, Navigator
 from roguebot.play import Player, PlayError
 from roguebot.report import Report
 from roguebot.request import RunRequest
 from roguebot.routine import Routine
-from roguebot.screens import LevelScreen
+from roguebot.screens import LevelScreen, Mode
 from roguebot.skills import Catalog
 from roguebot.vision import Ocr
 
@@ -152,16 +152,25 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                         break
                 try:
                     played = _start_level(nav, request)
+                except EliteUnavailable as e:
+                    if not request.alternate:
+                        raise
+                    log.warning("%s: playing normal levels only", e)
+                    request = state["request"] = replace(state["other"], alternate=False)
+                    continue
                 except StarsUnavailable as e:  # no star list or no beaten level on this account (yet)
                     log.warning("%s: playing the last unlocked level instead", e)
-                    state["no_stars"] = True  # remembered: no pinning, no more star list attempts
+                    state.setdefault("no_stars", set()).add(request.mode)  # remembered: no pinning, no more star list attempts
                     request = state["request"] = replace(request, level=None, last_beaten=False, pending_stars=False)
                     played = nav.start_latest(request.mode)
                 results.append(Player(device, ocr, request.build, catalog, request.ads).play_level())
                 if (request.level is None and not request.last_beaten and results[-1] is LevelScreen.VICTORY
-                        and played is not None and not state.get("no_stars")):
+                        and played is not None and request.mode not in state.get("no_stars", ())):
                     # Winning unlocked the next level; keep replaying this one from Desafío de Estrellas.
                     request = state["request"] = replace(request, level=played)
+                if request.alternate:  # the other mode next; each mode keeps its own level (pinned, star fallback)
+                    state["other"], request = request, state["other"]
+                    state["request"] = request
                 nav.go_to_lobby()
                 log.info("Level finished: %s (run %d)", results[-1].value, len(results))
                 if not request.repeat:
@@ -182,6 +191,8 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
         if stop is not None:
             stop.clear()
         state = {"request": request, "results": [], "parts": [], "routine_done": False}
+        if request.alternate:
+            state["other"] = replace(request, mode=Mode.ELITE if request.mode is Mode.NORMAL else Mode.NORMAL)
         errors: dict[str, int] = {}
         progress = 0
         while True:

@@ -628,3 +628,88 @@ def test_a_level_left_running_is_played_out_first(monkeypatch):
     report = run_with(monkeypatch, nav, [D, V], RunRequest(Mode.NORMAL, 4))
     assert report.results == [V]  # the leftover level (D) is played, then the requested run
     assert nav.started == ["detect", ("stars", 4)]
+
+
+class ModeNav(FakeNav):
+    """Records the mode of every start; each mode has its own last unlocked level."""
+    latest_of = {Mode.NORMAL: 13, Mode.ELITE: 4}
+
+    def start_latest(self, mode):
+        self.started.append((mode.value, "latest", self.latest_of[mode]))
+        self.energy -= 5
+        return self.latest_of[mode]
+
+    def start_star_challenge(self, mode, level):
+        self.started.append((mode.value, "stars", level))
+        self.energy -= 5
+
+    def start_last_beaten(self, mode):
+        self.started.append((mode.value, "beaten"))
+        self.energy -= 5
+        return self.latest_of[mode] - 1
+
+
+def test_alternate_plays_normal_then_elite_and_so_on(monkeypatch):
+    """Requested 2026-11-15: mode "Alternar" = the chosen level once in normal, then in elite, ..."""
+    from roguebot.request import build_request
+    nav = ModeNav(energy=20)
+    report = run_with(monkeypatch, nav, [V, D, V, V], build_request("alternate", "beaten", ""))
+    assert report.results == [V, D, V, V]
+    assert nav.started[1:] == [("normal", "beaten"), ("elite", "beaten"), ("normal", "beaten"), ("elite", "beaten")]
+
+
+def test_alternate_pins_the_won_level_of_each_mode(monkeypatch):
+    """"Last unlocked": a win pins that mode's level only; the lost elite level stays "last unlocked"."""
+    from roguebot.request import build_request
+    nav = ModeNav(energy=30)
+    run_with(monkeypatch, nav, [V, D, V, V, V, V], build_request("alternate", "latest", ""))
+    assert nav.started[1:] == [("normal", "latest", 13), ("elite", "latest", 4), ("normal", "stars", 13),
+                               ("elite", "latest", 4), ("normal", "stars", 13), ("elite", "stars", 4)]
+
+
+def test_alternate_without_elite_mode_plays_normal_only(monkeypatch):
+    """A missing feature never stops the run: elite not unlocked -> every level in normal."""
+    from roguebot.navigation import EliteUnavailable
+    from roguebot.request import build_request
+
+    class Nav(ModeNav):
+        def start_star_challenge(self, mode, level):
+            if mode is Mode.ELITE:
+                self.started.append("elite?")
+                raise EliteUnavailable("Elite mode is not unlocked on this account")
+            super().start_star_challenge(mode, level)
+    nav = Nav(energy=15)
+    report = run_with(monkeypatch, nav, [V, V, V], build_request("alternate", "stars", "7"))
+    assert report.results == [V, V, V] and FakeEmulator.shutdowns == 0
+    assert nav.started[1:] == [("normal", "stars", 7), "elite?", ("normal", "stars", 7), ("normal", "stars", 7)]
+
+
+def test_alternate_star_fallback_is_per_mode(monkeypatch):
+    """No beaten elite level yet: elite plays its last unlocked one, normal keeps its star list."""
+    from roguebot.request import build_request
+
+    class Nav(ModeNav):
+        def start_last_beaten(self, mode):
+            if mode is Mode.ELITE:
+                raise main.StarsUnavailable("No beaten level")
+            return super().start_last_beaten(mode)
+    nav = Nav(energy=20)
+    run_with(monkeypatch, nav, [V, V, V, V], build_request("alternate", "beaten", ""))
+    assert nav.started[1:] == [("normal", "beaten"), ("elite", "latest", 4), ("normal", "beaten"), ("elite", "latest", 4)]
+
+
+def test_alternate_continues_with_the_same_mode_after_a_recovery(monkeypatch):
+    """An error before the elite level finished: the retry plays elite, not normal again."""
+    from roguebot.request import build_request
+
+    class Nav(ModeNav):
+        broke = False
+
+        def start_star_challenge(self, mode, level):
+            if mode is Mode.ELITE and not self.broke:
+                self.broke = True
+                raise main.NavigationError("Stuck on an unknown screen")
+            super().start_star_challenge(mode, level)
+    nav = Nav(energy=10)
+    run_with(monkeypatch, nav, [V, V], build_request("alternate", "stars", "3"))
+    assert [s for s in nav.started if s != "detect"] == [("normal", "stars", 3), ("elite", "stars", 3)]

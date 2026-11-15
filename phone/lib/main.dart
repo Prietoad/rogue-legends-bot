@@ -9,7 +9,7 @@ import 'i18n.dart';
 
 /// The phone version of the desktop bot's window (roguebot/ui.py): options, Start/Stop, status and log.
 /// The bot itself runs in Kotlin (android/bot, android/app): see Engine.kt.
-const version = '0.7.0';
+const version = '0.8.0';
 const damageTypes = ['ice', 'lightning', 'fire', 'shuriken', 'venom', 'bleed'];
 const worlds = ['everdale', 'heliora'];  // like config.WORLDS on the desktop
 const engine = MethodChannel('roguebot/engine');
@@ -45,7 +45,7 @@ class Options {
   void restore(Map<String, dynamic> s) {
     T? pick<T>(String key, bool Function(T) ok) => s[key] is T && ok(s[key] as T) ? s[key] as T : null;
     lang = pick<String>('lang', uiLanguages.containsKey) ?? lang;
-    mode = pick<String>('mode', ['normal', 'elite'].contains) ?? mode;
+    mode = pick<String>('mode', ['normal', 'elite', 'alternate'].contains) ?? mode;
     source = pick<String>('source', ['latest', 'beaten', 'pending', 'stars'].contains) ?? source;
     nature = pick<String>('nature', ['physical', 'magic'].contains) ?? nature;
     world = pick<String>('world', ['', ...worlds].contains) ?? world;
@@ -268,7 +268,7 @@ class _BotPageState extends State<BotPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 8),
           Text(t('mode'), style: Theme.of(context).textTheme.titleSmall),
-          radios([('normal', 'normal'), ('elite', 'elite')], o.mode, (v) => o.mode = v),
+          radios([('normal', 'normal'), ('elite', 'elite'), ('alternate', 'alternate')], o.mode, (v) => o.mode = v),
           Text(t('world'), style: Theme.of(context).textTheme.titleSmall),
           DropdownButton<String>(
             value: o.world,

@@ -333,3 +333,20 @@ def test_world_option(app, tmp_path, monkeypatch):
         app.world.set("")
         app.set_language("en")
     assert app.world_picker.get() == "Current"
+
+
+def test_alternate_mode_option(app, tmp_path, monkeypatch):
+    """Requested 2026-11-15: a third mode choice, "Alternar" (normal, elite, normal...), saved like the others."""
+    from roguebot import settings
+    assert TEXTS["es"]["alternate"] == "Alternar" and TEXTS["en"]["alternate"] == "Alternate"
+    monkeypatch.setattr(app, "settings_path", tmp_path / "settings.json")
+    before = app.mode.get()
+    try:
+        app.mode.set("alternate")
+        app._save_options()
+        saved = settings.load(tmp_path / "settings.json")
+        app.mode.set("normal")
+        app._restore_options(saved)
+        assert app.mode.get() == "alternate"
+    finally:
+        app.mode.set(before)

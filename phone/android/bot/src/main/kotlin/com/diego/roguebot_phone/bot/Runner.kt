@@ -18,26 +18,29 @@ data class RunRequest(
     val loop: Boolean = false,        // keep running: out of energy -> wait for energy -> (routine ->) levels again
     val ads: Boolean = false,
     val world: String? = null,        // the world whose levels are played (Config.WORLDS); null = whichever the game is in
+    val alternate: Boolean = false,   // after each level switch between normal and elite (`mode` = the one to play next)
 )
 
 const val LATEST = "latest"
 const val STARS = "stars"
 const val BEATEN = "beaten"
 const val PENDING = "pending"
+const val ALTERNATE = "alternate"  // mode choice: one level in normal, the next in elite, and so on
 
 /** Validate the form values. Throws IllegalArgumentException("bad_level") (an i18n key).
  * Levels always run until out of energy; `loop` then waits for energy and starts again. */
 fun buildRequest(mode: String, source: String, level: String, full: Boolean = false,
                  build: Build = Build(), loop: Boolean = false, ads: Boolean = false, world: String? = null): RunRequest {
     val w = world?.takeIf { it in Config.WORLDS }
-    val m = Mode.values().first { it.value == mode }
+    val alternate = mode == ALTERNATE
+    val m = if (alternate) Mode.NORMAL else Mode.values().first { it.value == mode }
     if (source == LATEST || source == BEATEN || source == PENDING) {
         return RunRequest(m, null, true, full, build, lastBeaten = source == BEATEN || source == PENDING,
-            pendingStars = source == PENDING, loop = loop, ads = ads, world = w)
+            pendingStars = source == PENDING, loop = loop, ads = ads, world = w, alternate = alternate)
     }
     val n = level.trim().toIntOrNull()
     if (n == null || n < 1 || !level.trim().isDigits()) throw IllegalArgumentException("bad_level")
-    return RunRequest(m, n, true, full, build, loop = loop, ads = ads, world = w)
+    return RunRequest(m, n, true, full, build, loop = loop, ads = ads, world = w, alternate = alternate)
 }
 
 data class Report(
@@ -85,7 +88,9 @@ class Runner(
         val results = ArrayList<LevelScreen>()
         var progress = RoutineProgress()  // routine parts done: a recovery resumes at the part that broke
         var routineDone = false
-        var noStars = false
+        val noStars = HashSet<Mode>()  // modes without a star list: no pinning, no more star list attempts
+        // alternating: the other mode's request (each mode keeps its own pinned level and star fallback)
+        var other = request.copy(mode = if (request.mode == Mode.NORMAL) Mode.ELITE else Mode.NORMAL)
         var patrolNext = 0.0
         var patrolFails = 0
         var resumed = 0  // interrupted levels played out (progress for the same-error count)
@@ -205,16 +210,28 @@ class Runner(
                 }
                 val played = try {
                     startLevel(nav, request)
+                } catch (e: EliteUnavailable) {
+                    if (!request.alternate) throw e
+                    Log.warn("${e.message}: playing normal levels only")
+                    request = state.other.copy(alternate = false)
+                    state.request = request
+                    continue
                 } catch (e: StarsUnavailable) {
                     Log.warn("${e.message}: playing the last unlocked level instead")
-                    state.noStars = true
+                    state.noStars.add(request.mode)
                     request = request.copy(level = null, lastBeaten = false, pendingStars = false)
                     state.request = request
                     nav.startLatest(request.mode)
                 }
                 results.add(Player(device, ocr, request.build, catalog, request.ads, clock, debug).playLevel())
-                if (request.level == null && !request.lastBeaten && results.last() == LevelScreen.VICTORY && played != null && !state.noStars) {
+                if (request.level == null && !request.lastBeaten && results.last() == LevelScreen.VICTORY && played != null && request.mode !in state.noStars) {
                     request = request.copy(level = played)  // keep replaying this one from Desafío de Estrellas
+                    state.request = request
+                }
+                if (request.alternate) {  // the other mode next
+                    val next = state.other
+                    state.other = request
+                    request = next
                     state.request = request
                 }
                 nav.goToLobby()

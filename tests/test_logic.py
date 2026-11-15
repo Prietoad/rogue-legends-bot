@@ -658,7 +658,7 @@ def test_pending_stars_scrolls_up_then_gives_up_at_level_1(monkeypatch):
 
 def test_version():
     import roguebot
-    assert roguebot.__version__ == "1.12.0"
+    assert roguebot.__version__ == "1.13.0"
 
 
 def test_data_dir_is_next_to_the_exe_when_frozen(monkeypatch, tmp_path):
@@ -1042,3 +1042,10 @@ def test_arena_opponents_are_in_list_order_whatever_the_ocr_order():
     panel = parse_arena_opponents(texts)
     assert [o.power for o in panel.opponents] == [900000, 200000, 100000]
     assert pick_opponent(panel.own_power, panel.opponents).power == 200000
+
+
+def test_build_request_alternate_starts_in_normal():
+    from roguebot.request import ALTERNATE
+    assert build_request(ALTERNATE, "latest", "") == RunRequest(Mode.NORMAL, None, repeat=True, alternate=True)
+    assert build_request(ALTERNATE, "stars", "7") == RunRequest(Mode.NORMAL, 7, repeat=True, alternate=True)
+    assert not build_request("elite", "latest", "").alternate

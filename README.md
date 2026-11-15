@@ -9,7 +9,7 @@ It plays in Spanish or English.
 
 ## What it does
 
-- **Levels:** normal or elite (elite cost 5/10/15 from the energy you have). The level can be:
+- **Levels:** normal, elite or alternating (one level in normal, the next in elite, and so on) (elite cost 5/10/15 from the energy you have). The level can be:
   - the last unlocked level;
   - the last beaten level;
   - a level that still misses stars (star rewards include diamonds);

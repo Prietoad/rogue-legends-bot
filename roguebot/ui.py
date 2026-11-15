@@ -13,7 +13,7 @@ from roguebot import __version__, config, emulator, settings
 from roguebot.build import Build
 from roguebot.i18n import UI_LANGUAGES, tr
 from roguebot.report import Report, render
-from roguebot.request import BEATEN, LATEST, PENDING, STARS, RunRequest, build_request
+from roguebot.request import ALTERNATE, BEATEN, LATEST, PENDING, STARS, RunRequest, build_request
 from roguebot.screens import Mode
 from roguebot.skills import DAMAGE_TYPES, MAGIC, PHYSICAL
 
@@ -99,8 +99,10 @@ class App:
 
         self.mode = tk.StringVar(value=Mode.NORMAL.value)
         self._text(ttk.Label(frame), "mode").grid(row=2, column=0, sticky="w")
-        self._text(ttk.Radiobutton(frame, variable=self.mode, value=Mode.NORMAL.value), "normal").grid(row=2, column=1, sticky="w")
-        self._text(ttk.Radiobutton(frame, variable=self.mode, value=Mode.ELITE.value), "elite").grid(row=2, column=2, sticky="w")
+        modes = ttk.Frame(frame)
+        modes.grid(row=2, column=1, columnspan=2, sticky="w")
+        for value, key in ((Mode.NORMAL.value, "normal"), (Mode.ELITE.value, "elite"), (ALTERNATE, "alternate")):
+            self._text(ttk.Radiobutton(modes, variable=self.mode, value=value), key).pack(side="left", padx=(0, 8))
 
         world = ttk.Frame(frame)
         world.grid(row=2, column=3, sticky="w", padx=(16, 0))
@@ -219,7 +221,7 @@ class App:
 
     def _restore_options(self, saved: dict) -> None:
         """Last session's choices; anything missing or invalid keeps its default."""
-        for var, key, choices in ((self.mode, "mode", {m.value for m in Mode}),
+        for var, key, choices in ((self.mode, "mode", {ALTERNATE, *(m.value for m in Mode)}),
                                   (self.source, "source", {LATEST, BEATEN, PENDING, STARS}),
                                   (self.world, "world", {"", *config.WORLDS}),
                                   (self.nature, "nature", {PHYSICAL, MAGIC})):

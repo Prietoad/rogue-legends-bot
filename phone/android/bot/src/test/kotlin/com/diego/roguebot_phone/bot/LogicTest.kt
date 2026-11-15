@@ -156,6 +156,8 @@ class LogicTest {
         val pending = buildRequest("normal", PENDING, "")
         assertTrue(pending.pendingStars && pending.lastBeaten && pending.level == null)
         assertTrue(!buildRequest("normal", LATEST, "1").ads && buildRequest("normal", LATEST, "1", ads = true).ads)
+        assertEquals(RunRequest(Mode.NORMAL, null, repeat = true, alternate = true), buildRequest(ALTERNATE, LATEST, ""))
+        assertEquals(RunRequest(Mode.NORMAL, 7, repeat = true, alternate = true), buildRequest(ALTERNATE, STARS, "7"))
     }
 
     @Test

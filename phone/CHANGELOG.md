@@ -1,5 +1,8 @@
 # Changelog (phone app)
 
+## 0.8.0 (2026-11-15)
+- Same change as the desktop bot 1.13.0: new mode choice "Alternar" (one level in normal, the next in elite, and so on). Not tried on a phone yet.
+
 ## 0.7.0 (2026-11-14)
 - Same change as the desktop bot 1.12.0: the Heliora blacksmith's anvil (upgrade the item while the success chance is 40% or more, then take it). Not tried on a phone yet.
 
