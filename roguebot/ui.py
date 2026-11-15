@@ -100,12 +100,15 @@ class App:
         self.mode = tk.StringVar(value=Mode.NORMAL.value)
         self._text(ttk.Label(frame), "mode").grid(row=2, column=0, sticky="w")
         modes = ttk.Frame(frame)
-        modes.grid(row=2, column=1, columnspan=2, sticky="w")
-        for value, key in ((Mode.NORMAL.value, "normal"), (Mode.ELITE.value, "elite"), (ALTERNATE, "alternate")):
-            self._text(ttk.Radiobutton(modes, variable=self.mode, value=value), key).pack(side="left", padx=(0, 8))
+        modes.grid(row=2, column=1, columnspan=3, sticky="w")
+        self.mode_buttons = [self._text(ttk.Radiobutton(modes, variable=self.mode, value=value), key)
+                             for value, key in ((Mode.NORMAL.value, "normal"), (Mode.ELITE.value, "elite"),
+                                                (ALTERNATE, "alternate"))]
+        for button in self.mode_buttons:
+            button.pack(side="left", padx=(0, 8))
 
-        world = ttk.Frame(frame)
-        world.grid(row=2, column=3, sticky="w", padx=(16, 0))
+        world = ttk.Frame(modes)  # same row as the mode choices
+        world.pack(side="left", padx=(8, 0))
         self._text(ttk.Label(world), "world").pack(side="left", padx=(0, 6))
         self.world = tk.StringVar(value="")  # "" = the world the game is in; else one of config.WORLDS
         self.world_picker = ttk.Combobox(world, state="readonly", width=12)

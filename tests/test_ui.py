@@ -342,6 +342,9 @@ def test_alternate_mode_option(app, tmp_path, monkeypatch):
     monkeypatch.setattr(app, "settings_path", tmp_path / "settings.json")
     before = app.mode.get()
     try:
+        app.root.update()
+        shown = [w.cget("text") for w in app.mode_buttons if w.winfo_ismapped() and w.winfo_width() > 20]
+        assert shown == ["Normal", "Elite", "Alternate"]  # 1.13.0: the third choice had no room and was not drawn
         app.mode.set("alternate")
         app._save_options()
         saved = settings.load(tmp_path / "settings.json")

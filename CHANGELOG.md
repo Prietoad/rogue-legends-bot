@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.13.1 (2026-11-16)
+- The new "Alternar" mode choice of 1.13.0 was not drawn in the window (it had no room next to Normal and Élite). It now shows, with the World picker to its right.
+
 ## 1.13.0 (2026-11-15)
 - **New mode choice "Alternar" (Alternate)**, next to Normal and Élite: the bot plays the chosen level (last unlocked, last beaten, missing stars or a level number) once in normal, then once in elite, then normal again, and so on, until it runs out of energy. Each mode keeps its own level: with "Last unlocked", a win in normal repeats that normal level, and elite does the same with its own. If elite is not unlocked on the account, every level is played in normal.
 
