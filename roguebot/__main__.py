@@ -19,7 +19,7 @@ from roguebot.play import Player, PlayError
 from roguebot.report import Report
 from roguebot.request import RunRequest
 from roguebot.routine import Routine
-from roguebot.screens import LevelScreen, Mode
+from roguebot.screens import Mode
 from roguebot.skills import Catalog
 from roguebot.vision import Ocr
 
@@ -109,7 +109,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
 
     def attempt(state: dict) -> Report:
         """One try: emulator and game up, then the requested work. `state` keeps the results (and the
-        pinned level) across tries, so a recovery continues instead of starting over."""
+        request) across tries, so a recovery continues instead of starting over."""
         nonlocal ocr, catalog
         request = state["request"]
         serial, adb, launched = Emulator(request.mumu_folder, stop).start()
@@ -151,7 +151,7 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                     if nav.claim_free_energy() < config.MIN_RUN_ENERGY:
                         break
                 try:
-                    played = _start_level(nav, request)
+                    _start_level(nav, request)
                 except EliteUnavailable as e:
                     if not request.alternate:
                         raise
@@ -160,15 +160,12 @@ def make_runner(dry_run: bool, stop: threading.Event | None = None) -> Callable[
                     continue
                 except StarsUnavailable as e:  # no star list or no beaten level on this account (yet)
                     log.warning("%s: playing the last unlocked level instead", e)
-                    state.setdefault("no_stars", set()).add(request.mode)  # remembered: no pinning, no more star list attempts
+                    # remembered in the request: no more star list attempts
                     request = state["request"] = replace(request, level=None, last_beaten=False, pending_stars=False)
-                    played = nav.start_latest(request.mode)
+                    nav.start_latest(request.mode)
                 results.append(Player(device, ocr, request.build, catalog, request.ads).play_level())
-                if (request.level is None and not request.last_beaten and results[-1] is LevelScreen.VICTORY
-                        and played is not None and request.mode not in state.get("no_stars", ())):
-                    # Winning unlocked the next level; keep replaying this one from Desafío de Estrellas.
-                    request = state["request"] = replace(request, level=played)
-                if request.alternate:  # the other mode next; each mode keeps its own level (pinned, star fallback)
+                # "Last unlocked" is read from the lobby on every start: a win moves on to the newly unlocked level.
+                if request.alternate:  # the other mode next; each mode keeps its own request (star fallback)
                     state["other"], request = request, state["other"]
                     state["request"] = request
                 nav.go_to_lobby()

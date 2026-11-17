@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.14.0 (2026-11-17)
+- **"Last unlocked" now keeps advancing.** After a win the bot plays the newly unlocked level next, so it pushes through the levels one by one until it runs out of energy. Before, it replayed the level it had just beaten from Desafío de Estrellas. After a defeat it tries the same level again. With "Alternar", normal and elite each advance through their own levels.
+
 ## 1.13.2 (2026-11-16)
 - Tower: the bot stopped the tower with "Tower did not finish" after 40 floors, right on the reward chest of a beaten tower. An account that wins every floor gets its tickets back from each chest, so it can climb far more than 40 floors. The tower now goes on until the first defeat or until no tickets are left, however many floors that takes.
 - The beaten tower's chest screen ("Felicidades por completar Torre de los Héroes N") has no back arrow. When a part failed there, the bot could not leave it and restarted the emulator. It now opens the chest from there too.

@@ -88,8 +88,7 @@ class Runner(
         val results = ArrayList<LevelScreen>()
         var progress = RoutineProgress()  // routine parts done: a recovery resumes at the part that broke
         var routineDone = false
-        val noStars = HashSet<Mode>()  // modes without a star list: no pinning, no more star list attempts
-        // alternating: the other mode's request (each mode keeps its own pinned level and star fallback)
+        // alternating: the other mode's request (each mode keeps its own star fallback)
         var other = request.copy(mode = if (request.mode == Mode.NORMAL) Mode.ELITE else Mode.NORMAL)
         var patrolNext = 0.0
         var patrolFails = 0
@@ -208,7 +207,7 @@ class Runner(
                 if (request.repeat && energy(nav) < Config.MIN_RUN_ENERGY) {
                     if (nav.claimFreeEnergy() < Config.MIN_RUN_ENERGY) break
                 }
-                val played = try {
+                try {
                     startLevel(nav, request)
                 } catch (e: EliteUnavailable) {
                     if (!request.alternate) throw e
@@ -218,16 +217,12 @@ class Runner(
                     continue
                 } catch (e: StarsUnavailable) {
                     Log.warn("${e.message}: playing the last unlocked level instead")
-                    state.noStars.add(request.mode)
                     request = request.copy(level = null, lastBeaten = false, pendingStars = false)
                     state.request = request
                     nav.startLatest(request.mode)
                 }
                 results.add(Player(device, ocr, request.build, catalog, request.ads, clock, debug).playLevel())
-                if (request.level == null && !request.lastBeaten && results.last() == LevelScreen.VICTORY && played != null && request.mode !in state.noStars) {
-                    request = request.copy(level = played)  // keep replaying this one from Desafío de Estrellas
-                    state.request = request
-                }
+                // "Last unlocked" is read from the lobby on every start: a win moves on to the newly unlocked level.
                 if (request.alternate) {  // the other mode next
                     val next = state.other
                     state.other = request

@@ -9,7 +9,7 @@ import 'i18n.dart';
 
 /// The phone version of the desktop bot's window (roguebot/ui.py): options, Start/Stop, status and log.
 /// The bot itself runs in Kotlin (android/bot, android/app): see Engine.kt.
-const version = '0.8.1';
+const version = '0.9.0';
 const damageTypes = ['ice', 'lightning', 'fire', 'shuriken', 'venom', 'bleed'];
 const worlds = ['everdale', 'heliora'];  // like config.WORLDS on the desktop
 const engine = MethodChannel('roguebot/engine');

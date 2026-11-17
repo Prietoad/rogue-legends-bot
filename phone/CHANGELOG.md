@@ -1,5 +1,8 @@
 # Changelog (phone app)
 
+## 0.9.0 (2026-11-17)
+- Same change as the desktop bot 1.14.0: "Last unlocked" moves on to the newly unlocked level after each win, instead of replaying the level it beat. Not tried on a phone yet.
+
 ## 0.8.1 (2026-11-16)
 - Same fixes as the desktop bot 1.13.2: the tower no longer stops after 40 floors, and the beaten tower's chest screen is opened when the bot has to leave it. Not tried on a phone yet.
 

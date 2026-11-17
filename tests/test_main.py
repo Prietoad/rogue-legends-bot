@@ -5,7 +5,7 @@ import pytest
 import roguebot.__main__ as main
 from roguebot.emulator import EmulatorError
 from roguebot.request import RunRequest
-from roguebot.screens import Mode
+from roguebot.screens import LevelScreen, Mode
 
 
 def test_runner_does_not_connect_until_start(monkeypatch):
@@ -128,7 +128,7 @@ def run_with(monkeypatch, nav, results, request):
     return main.make_runner(dry_run=False)(request)
 
 
-V, D = main.LevelScreen.VICTORY, main.LevelScreen.DEFEAT
+V, D = LevelScreen.VICTORY, LevelScreen.DEFEAT
 
 
 def test_single_run(monkeypatch):
@@ -146,11 +146,20 @@ def test_repeat_until_out_of_energy_claims_free_energy_first(monkeypatch):
     assert report.results == [V, D, V] and report.repeat
 
 
-def test_repeat_latest_pins_level_after_victory(monkeypatch):
-    nav = FakeNav(energy=15)
-    run_with(monkeypatch, nav, [D, V, V], RunRequest(Mode.NORMAL, None, repeat=True))
-    # Defeat: still the latest level. Victory unlocks 14, so replay 13 from Desafío de Estrellas.
-    assert nav.started == ["detect", ("latest", 13), ("latest", 13), ("stars", 13)]
+def test_repeat_latest_moves_on_to_the_new_level_after_victory(monkeypatch):
+    """Requested 2026-11-17: "last unlocked" always starts from the lobby, so a win plays the newly unlocked
+    level next (it used to pin the won level and replay it from Desafío de Estrellas)."""
+    played = [D, V, V]
+    queue = list(played)
+
+    class Nav(FakeNav):
+        def start_latest(self, mode):
+            self.latest = 13 + played[:len(played) - len(queue)].count(V)  # each win unlocks the next level
+            return super().start_latest(mode)
+    nav = Nav(energy=15)
+    report = run_with(monkeypatch, nav, queue, RunRequest(Mode.NORMAL, None, repeat=True))
+    assert report.results == [D, V, V]
+    assert nav.started == ["detect", ("latest", 13), ("latest", 13), ("latest", 14)]
 
 
 def test_repeat_without_any_energy_is_an_error(monkeypatch):
@@ -571,9 +580,8 @@ def test_missing_elite_mode_stops_without_restarting(monkeypatch):
     assert FakeEmulator.shutdowns == 0
 
 
-def test_without_star_challenge_a_won_level_is_not_pinned(monkeypatch):
-    """Review: "last unlocked" + repeat pins the won level and replays it from the star list, which this
-    account doesn't have: fall back to the last unlocked level and stop trying the star list."""
+def test_last_unlocked_never_uses_the_star_list(monkeypatch):
+    """"Last unlocked" + repeat: every start is the lobby button, even after wins (no star list needed)."""
     class Nav(FakeNav):
         def start_star_challenge(self, mode, level):
             self.started.append(("stars?", level))
@@ -581,7 +589,7 @@ def test_without_star_challenge_a_won_level_is_not_pinned(monkeypatch):
     nav = Nav(energy=15)
     report = run_with(monkeypatch, nav, [V, V, V], RunRequest(Mode.NORMAL, None, repeat=True))
     assert report.results == [V, V, V]
-    assert nav.started == ["detect", ("latest", 13), ("stars?", 13), ("latest", 13), ("latest", 13)]
+    assert nav.started == ["detect", ("latest", 13), ("latest", 13), ("latest", 13)]
 
 
 def test_failed_patrol_is_retried_much_later(monkeypatch):
@@ -658,13 +666,13 @@ def test_alternate_plays_normal_then_elite_and_so_on(monkeypatch):
     assert nav.started[1:] == [("normal", "beaten"), ("elite", "beaten"), ("normal", "beaten"), ("elite", "beaten")]
 
 
-def test_alternate_pins_the_won_level_of_each_mode(monkeypatch):
-    """"Last unlocked": a win pins that mode's level only; the lost elite level stays "last unlocked"."""
+def test_alternate_last_unlocked_starts_each_mode_from_the_lobby(monkeypatch):
+    """"Last unlocked" while alternating: each mode starts its own last unlocked level, wins or not."""
     from roguebot.request import build_request
-    nav = ModeNav(energy=30)
-    run_with(monkeypatch, nav, [V, D, V, V, V, V], build_request("alternate", "latest", ""))
-    assert nav.started[1:] == [("normal", "latest", 13), ("elite", "latest", 4), ("normal", "stars", 13),
-                               ("elite", "latest", 4), ("normal", "stars", 13), ("elite", "stars", 4)]
+    nav = ModeNav(energy=20)
+    run_with(monkeypatch, nav, [V, D, V, V], build_request("alternate", "latest", ""))
+    assert nav.started[1:] == [("normal", "latest", 13), ("elite", "latest", 4),
+                               ("normal", "latest", 13), ("elite", "latest", 4)]
 
 
 def test_alternate_without_elite_mode_plays_normal_only(monkeypatch):
